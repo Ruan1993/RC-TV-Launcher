@@ -27,6 +27,7 @@ class AppRepository(private val context: Context) {
     suspend fun icon(packageName: String): Bitmap? = withContext(Dispatchers.IO) {
         icons.get(packageName) ?: try {
             val drawable = context.packageManager.getApplicationIcon(packageName)
+            RenderDiagnostics.iconRasterized()
             val size = (48 * context.resources.displayMetrics.density).toInt().coerceIn(48, 128)
             val bitmap = createBitmap(size, size)
             drawable.setBounds(0, 0, size, size)

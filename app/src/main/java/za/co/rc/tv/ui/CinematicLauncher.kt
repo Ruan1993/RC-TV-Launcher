@@ -23,11 +23,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.CornerRadius
@@ -54,17 +56,17 @@ private val GlassShape = RoundedCornerShape(22.dp)
 /** No backdrop blur or continuously running effects: safe for API 30 TV GPUs. */
 @Composable
 private fun Wallpaper(minimal: Boolean) {
+    SideEffect { RenderDiagnostics.wallpaperComposed() }
     val context = LocalContext.current.applicationContext
     val wallpaper by produceState<android.graphics.Bitmap?>(null, minimal) {
         value = if (minimal) null else withContext(Dispatchers.IO) {
-            android.graphics.BitmapFactory.decodeResource(context.resources, R.drawable.cinematic_horizon)
+            RenderDiagnostics.wallpaperDecoded()
+            renderCinematicBackdrop(context)
         }
     }
     Box(Modifier.fillMaxSize().background(Ink)) {
         if (!minimal && wallpaper != null) Image(wallpaper!!.asImageBitmap(), null,
             Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Ink.copy(alpha = .9f), Ink.copy(alpha = .15f)))))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Ink.copy(alpha = .3f), Ink.copy(alpha = .94f)))))
     }
 }
 
@@ -83,8 +85,9 @@ private fun FocusButton(label: String, motion: String, modifier: Modifier = Modi
     val tint by animateColorAsState(if (focused) Ice else if (selected) Color.White.copy(alpha = .18f) else Color.White.copy(alpha = .045f), animationSpec = if (motion == "Minimal") snap() else spring(stiffness = 600f), label = "buttonTint")
     Button(onClick, modifier.onFocusChanged { focused = it.isFocused }
         .graphicsLayer { scaleX = scale; scaleY = scale }
+        .drawBehind { drawRoundRect(tint, cornerRadius = CornerRadius(14.dp.toPx())) }
         .border(1.dp, if (focused) Ice else Color.White.copy(alpha = .10f), RoundedCornerShape(14.dp)),
-        shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = tint,
+        shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent,
             contentColor = if (focused) Ink else Color.White), contentPadding = PaddingValues(12.dp, 10.dp)) {
         if (label in listOf("H", "S", "A", "L", "···")) NavigationMark(label, if (focused) Ink else Ice)
         else Text(label, fontSize = 14.sp, maxLines = 1)
@@ -111,6 +114,7 @@ private fun NavigationMark(mark: String, tint: Color) {
 @Composable
 private fun AppTile(app: LauncherApp, repository: AppRepository, generation: Int,
     pinned: Boolean, motion: String, onLaunch: () -> Unit, onPin: () -> Unit) {
+    SideEffect { RenderDiagnostics.tileComposed() }
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused && motion != "Minimal") if (motion == "Cinematic") 1.055f else 1.035f else 1f,
         if (motion == "Minimal") snap() else spring(dampingRatio = .82f, stiffness = 500f), label = "tileFocus")
@@ -151,30 +155,14 @@ fun CinematicLauncher(
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
+    SideEffect { RenderDiagnostics.shellComposed() }
     val motion = if (prefs.reducedMotion) "Minimal" else prefs.motion
-    var railFocused by remember { mutableStateOf(false) }
-    val railWidth by animateDpAsState(if (railFocused) 146.dp else 76.dp,
-        if (motion == "Minimal") snap() else spring(dampingRatio = 1f, stiffness = 600f), label = "railWidth")
-    val visible = discovery.apps.filter { (section != "Search" || it.label.contains(query, true)) &&
-        (section != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) }
+    val visible = remember(discovery.apps, section, query, prefs.favourites) { discovery.apps.filter { (section != "Search" || it.label.contains(query, true)) &&
+        (section != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) } }
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist")
         Row(Modifier.fillMaxSize().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
-            // Reserve the expanded rail width so focus never reflows the app shelf.
-            Box(Modifier.width(146.dp).fillMaxHeight()) {
-            Column(Modifier.width(railWidth).fillMaxHeight().onFocusChanged { railFocused = it.hasFocus }.focusGroup()
-                .clip(GlassShape).background(Ink.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .12f), GlassShape)
-                .padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("RC", color = Ice, fontSize = 24.sp, fontWeight = FontWeight.Light, modifier = Modifier.padding(6.dp, 15.dp))
-                listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Library" to "L", "Settings" to "···").forEach { (name, symbol) ->
-                    Box(Modifier.semantics { contentDescription = name }) {
-                        FocusButton(if (railFocused) name else symbol, motion, Modifier.fillMaxWidth(), selected = section == name) { onSection(name) }
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                Text("RC TV", fontSize = 10.sp, color = Color.White.copy(alpha = .45f), modifier = Modifier.padding(5.dp))
-            }
-            }
+            CinematicNavigation(section, onSection, motion)
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -234,4 +222,34 @@ fun CinematicLauncher(
             }
         }
     }
+}
+
+/** Focus/width state is scoped here: rail animation cannot recompose the screen. */
+@Composable
+private fun CinematicNavigation(section: String, onSection: (String) -> Unit, motion: String) {
+    var railFocused by remember { mutableStateOf(false) }
+    val railWidth by animateDpAsState(if (railFocused) 146.dp else 76.dp,
+        if (motion == "Minimal") snap() else spring(dampingRatio = 1f, stiffness = 600f), label = "railWidth")
+    Box(Modifier.width(146.dp).fillMaxHeight()) {
+        Column(Modifier.width(146.dp).fillMaxHeight().onFocusChanged { railFocused = it.hasFocus }.focusGroup()
+            .drawWithContent {
+                val width = railWidth.toPx()
+                val panelSize = Size(width, size.height)
+                val corners = CornerRadius(22.dp.toPx())
+                drawRoundRect(Ink.copy(alpha = .72f), size = panelSize, cornerRadius = corners)
+                drawRoundRect(Color.White.copy(alpha = .12f), size = panelSize, cornerRadius = corners, style = Stroke(1.dp.toPx()))
+                clipRect(right = width) { this@drawWithContent.drawContent() }
+            }
+            .padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("RC", color = Ice, fontSize = 24.sp, fontWeight = FontWeight.Light, modifier = Modifier.padding(6.dp, 15.dp))
+            listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Library" to "L", "Settings" to "···").forEach { (name, symbol) ->
+                Box(Modifier.semantics { contentDescription = name }) {
+                    FocusButton(if (railFocused) name else symbol, motion, Modifier.width(if (railFocused) 126.dp else 56.dp), selected = section == name) { onSection(name) }
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Text("RC TV", fontSize = 10.sp, color = Color.White.copy(alpha = .45f), modifier = Modifier.padding(5.dp))
+        }
+    }
+
 }

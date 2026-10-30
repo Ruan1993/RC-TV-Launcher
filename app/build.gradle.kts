@@ -10,10 +10,21 @@ android {
         applicationId = "za.co.rc.tv"
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0-cinematic-preview"
+        versionCode = 3
+        versionName = "0.2.1-cinematic-fixes"
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
+    defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }
+    buildTypes {
+        create("profile") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            isMinifyEnabled = false
+            matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "true")
+        }
+    }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
 }

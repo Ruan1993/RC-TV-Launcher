@@ -23,6 +23,23 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    private fun traceBackKey(event: android.view.KeyEvent) {
+        if (BuildConfig.PROFILE_DIAGNOSTICS && event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            android.util.Log.i("RcNavigation", "Back keyCode=${event.keyCode} action=${event.action} repeat=${event.repeatCount}")
+        }
+    }
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        traceBackKey(event)
+        return super.onKeyDown(keyCode, event)
+    }
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        traceBackKey(event)
+        return super.onKeyUp(keyCode, event)
+    }
+    override fun onPause() {
+        RenderDiagnostics.snapshot()
+        super.onPause()
+    }
     private val repository by lazy { AppRepository(this) }
     private val preferences by lazy { Preferences(this) }
     private fun message(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()

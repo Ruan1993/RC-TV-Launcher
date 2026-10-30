@@ -6,7 +6,7 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 **Phase B first design preview; not version 1.0.** Phase A passed the user's functional Xiaomi Android 11 device tests and is merged into main. This branch begins Cinematic Glass from that verified checkpoint. It preserves installed app discovery/launching, preferred app ordering, DataStore favourites, search, five sections and safe Home recovery. See [the first increment and rollback guide](docs/PHASE-B-CINEMATIC-GLASS.md) and [the master specification](docs/MASTER-SPECIFICATION.md).
 
-The native Compose preview adds original cinematic landscape artwork, translucent glass surfaces, a compact expanding rail, polished installed-app tiles and RC TV / “Your world. In focus.” branding. Cinematic and Minimalist appearances and three motion intensities persist across restarts. Minimal motion is the safe default; animated modes still need performance work on the Xiaomi. Wallpaper selection/rotation, full transitions, focus restoration, custom ordering, profiles, media/file management, weather and companion features remain future increments.
+The native Compose preview adds original cinematic landscape artwork, translucent glass surfaces, a compact expanding rail, polished installed-app tiles and RC TV / “Your world. In focus.” branding. Cinematic and Minimalist appearances and three motion intensities persist across restarts. Home Back stays within RC TV; other sections return Home. The [Back and performance fix report](docs/PHASE-B-BACK-AND-PERFORMANCE.md) records matched release-like improvements to about 0.5–2% jank in the measured workload. Minimal remains the safe default; broader acceptance is outstanding. Wallpaper selection/rotation, full transitions, focus restoration, custom ordering, profiles, media/file management, weather and companion features remain future increments. The future long-press menu and RC Assist are recorded in the [interaction roadmap](docs/INTERACTION-ROADMAP.md).
 
 ## Build
 
@@ -16,7 +16,7 @@ On Windows: ` .\gradlew.bat assembleDebug testDebugUnitTest lintDebug`
 
 On macOS/Linux: `sh gradlew assembleDebug testDebugUnitTest lintDebug`
 
-The APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.0-cinematic-preview). It supports Android 11 (API 30) and later, targets API 36, and is a development build signed with the local debug key. Do not use the debug key for public releases. The device-tested Phase A APK is preserved locally under `releases/rollback/`; see the rollback guide before downgrading.
+The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.1-cinematic-fixes). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV performance review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Phase A and the preceding Phase B APKs remain under local `releases/rollback/`; see the current fix report before downgrading from the profile build.
 
 ## Install and recover
 

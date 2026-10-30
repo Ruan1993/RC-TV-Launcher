@@ -2,6 +2,8 @@
 
 ## Foundation boundaries
 
+The current root Back handler always consumes Back: sections return Home and Home does not finish its activity or expose an unrelated Android task. System Home remains untouched. Rail animation state lives in its own composable, and animated width/tint are read during drawing rather than full-screen composition/layout. Static wallpaper scrims are precomposited once on IO. Profile-only counters and the same-signed, non-debuggable `profile` build support repeatable local measurements; debug and ordinary release keep diagnostics disabled. See PHASE-B-BACK-AND-PERFORMANCE.md for evidence and limitations.
+
 Phase B introduces `ui/CinematicLauncher.kt` for the wallpaper renderer, translucent surfaces, focus-aware buttons/tiles and navigation shell. Platform actions and the proven discovery lifecycle remain in MainActivity. Appearance and motion extend the existing DataStore without renaming its file or favourite keys. Defaults validate unknown values; Minimal motion is the safe preview default. The renderer has no network dependency, continuous animation loop or live blur; see PHASE-B-CINEMATIC-GLASS.md for measured limits and the incremental roadmap.
 
 `core/AppRepository` queries both TV and conventional MAIN launcher categories on an IO coroutine. It removes duplicate packages and uses supported launch intents. Availability is refreshed when the activity resumes. Package visibility is restricted to launcher/Home intent queries; QUERY_ALL_PACKAGES is not requested.

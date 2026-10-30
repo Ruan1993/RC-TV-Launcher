@@ -1,5 +1,7 @@
 # Cinematic Glass — first increment
 
+This records the initial preview and its original debug measurements. The subsequent [Back/performance fix](PHASE-B-BACK-AND-PERFORMANCE.md) supersedes the performance status below with matched release-like results, the root Back policy, current APKs and updated rollback instructions. The visual direction is preserved. See [upcoming interaction requirements](INTERACTION-ROADMAP.md) for the future context menu and RC Assist.
+
 ## Checkpoint and scope
 
 Phase A PR #1 was reviewed at `e051f51db9162a3d7f3ce792cbc8935ff74a9911`, with no review comments or configured remote checks. The clean local branch passed a fresh 53-task build/test/lint run and five tests. The user confirmed physical-remote functional acceptance. PR #1 was merged, with an expected-head SHA guard, as `af261a9000f5b3c62f42216b9498d2172b9591f1`. This preview starts from that main commit on `feature/phase-b-cinematic-glass`.
