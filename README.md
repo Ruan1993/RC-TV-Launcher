@@ -6,7 +6,7 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 **Phase A foundation; not version 1.0.** This repository begins implementation of [the master specification](docs/MASTER-SPECIFICATION.md). It discovers installed TV and conventional launcher apps, opens them through Android intents, prioritises YouCine / YouTube Music / YouTube / F1 TV when present, stores pinned favourites in DataStore, searches apps, and provides five navigation sections and safe Home setup. Library explicitly explains its unavailable features.
 
-The dark glass-inspired interface is native Compose. It currently uses a procedural gradient, text app tiles and static focus borders. Landscape artwork, app icons, collapsible sidebar, focus restoration, profiles, advanced customisation, media/file management, diagnostics, backup, weather, ambient mode and companion support remain future work. No unavailable integration is presented as working.
+The dark glass-inspired interface is native Compose. It currently uses a procedural gradient, installed application icons with fallback artwork, and static focus borders. Subtle RC TV branding carries the tagline “Your world. In focus.” Landscape artwork, collapsible sidebar, focus restoration, profiles, advanced customisation, media/file management, diagnostics, backup, weather, ambient mode and companion support remain future work. No unavailable integration is presented as working.
 
 ## Build
 

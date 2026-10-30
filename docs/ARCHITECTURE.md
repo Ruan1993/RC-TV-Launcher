@@ -4,6 +4,8 @@
 
 `core/AppRepository` queries both TV and conventional MAIN launcher categories on an IO coroutine. It removes duplicate packages and uses supported launch intents. Availability is refreshed when the activity resumes. Package visibility is restricted to launcher/Home intent queries; QUERY_ALL_PACKAGES is not requested.
 
+Discovery has one lifecycle-driven refresh while resumed. Cancellation propagates without becoming an error; genuine exceptions are logged and displayed with Retry, retaining the last successful app list. A successful refresh, including an empty result, clears the error. Installed icons use PackageManager off the main thread, rasterised to 48dp (maximum 128 pixels per side) with a 2 MiB LRU cache and lazy-grid loading. Icons are invalidated on refresh; unavailable icons use bundled RC artwork. No network image requests or bundled third-party app artwork are needed.
+
 `core/Preferences` owns the application-scoped Preferences DataStore and exposes Flow state. Writes are asynchronous. Corrupted preferences reset to defaults. UI observes state only while lifecycle-active. Missing pinned packages remain stored but are not shown; app discovery never fabricates them.
 
 `MainActivity` owns the singleTask Home entry, role request and settings fallback. `GlassButton` uses standard Compose buttons with keyboard, D-pad and pointer interaction and a high contrast focus border. Discovery work runs off the main thread. The clock coroutine pauses below the started lifecycle state. No persistent decoration service is used.

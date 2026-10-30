@@ -2,6 +2,10 @@ package za.co.rc.tv.core
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.util.LruCache
+import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -14,6 +18,26 @@ object AppOrdering {
 }
 
 class AppRepository(private val context: Context) {
+    // At most 2 MiB of rasterised icons; no full-size drawables are retained.
+    private val icons = object : LruCache<String, Bitmap>(2 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap) = value.allocationByteCount
+    }
+    fun invalidateIcons() = icons.evictAll()
+
+    suspend fun icon(packageName: String): Bitmap? = withContext(Dispatchers.IO) {
+        icons.get(packageName) ?: try {
+            val drawable = context.packageManager.getApplicationIcon(packageName)
+            val size = (48 * context.resources.displayMetrics.density).toInt().coerceIn(48, 128)
+            val bitmap = createBitmap(size, size)
+            drawable.setBounds(0, 0, size, size)
+            drawable.draw(Canvas(bitmap))
+            icons.put(packageName, bitmap)
+            bitmap
+        } catch (failure: Exception) {
+            android.util.Log.w("RcIcons", "Unable to load installed app icon", failure)
+            null
+        }
+    }
     suspend fun discover(): List<LauncherApp> = withContext(Dispatchers.IO) {
         AppOrdering.sort(listOf(Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER).flatMap { category ->
             context.packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(category), 0)
