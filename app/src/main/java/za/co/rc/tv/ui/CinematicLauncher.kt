@@ -212,6 +212,7 @@ fun CinematicLauncher(
     var savingOrder by remember { mutableStateOf(false) }
     val movingFocus = remember { FocusRequester() }
     val saveFocus = remember { FocusRequester() }
+    val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
     val scope = rememberCoroutineScope()
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
@@ -221,8 +222,17 @@ fun CinematicLauncher(
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
-    val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null } }
-    BackHandler(section == "Settings" && wallpaperSettingsOpen) { closeWallpapers() }
+    val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null } }
+    // Root Back always stays in RC TV; later modal/preview/move handlers retain priority.
+    BackHandler {
+        if (section != "Home") {
+            closeWallpapers()
+            onSection("Home")
+        } else {
+            returnFocusPackage = orderedFavouritePackages(prefs, discovery.apps)
+                .firstOrNull { pkg -> discovery.apps.any { it.packageName == pkg } }
+        }
+    }
     BackHandler(previewWallpaper != null) { if (!applyingWallpaper) previewWallpaper = null }
     val applyWallpaper: (String) -> Unit = { id ->
         if (!applyingWallpaper) {
@@ -258,6 +268,7 @@ fun CinematicLauncher(
             val index = visibleFavouriteIndex(prefs, discovery.apps, returnFocusPackage!!)
             homeListState.scrollToItem(index)
             kotlinx.coroutines.delay(120)
+            inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
             runCatching { movingFocus.requestFocus() }
             returnFocusPackage = null
         }
