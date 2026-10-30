@@ -17,3 +17,7 @@ Debug/profile builds, seven debug unit tests and lint pass. Actual Xiaomi Settin
 ## Scope retained for later
 
 Wallpaper collections and downloads; USB/local SAF imports; adjustable rotation; selectable transitions; theme/font/transparency options; live appearance previews; optional RC TV profiles with user-chosen name/photo. No assumed YouTube account integration. RC Assist remains planned only, with permission-based actions and a secure Gemini Flash backend; no APK API keys or assistant implementation in this increment.
+
+## Increment 2 — navigation and motion
+
+Removed the unexplained RC avatar. Expanded rail retains icons beside labels; 24dp marks, cached layered glass material and illuminated edges. Width is read during drawing; rail focus remains locally scoped. Balanced uses high damping; Cinematic permits a small overshoot. Minimal snaps and no longer draws a focused Home halo. No blur or continuous animation. Debug/profile builds, unit tests and lint pass; actual-TV rail/focus screenshots captured and DataStore remains byte-identical. Performance comparison follows in final verification.

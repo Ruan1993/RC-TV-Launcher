@@ -40,7 +40,7 @@ internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         if (focused && motion != "Minimal") if (motion == "Cinematic") 1.055f else 1.035f else 1f,
-        if (motion == "Minimal") snap() else spring(dampingRatio = .85f, stiffness = 500f), label = "homeCardFocus")
+        if (motion == "Minimal") snap() else spring(dampingRatio = if (motion == "Cinematic") .78f else .9f, stiffness = 500f), label = "homeCardFocus")
     val icon by produceState<android.graphics.Bitmap?>(null, app.packageName, generation) {
         value = null
         value = repository.icon(app.packageName, sizeDp = 80)
@@ -61,7 +61,7 @@ internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation
                 val reflection = Brush.verticalGradient(listOf(Color.White.copy(alpha = .10f), Color.Transparent))
                 val halo = Brush.radialGradient(listOf(Color(0xFFBDE8DE).copy(alpha = .20f), Color.Transparent))
                 onDrawBehind {
-                    if (focused) drawRoundRect(halo, Offset(-7.dp.toPx(), -7.dp.toPx()),
+                    if (focused && motion != "Minimal") drawRoundRect(halo, Offset(-7.dp.toPx(), -7.dp.toPx()),
                         Size(size.width + 14.dp.toPx(), size.height + 14.dp.toPx()), corners)
                     drawRoundRect(material, cornerRadius = corners)
                     drawRoundRect(reflection, Offset(7.dp.toPx(), 7.dp.toPx()),

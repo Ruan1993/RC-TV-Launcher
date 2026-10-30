@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
@@ -78,10 +79,10 @@ private fun GlassPanel(modifier: Modifier = Modifier, content: @Composable Colum
 
 @Composable
 private fun FocusButton(label: String, motion: String, modifier: Modifier = Modifier,
-    selected: Boolean = false, quiet: Boolean = false, onClick: () -> Unit) {
+    selected: Boolean = false, quiet: Boolean = false, icon: String? = null, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused && motion != "Minimal") 1.025f else 1f,
-        if (motion == "Minimal") snap() else spring(dampingRatio = .85f, stiffness = 550f), label = "buttonFocus")
+        if (motion == "Minimal") snap() else spring(dampingRatio = if (motion == "Cinematic") .78f else .9f, stiffness = 550f), label = "buttonFocus")
     val tint by animateColorAsState(if (focused) if (quiet) Ice.copy(alpha = .22f) else Ice else if (selected) Color.White.copy(alpha = if (quiet) .12f else .18f) else Color.White.copy(alpha = .045f), animationSpec = if (motion == "Minimal") snap() else spring(stiffness = 600f), label = "buttonTint")
     Button(onClick, modifier.heightIn(min = 48.dp).onFocusChanged { focused = it.isFocused }
         .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -89,14 +90,17 @@ private fun FocusButton(label: String, motion: String, modifier: Modifier = Modi
         .border(1.dp, if (focused) Ice else Color.White.copy(alpha = .10f), RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent,
             contentColor = if (focused && !quiet) Ink else Color.White), contentPadding = PaddingValues(12.dp, 10.dp)) {
-        if (label in listOf("H", "S", "A", "L", "···")) NavigationMark(label, if (focused && !quiet) Ink else Ice)
+        if (icon != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            NavigationMark(icon, Ice)
+            if (label.isNotEmpty()) Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        } else if (label in listOf("H", "S", "A", "L", "···")) NavigationMark(label, if (focused && !quiet) Ink else Ice)
         else Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
     }
 }
 
 @Composable
 private fun NavigationMark(mark: String, tint: Color) {
-    Canvas(Modifier.size(22.dp)) {
+    Canvas(Modifier.size(24.dp)) {
         val w = size.width; val h = size.height; val stroke = 1.6.dp.toPx()
         when (mark) {
             "H" -> {
@@ -232,22 +236,28 @@ fun CinematicLauncher(
 private fun CinematicNavigation(section: String, onSection: (String) -> Unit, motion: String) {
     var railFocused by remember { mutableStateOf(false) }
     val railWidth by animateDpAsState(if (railFocused) 146.dp else 76.dp,
-        if (motion == "Minimal") snap() else spring(dampingRatio = 1f, stiffness = 600f), label = "railWidth")
+        if (motion == "Minimal") snap() else spring(dampingRatio = if (motion == "Cinematic") .88f else 1f, stiffness = 600f), label = "railWidth")
     Box(Modifier.width(146.dp).fillMaxHeight()) {
         Column(Modifier.width(146.dp).fillMaxHeight().onFocusChanged { railFocused = it.hasFocus }.focusGroup()
-            .drawWithContent {
+            .drawWithCache {
+                val material = Brush.verticalGradient(listOf(Color(0xCF263A45), Color(0xB30B131B), Color(0xD910202A)))
+                val edge = Brush.linearGradient(listOf(Color(0x88DAF3EE), Color(0x18FFFFFF), Color(0x4DC7E9E2)))
+                val highlight = Brush.verticalGradient(listOf(Color.White.copy(alpha = .07f), Color.Transparent))
+                onDrawWithContent {
                 val width = railWidth.toPx()
                 val panelSize = Size(width, size.height)
                 val corners = CornerRadius(22.dp.toPx())
-                drawRoundRect(Ink.copy(alpha = .72f), size = panelSize, cornerRadius = corners)
-                drawRoundRect(Color.White.copy(alpha = .12f), size = panelSize, cornerRadius = corners, style = Stroke(1.dp.toPx()))
-                clipRect(right = width) { this@drawWithContent.drawContent() }
+                drawRoundRect(material, size = panelSize, cornerRadius = corners)
+                drawRoundRect(highlight, Offset(5.dp.toPx(), 5.dp.toPx()), Size(width - 10.dp.toPx(), size.height * .3f), corners)
+                drawRoundRect(edge, size = panelSize, cornerRadius = corners, style = Stroke(1.dp.toPx()))
+                clipRect(right = width) { this@onDrawWithContent.drawContent() }
+                }
             }
             .padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("RC", color = Ice, fontSize = 24.sp, fontWeight = FontWeight.Normal, modifier = Modifier.padding(6.dp, 15.dp))
+            Spacer(Modifier.height(10.dp))
             listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Library" to "L", "Settings" to "···").forEach { (name, symbol) ->
                 Box(Modifier.semantics { contentDescription = name }) {
-                    FocusButton(if (railFocused) name else symbol, motion, Modifier.width(if (railFocused) 126.dp else 56.dp), selected = section == name, quiet = true) { onSection(name) }
+                    FocusButton(if (railFocused) name else "", motion, Modifier.width(if (railFocused) 126.dp else 56.dp), selected = section == name, quiet = true, icon = symbol) { onSection(name) }
                 }
             }
             Spacer(Modifier.weight(1f))
