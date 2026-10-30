@@ -2,9 +2,9 @@
 
 Current implementation status is recorded in PHASE-B-POLISH.md. The original Back/performance fix did not implement these features.
 
-## App context menu — implemented, physical acceptance pending
+## App context menu — implemented, physical menu test passed
 
-The permanent Pin/Unpin buttons under app cards are temporary. Replace them only after a tested long-press OK/Select interaction is available. The context menu must offer:
+The user confirmed the physical long-press menu works; temporary Pin/Unpin controls have been removed. The original separate rearrange dialog has been replaced at the user’s request by direct Home-shelf movement with arrows. The context menu must offer:
 
 - Add Favourite / Remove Favourite, reflecting current state.
 - Move / Rearrange, with predictable D-pad movement, commit and cancel.

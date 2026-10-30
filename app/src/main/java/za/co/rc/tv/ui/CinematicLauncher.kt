@@ -1,5 +1,11 @@
 package za.co.rc.tv.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import kotlinx.coroutines.launch
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -118,7 +124,7 @@ private fun NavigationMark(mark: String, tint: Color) {
 
 @Composable
 private fun AppTile(app: LauncherApp, repository: AppRepository, generation: Int,
-    pinned: Boolean, motion: String, onLaunch: () -> Unit, onPin: () -> Unit, modifier: Modifier = Modifier) {
+    motion: String, onLaunch: () -> Unit, modifier: Modifier = Modifier) {
     SideEffect { RenderDiagnostics.tileComposed() }
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused && motion != "Minimal") if (motion == "Cinematic") 1.055f else 1.035f else 1f,
@@ -145,9 +151,7 @@ private fun AppTile(app: LauncherApp, repository: AppRepository, generation: Int
                 Text(app.label, fontSize = 15.sp, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        TextButton(onPin, Modifier.align(Alignment.CenterHorizontally).height(32.dp)) {
-            Text(if (pinned) "Unpin" else "Pin", color = Ice.copy(alpha = .8f), fontSize = 12.sp)
-        }
+
     }
 }
 
@@ -163,18 +167,67 @@ fun CinematicLauncher(
 ) {
     SideEffect { RenderDiagnostics.shellComposed() }
     val homeListState = rememberLazyListState()
+    var draftOrder by remember { mutableStateOf<List<String>?>(null) }
+    var movingPackage by remember { mutableStateOf<String?>(null) }
+    var returnFocusPackage by remember { mutableStateOf<String?>(null) }
+    var savingOrder by remember { mutableStateOf(false) }
+    val movingFocus = remember { FocusRequester() }
+    val saveFocus = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) { draftOrder = null; movingPackage = null; returnFocusPackage = null }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    val cancelMove = { if (!savingOrder) { returnFocusPackage = movingPackage; draftOrder = null; movingPackage = null } }
+    BackHandler(draftOrder != null) { cancelMove() }
+    val beginMove: (LauncherApp) -> Unit = { app ->
+        draftOrder = orderedFavouritePackages(prefs, discovery.apps)
+        movingPackage = app.packageName
+        onSection("Home")
+    }
+    val saveMove: () -> Unit = {
+        val order = draftOrder
+        if (order != null && !savingOrder) {
+            savingOrder = true
+            scope.launch {
+                if (onSaveOrder(order)) { returnFocusPackage = movingPackage; draftOrder = null; movingPackage = null }
+                savingOrder = false
+            }
+        }
+    }
+    LaunchedEffect(draftOrder == null, returnFocusPackage) {
+        if (draftOrder == null && returnFocusPackage != null) {
+            val index = visibleFavouriteIndex(prefs, discovery.apps, returnFocusPackage!!)
+            homeListState.scrollToItem(index)
+            kotlinx.coroutines.delay(120)
+            runCatching { movingFocus.requestFocus() }
+            returnFocusPackage = null
+        }
+    }
+    LaunchedEffect(movingPackage) {
+        movingPackage?.let { pkg ->
+            val index = draftOrder.orEmpty().filter { p -> discovery.apps.any { it.packageName == p } }.indexOf(pkg).coerceAtLeast(0)
+            homeListState.scrollToItem(index)
+            withFrameNanos { }
+            movingFocus.requestFocus()
+        }
+    }
     val motion = if (prefs.reducedMotion) "Minimal" else prefs.motion
-    val visible = remember(discovery.apps, section, query, prefs.favourites, prefs.favouriteOrder) { discovery.apps.filter { (section != "Search" || it.label.contains(query, true)) &&
+    val visible = remember(discovery.apps, section, query, prefs.favourites, prefs.favouriteOrder, draftOrder) { discovery.apps.filter { (section != "Search" || it.label.contains(query, true)) &&
         (section != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) }.let { filtered ->
-            if (section == "Home" && prefs.favouriteOrder.isNotEmpty()) {
-                val order = orderedFavouritePackages(prefs, discovery.apps)
+            if (section == "Home" && (draftOrder != null || prefs.favouriteOrder.isNotEmpty())) {
+                val order = draftOrder ?: orderedFavouritePackages(prefs, discovery.apps)
                 filtered.sortedBy { order.indexOf(it.packageName).let { rank -> if (rank < 0) Int.MAX_VALUE else rank } }
             } else filtered
         } }
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist")
         Row(Modifier.fillMaxSize().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
-            CinematicNavigation(section, onSection, motion)
+            CinematicNavigation(section, { next -> if (!savingOrder) { cancelMove(); onSection(next) } }, motion)
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -228,22 +281,53 @@ fun CinematicLauncher(
                         else if (visible.isEmpty()) Text("No matching applications. Try Apps or change your search.", color = Ice)
                         if (section == "Home") LazyRow(Modifier.fillMaxWidth().height(220.dp), state = homeListState, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
                             items(visible, key = { it.packageName }) { app ->
-                                AppActionHost(app, repository, prefs, discovery.apps, motion, true, { onLaunch(app) }, { onPin(app) }, { order ->
-                                    val saved = onSaveOrder(order)
-                                    if (saved) homeListState.requestScrollToItem(order.filter { pkg -> discovery.apps.any { it.packageName == pkg } }.indexOf(app.packageName).coerceAtLeast(0))
-                                    saved
-                                }) { modifier ->
-                                    HomeAppCard(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier)
+                                if (draftOrder != null) {
+                                    val selected = movingPackage == app.packageName
+                                    val order = draftOrder.orEmpty()
+                                    val position = order.indexOf(app.packageName)
+                                    Box(Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
+                                        placementSpec = if (motion == "Minimal") snap() else spring(dampingRatio = .9f, stiffness = 500f))) {
+                                        HomeAppCard(app, repository, iconGeneration, motion, {},
+                                            Modifier.focusProperties { canFocus = selected; down = saveFocus }
+                                                .then(if (selected) Modifier.focusRequester(movingFocus) else Modifier)
+                                                .onPreviewKeyEvent { event ->
+                                                    val key = event.nativeKeyEvent
+                                                    if (selected && key.keyCode in listOf(android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_RIGHT)) {
+                                                        if (!savingOrder && key.action == android.view.KeyEvent.ACTION_DOWN) {
+                                                            val currentOrder = draftOrder.orEmpty()
+                                                            val currentPosition = currentOrder.indexOf(app.packageName)
+                                                            val next = (currentPosition + if (key.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1).coerceIn(0, currentOrder.lastIndex)
+                                                            val first = homeListState.firstVisibleItemIndex
+                                                            val full = homeListState.layoutInfo.visibleItemsInfo.count { it.offset >= 0 && it.offset + it.size <= homeListState.layoutInfo.viewportEndOffset }.coerceAtLeast(1)
+                                                            val viewport = when { next < first -> next; next >= first + full -> next - full + 1; else -> first }
+                                                            homeListState.requestScrollToItem(viewport.coerceAtLeast(0))
+                                                            draftOrder = currentOrder.toMutableList().apply { add(next, removeAt(currentPosition)) }
+                                                        }
+                                                        true
+                                                    } else if (selected && key.keyCode in listOf(android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER, android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                                                        if (key.action == android.view.KeyEvent.ACTION_UP && !key.isCanceled) saveMove()
+                                                        true
+                                                    } else false
+                                                }, selected, position > 0, position < order.lastIndex)
+                                    }
+                                } else AppActionHost(app, repository, prefs, discovery.apps, motion, true, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
+                                    HomeAppCard(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier.then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
                                 }
                             }
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
                             items(visible, key = { it.packageName }) { app ->
-                                AppActionHost(app, repository, prefs, discovery.apps, motion, false, { onLaunch(app) }, { onPin(app) }, onSaveOrder) { modifier ->
-                                    AppTile(app, repository, iconGeneration, app.packageName in prefs.favourites, motion, { onLaunch(app) }, { onPin(app) }, modifier)
+                                AppActionHost(app, repository, prefs, discovery.apps, motion, false, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
+                                    AppTile(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier)
                                 }
                             }
                         }
-                        Text("D-pad to explore    ·    Select to open    ·    Hold Select for options    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = .5f))
+                        if (draftOrder != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Left / Right to move · Select to save · Back to cancel", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                FocusButton(if (savingOrder) "Saving…" else "Save", motion, Modifier.focusRequester(saveFocus).focusProperties { up = movingFocus }, onClick = saveMove)
+                                FocusButton("Cancel", motion, Modifier.focusProperties { up = movingFocus }, onClick = cancelMove)
+                            }
+                        } else Text("D-pad to explore    ·    Select to open    ·    Hold Select for options    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = .5f))
                     }
                 }
             }
@@ -286,3 +370,6 @@ private fun CinematicNavigation(section: String, onSection: (String) -> Unit, mo
     }
 
 }
+
+private fun visibleFavouriteIndex(prefs: LauncherPreferences, apps: List<LauncherApp>, pkg: String): Int =
+    orderedFavouritePackages(prefs, apps).filter { p -> apps.any { it.packageName == p } }.indexOf(pkg).coerceAtLeast(0)

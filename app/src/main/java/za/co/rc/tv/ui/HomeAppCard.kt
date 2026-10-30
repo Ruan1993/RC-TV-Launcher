@@ -35,7 +35,7 @@ import za.co.rc.tv.core.RenderDiagnostics
 /** Home-only material. Cached brushes; no blur, shadow bitmap or per-frame layout. */
 @Composable
 internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation: Int,
-    motion: String, onLaunch: () -> Unit, modifier: Modifier = Modifier) {
+    motion: String, onLaunch: () -> Unit, modifier: Modifier = Modifier, rearranging: Boolean = false, canMoveLeft: Boolean = true, canMoveRight: Boolean = true) {
     SideEffect { RenderDiagnostics.tileComposed() }
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -67,7 +67,7 @@ internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation
                     drawRoundRect(reflection, Offset(7.dp.toPx(), 7.dp.toPx()),
                         Size(size.width - 14.dp.toPx(), size.height * .42f), CornerRadius(20.dp.toPx()))
                     drawRoundRect(edge, cornerRadius = corners, style = Stroke(1.dp.toPx()))
-                    if (focused) drawRoundRect(Color(0xFFD5F5EB), cornerRadius = corners, style = Stroke(2.dp.toPx()))
+                    if (focused || rearranging) drawRoundRect(Color(0xFFD5F5EB), cornerRadius = corners, style = Stroke(2.dp.toPx()))
                 }
             }, shape = shape, colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
             contentPadding = PaddingValues(20.dp)) {
@@ -79,6 +79,10 @@ internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation
                 Text(app.label, fontSize = 19.sp, fontWeight = FontWeight.Medium,
                     color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+        if (rearranging) Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("‹", fontSize = 28.sp, color = if (canMoveLeft) Color(0xFFD5F5EB) else Color.White.copy(alpha = .2f))
+            Text("›", fontSize = 28.sp, color = if (canMoveRight) Color(0xFFD5F5EB) else Color.White.copy(alpha = .2f))
         }
     }
 }

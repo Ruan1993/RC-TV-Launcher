@@ -96,9 +96,8 @@ private object BesideTile : PopupPositionProvider {
 @Composable
 internal fun AppActionHost(app: LauncherApp, repository: AppRepository, prefs: LauncherPreferences,
     apps: List<LauncherApp>, motion: String, home: Boolean, onLaunch: () -> Unit, onPin: () -> Unit,
-    onSaveOrder: suspend (List<String>) -> Boolean, content: @Composable (Modifier) -> Unit) {
+    onRearrange: (LauncherApp) -> Unit, content: @Composable (Modifier) -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    var rearrange by remember { mutableStateOf(false) }
     var openingPressTime by remember { mutableStateOf<Long?>(null) }
     var restore by remember { mutableStateOf(false) }
     val requester = remember { FocusRequester() }
@@ -106,7 +105,7 @@ internal fun AppActionHost(app: LauncherApp, repository: AppRepository, prefs: L
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) { menu = false; rearrange = false; restore = false }
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) { menu = false; restore = false }
         }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
@@ -146,7 +145,7 @@ internal fun AppActionHost(app: LauncherApp, repository: AppRepository, prefs: L
                     dismiss(); onPin()
                 }
                 if (pinned && prefs.favourites.size > 1) FocusButton("Rearrange favourites", motion, Modifier.fillMaxWidth()) {
-                    menu = false; rearrange = true
+                    menu = false; onRearrange(app)
                 }
                 val context = androidx.compose.ui.platform.LocalContext.current
                 FocusButton("App information", motion, Modifier.fillMaxWidth()) {
@@ -158,7 +157,6 @@ internal fun AppActionHost(app: LauncherApp, repository: AppRepository, prefs: L
                 FocusButton("Close", motion, Modifier.fillMaxWidth(), onClick = dismiss)
             }
         }
-        if (rearrange) RearrangeFavourites(app, apps, prefs, motion, onSaveOrder) { rearrange = false; restore = true }
     }
 }
 
@@ -173,45 +171,6 @@ private fun GlassActionSurface(motion: String, modifier: Modifier = Modifier, co
         .background(Brush.verticalGradient(listOf(Color(0xF52B414B), Color(0xFA101D28))), shape)
         .border(1.dp, Color(0x99C7E9E2), shape).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
-}
-
-@Composable
-private fun RearrangeFavourites(selected: LauncherApp, apps: List<LauncherApp>, prefs: LauncherPreferences,
-    motion: String, onSave: suspend (List<String>) -> Boolean, dismiss: () -> Unit) {
-    val initial = remember { orderedFavouritePackages(prefs, apps) }
-    var draft by remember { mutableStateOf(initial) }
-    var position by remember { mutableIntStateOf(draft.indexOf(selected.packageName).coerceAtLeast(0)) }
-    var saving by remember { mutableStateOf(false) }
-    var moveFocused by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val requester = remember { FocusRequester() }
-    val saveRequester = remember { FocusRequester() }
-    Dialog(onDismissRequest = { if (!saving) dismiss() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        LaunchedEffect(Unit) { requester.requestFocus() }
-        GlassActionSurface(motion, Modifier.width(520.dp)) {
-            Text("Rearrange favourites", style = MaterialTheme.typography.headlineMedium)
-            Text("Left / Right to move. Down for Save or Cancel.", style = MaterialTheme.typography.bodyMedium)
-            val label = apps.find { it.packageName == draft[position] }?.label ?: draft[position]
-            Box(Modifier.fillMaxWidth().focusRequester(requester).focusProperties { down = saveRequester }.onPreviewKeyEvent { event ->
-                val key = event.nativeKeyEvent
-                if (!saving && key.action == AndroidKey.ACTION_DOWN && key.keyCode in listOf(AndroidKey.KEYCODE_DPAD_LEFT, AndroidKey.KEYCODE_DPAD_RIGHT)) {
-                    val next = (position + if (key.keyCode == AndroidKey.KEYCODE_DPAD_LEFT) -1 else 1).coerceIn(0, draft.lastIndex)
-                    draft = draft.toMutableList().apply { add(next, removeAt(position)) }; position = next; true
-                } else false
-            }.onFocusChanged { moveFocused = it.isFocused }.focusable().background(Color(0x332F9B8E), RoundedCornerShape(14.dp))
-                .border(if (moveFocused) 2.dp else 1.dp, if (moveFocused) Color(0xFFC7E9E2) else Color(0x44C7E9E2), RoundedCornerShape(14.dp)).padding(20.dp)) {
-                Text("‹   $label   ›     ${position + 1} / ${draft.size}", style = MaterialTheme.typography.titleLarge)
-            }
-            Text(draft.joinToString("  ·  ") { pkg -> apps.find { it.packageName == pkg }?.label ?: pkg },
-                style = MaterialTheme.typography.bodyMedium, maxLines = 3)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FocusButton(if (saving) "Saving…" else "Save", motion, Modifier.focusRequester(saveRequester)) {
-                    if (!saving) { saving = true; scope.launch { if (onSave(draft)) dismiss() else saving = false } }
-                }
-                FocusButton("Cancel", motion) { if (!saving) dismiss() }
-            }
-        }
-    }
 }
 
 internal fun orderedFavouritePackages(prefs: LauncherPreferences, apps: List<LauncherApp>): List<String> =
