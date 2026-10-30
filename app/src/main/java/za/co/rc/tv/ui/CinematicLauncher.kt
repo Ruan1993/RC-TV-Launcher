@@ -167,6 +167,8 @@ fun CinematicLauncher(
 ) {
     SideEffect { RenderDiagnostics.shellComposed() }
     val homeListState = rememberLazyListState()
+    val searchResultsFocus = remember { FocusRequester() }
+    val searchFieldFocus = remember { FocusRequester() }
     var draftOrder by remember { mutableStateOf<List<String>?>(null) }
     var movingPackage by remember { mutableStateOf<String?>(null) }
     var returnFocusPackage by remember { mutableStateOf<String?>(null) }
@@ -271,7 +273,14 @@ fun CinematicLauncher(
                         if (section == "Home") {
                             Spacer(Modifier.weight(1f))
                         } else Text(section, fontSize = 28.sp, fontWeight = FontWeight.Normal)
-                        if (section == "Search") OutlinedTextField(query, onQuery, Modifier.fillMaxWidth(), label = { Text("Search installed apps") }, singleLine = true)
+                        if (section == "Search") OutlinedTextField(query, onQuery, Modifier.fillMaxWidth().focusRequester(searchFieldFocus)
+                            .onPreviewKeyEvent { event ->
+                                val key = event.nativeKeyEvent
+                                if (key.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && visible.isNotEmpty()) {
+                                    if (key.action == android.view.KeyEvent.ACTION_DOWN) searchResultsFocus.requestFocus()
+                                    true
+                                } else false
+                            }, label = { Text("Search installed apps") }, singleLine = true)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(if (section == "Home" && prefs.favourites.isNotEmpty()) "Your favourites" else "Your applications", fontSize = 17.sp, color = Color.White)
                             Text("${visible.size} APPS", fontSize = 12.sp, letterSpacing = 1.sp, color = Ice.copy(alpha = .7f))
@@ -317,7 +326,7 @@ fun CinematicLauncher(
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
                             items(visible, key = { it.packageName }) { app ->
                                 AppActionHost(app, repository, prefs, discovery.apps, motion, false, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
-                                    AppTile(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier)
+                                    AppTile(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier.then(if (section == "Search" && app.packageName == visible.firstOrNull()?.packageName) Modifier.focusRequester(searchResultsFocus).focusProperties { up = searchFieldFocus } else Modifier))
                                 }
                             }
                         }

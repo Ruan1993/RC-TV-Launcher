@@ -16,7 +16,7 @@ On Windows: ` .\gradlew.bat assembleDebug testDebugUnitTest lintDebug`
 
 On macOS/Linux: `sh gradlew assembleDebug testDebugUnitTest lintDebug`
 
-The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.6-inline-rearrange). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
+The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.7-search-focus). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
 
 ## Install and recover
 

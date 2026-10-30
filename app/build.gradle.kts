@@ -10,8 +10,8 @@ android {
         applicationId = "za.co.rc.tv"
         minSdk = 30
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.2.6-inline-rearrange"
+        versionCode = 9
+        versionName = "0.2.7-search-focus"
     }
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }

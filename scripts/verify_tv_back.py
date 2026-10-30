@@ -62,6 +62,7 @@ original_pid = adb("shell", "pidof", "za.co.rc.tv").strip()
 # Use the actual app tile, not an implicit app-launch request.
 tap(next(n for n in ui().iter("node") if n.get("text") == "YouTube"))
 assert_foreground("com.google.android.youtube.tv", "youtube-tile-launch")
+time.sleep(3)  # Wait for third-party cold-start navigation to become ready.
 adb("shell", "input", "keyevent", "KEYCODE_BACK")
 assert_foreground("za.co.rc.tv", "youtube-back-return")
 adb("shell", "am", "start", "-W", "-n", "za.co.rc.tv/.MainActivity")
