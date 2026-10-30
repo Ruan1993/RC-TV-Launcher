@@ -2,6 +2,24 @@
 
 ## Status and source review
 
+### Confirmed diagnosis and repair (supersedes the initial review below)
+
+Network ADB subsequently advertised legacy `_adb._tcp` on port 5555. After the user approved the TV's RSA prompt, the PC connected without root, a USB cable or wireless pairing. No assumption that USB debugging always enables TCP/IP is needed: the advertised service and authorised connection establish it for this box in its current state. The earlier refusal was real, but its transition to a listening service was not observed and is not explained here.
+
+Preserved crash logs and exit history before any reproduction or installation. An explicit Leanback launch reproduced `RuntimeException: Unable to start activity`, caused by `NullPointerException` in `PhoneWindow.getInsetsController`, at the original `MainActivity.kt:53`. Exit history recorded reason 4, APP CRASH(EXCEPTION). The Android 11 getter dereferenced its not-yet-created DecorView; Kotlin's `?.` only protects the getter's result, not an exception thrown inside it. Compose, discovery and DataStore had not yet started and were not the cause of this captured failure.
+
+Small repair: retain immersive system-bar behaviour, but post its setup to the decor view after `setContent` has created the content, and obtain the controller from that view. No dependency, permission, Home registration or data-storage changes. Build, 2 unit tests and lint passed (53 executed tasks, 0 lint errors / 7 advisory warnings).
+
+Installed the APK over the existing app with `adb install -r`, preserving preferences. The initial repaired cold start reached MainActivity in about 4 seconds and its UI hierarchy contained the Compose Home interface and installed-app tiles. D-pad Down/Select opened Search; Back returned Home. Selecting the YouTube tile resumed the real YouTube activity; explicitly returning to RC TV succeeded. Settings displayed the existing Home status and recovery controls without changing them. Repeated cold-start checks stop only RC TV, so their user-requested exit records should not be mistaken for crashes. Raw device properties, logs and UI dumps are stored under Git-excluded `releases/diagnostics/`; no full device logs are committed.
+
+Diagnostic alternatives: Android's built-in Take bug report can export logs/stack traces when exposed by firmware. Modern wireless pairing is not guaranteed on Android 11 TV; Android documents it for TV from Android 13. Xiaomi's generic ADB guide does not establish USB peripheral-mode debugging support for this exact firmware. USB-host support for drives is not proof that a PC can debug the box through that port. Neither USB cabling nor a third-party log reader was needed here. An ordinary log-reader app cannot be assumed to read another app's crash logs without privileged access; the app itself can query its own Android 11 exit history as a possible future diagnostic fallback, but that is unnecessary for this confirmed crash.
+
+Three additional cold starts succeeded in approximately 2.9–3.0 seconds each; the final process remained alive for over a minute through follow-up checks. No new RC TV fatal exception was observed. Screenshot inspection confirmed the Home interface. The stock Google TV/Xiaomi launcher remained the resolved default Home. Fixed APK SHA-256: `498F1597437A82E171E41C0AEF991A92B34F60D71F8BBE8C5D81691C95FC5536`.
+
+Phase B remains on hold. Physical remote usability, full visual layout, stock Home/recovery and reboot acceptance still need the user's broader checklist.
+
+### Initial review before device authorisation
+
 The user reports successful installation on Xiaomi MiTV-AFKR0 / Android 11, followed by a black screen and return to Xiaomi Home when opening RC TV. Startup acceptance has failed. A crash, native failure or firmware-driven activity exit cannot be distinguished from this symptom alone. No device logs were available; an elevated `adb devices -l` found no connected devices. No app-code fix is claimed or speculative dependency change made. Phase B is on hold until real-device startup succeeds.
 
 - Activity/manifest: packaged application ID is `za.co.rc.tv`; both launcher categories resolve to `za.co.rc.tv.MainActivity`, which is exported, singleTask and also registered for Home. There is no automatic finish, stock-launcher change, boot receiver or incoming-intent payload processing. Home-role selection only happens on a button press.

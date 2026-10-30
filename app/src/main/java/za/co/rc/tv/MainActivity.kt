@@ -50,10 +50,6 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.insetsController?.apply {
-            hide(android.view.WindowInsets.Type.systemBars())
-            systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        }
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFF9FE9D5), background = Color(0xFF09151F), surface = Color(0xFF182D39))) {
                 val prefs by preferences.state.collectAsStateWithLifecycle(LauncherPreferences())
@@ -123,6 +119,14 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
+        }
+        // Android 11's Window getter can throw before the decor view exists.
+        // setContent creates it; posting waits for attachment before hiding bars.
+        window.decorView.post {
+            window.decorView.windowInsetsController?.apply {
+                hide(android.view.WindowInsets.Type.systemBars())
+                systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         }
     }
