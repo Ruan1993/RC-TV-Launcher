@@ -117,7 +117,20 @@ private fun NavigationMark(mark: String, tint: Color) {
             "S" -> { drawCircle(tint, w*.28f, Offset(w*.42f,h*.42f), style = Stroke(stroke)); drawLine(tint, Offset(w*.63f,h*.63f), Offset(w*.9f,h*.9f), stroke) }
             "A" -> for (x in listOf(.12f,.58f)) for (y in listOf(.12f,.58f)) drawRect(tint, Offset(w*x,h*y), Size(w*.3f,h*.3f), style = Stroke(stroke))
             "L" -> { for (x in listOf(.18f,.4f,.7f)) drawLine(tint, Offset(w*x,h*.15f), Offset(w*(x+.05f),h*.88f), stroke) }
-            else -> { drawCircle(tint, w*.3f, center, style = Stroke(stroke)); drawCircle(tint, w*.08f, center); for (i in 0..3) { val a = i * Math.PI / 2; drawLine(tint, Offset(center.x+(kotlin.math.cos(a)*w*.3).toFloat(),center.y+(kotlin.math.sin(a)*h*.3).toFloat()), Offset(center.x+(kotlin.math.cos(a)*w*.46).toFloat(),center.y+(kotlin.math.sin(a)*h*.46).toFloat()),stroke) } }
+            else -> {
+                val cog = Path().apply {
+                    for (i in 0 until 48) {
+                        val angle = i * Math.PI / 24 - Math.PI / 2
+                        val radius = w * if (i % 6 in 2..3) .43f else .32f
+                        val x = center.x + kotlin.math.cos(angle).toFloat() * radius
+                        val y = center.y + kotlin.math.sin(angle).toFloat() * radius
+                        if (i == 0) moveTo(x, y) else lineTo(x, y)
+                    }
+                    close()
+                }
+                drawPath(cog, tint, style = Stroke(stroke))
+                drawCircle(tint, w * .13f, center, style = Stroke(stroke))
+            }
         }
     }
 }
@@ -374,7 +387,6 @@ private fun CinematicNavigation(section: String, onSection: (String) -> Unit, mo
                 }
             }
             Spacer(Modifier.weight(1f))
-            Text("RC TV", fontSize = 12.sp, color = Color.White.copy(alpha = .45f), modifier = Modifier.padding(5.dp))
         }
     }
 

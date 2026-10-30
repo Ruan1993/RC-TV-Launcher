@@ -10,8 +10,8 @@ android {
         applicationId = "za.co.rc.tv"
         minSdk = 30
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.2.7-search-focus"
+        versionCode = 10
+        versionName = "0.2.8-navigation-details"
     }
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }
