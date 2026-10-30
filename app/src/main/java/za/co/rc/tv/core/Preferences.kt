@@ -13,17 +13,22 @@ import kotlinx.coroutines.flow.catch
 import java.io.IOException
 
 private val Context.store by preferencesDataStore("launcher", corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() })
-data class LauncherPreferences(val favourites: Set<String> = emptySet(), val reducedMotion: Boolean = false, val theme: String = "Cinematic", val motion: String = "Minimal")
+data class LauncherPreferences(val favourites: Set<String> = emptySet(), val reducedMotion: Boolean = false, val theme: String = "Cinematic", val motion: String = "Minimal", val favouriteOrder: List<String> = emptyList())
 class Preferences(context: Context) {
     private val store = context.applicationContext.store
     private val favourites = stringSetPreferencesKey("favourites")
+    private val order = stringPreferencesKey("favourite_order")
     private val motion = booleanPreferencesKey("reduced_motion")
     private val theme = stringPreferencesKey("theme")
     private val intensity = stringPreferencesKey("animation_intensity")
     val state = store.data.catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { LauncherPreferences(it[favourites].orEmpty(), it[motion] ?: false, validTheme(it[theme]), validMotion(it[intensity])) }
+        .map { LauncherPreferences(it[favourites].orEmpty(), it[motion] ?: false, validTheme(it[theme]), validMotion(it[intensity]), it[order]?.split("\n")?.filter(String::isNotBlank).orEmpty()) }
     suspend fun toggleFavourite(packageName: String) { store.edit { p ->
         val current = p[favourites].orEmpty(); p[favourites] = if (packageName in current) current - packageName else current + packageName
+    } }
+    suspend fun reorderFavourites(packages: List<String>) { store.edit { p ->
+        require(packages.distinct().size == packages.size && packages.toSet() == p[favourites].orEmpty())
+        p[order] = packages.joinToString("\n")
     } }
     suspend fun setTheme(value: String) { store.edit { it[theme] = validTheme(value) } }
     suspend fun setMotion(value: String) { store.edit { it[intensity] = validMotion(value) } }

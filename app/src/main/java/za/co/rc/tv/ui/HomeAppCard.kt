@@ -35,7 +35,7 @@ import za.co.rc.tv.core.RenderDiagnostics
 /** Home-only material. Cached brushes; no blur, shadow bitmap or per-frame layout. */
 @Composable
 internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation: Int,
-    motion: String, onLaunch: () -> Unit) {
+    motion: String, onLaunch: () -> Unit, modifier: Modifier = Modifier) {
     SideEffect { RenderDiagnostics.tileComposed() }
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -47,7 +47,7 @@ internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation
     }
     val shape = RoundedCornerShape(26.dp)
     Box(Modifier.width(232.dp).padding(horizontal = 8.dp, vertical = 10.dp)) {
-        Button(onLaunch, Modifier.fillMaxWidth().height(190.dp)
+        Button(onLaunch, Modifier.then(modifier).fillMaxWidth().height(190.dp)
             .onFocusChanged { focused = it.isFocused }
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .drawWithCache {

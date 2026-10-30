@@ -10,8 +10,8 @@ android {
         applicationId = "za.co.rc.tv"
         minSdk = 30
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.2.4-navigation-polish"
+        versionCode = 7
+        versionName = "0.2.5-application-actions"
     }
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }

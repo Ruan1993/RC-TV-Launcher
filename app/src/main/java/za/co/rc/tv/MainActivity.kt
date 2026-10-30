@@ -90,6 +90,8 @@ class MainActivity : ComponentActivity() {
                     query = query, onQuery = { query = it }, clock = clock, homeStatus = homeStatus,
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
+                    onSaveOrder = { order -> runCatching { preferences.reorderFavourites(order) }
+                        .onFailure { message("Could not save order. Favourites may have changed; try again.") }.isSuccess },
                     onRetry = { refresh++ }, onChooseHome = { selectHome() }, onRestoreHome = { openSettings() },
                     onAndroidSettings = { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }.onFailure { message("Settings unavailable.") } },
                     onTheme = { value -> scope.launch { runCatching { preferences.setTheme(value) }.onFailure { message("Could not save theme.") } } },

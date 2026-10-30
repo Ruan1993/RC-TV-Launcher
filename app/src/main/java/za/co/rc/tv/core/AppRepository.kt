@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.util.LruCache
 import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -47,6 +48,19 @@ class AppRepository(private val context: Context) {
                 .map { LauncherApp(it.activityInfo.packageName, it.loadLabel(context.packageManager).toString()) }
         })
     }
+    fun appInformation(app: LauncherApp): Boolean = runCatching {
+        context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            "package:${app.packageName}".toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }.isSuccess
+    fun canUninstall(app: LauncherApp): Boolean = runCatching {
+        val info = context.packageManager.getApplicationInfo(app.packageName, 0)
+        info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM == 0 &&
+            !context.getSystemService(android.os.UserManager::class.java).hasUserRestriction(android.os.UserManager.DISALLOW_UNINSTALL_APPS)
+    }.getOrDefault(false)
+    fun requestUninstall(app: LauncherApp): Boolean = canUninstall(app) && runCatching {
+        context.startActivity(Intent(Intent.ACTION_DELETE, "package:${app.packageName}".toUri())
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }.isSuccess
     fun launch(app: LauncherApp): Boolean = runCatching {
         val pm = context.packageManager
         val intent = pm.getLeanbackLaunchIntentForPackage(app.packageName) ?: pm.getLaunchIntentForPackage(app.packageName)

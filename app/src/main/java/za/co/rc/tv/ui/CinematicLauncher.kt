@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.*
@@ -78,7 +79,7 @@ private fun GlassPanel(modifier: Modifier = Modifier, content: @Composable Colum
 }
 
 @Composable
-private fun FocusButton(label: String, motion: String, modifier: Modifier = Modifier,
+internal fun FocusButton(label: String, motion: String, modifier: Modifier = Modifier,
     selected: Boolean = false, quiet: Boolean = false, icon: String? = null, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused && motion != "Minimal") 1.025f else 1f,
@@ -117,7 +118,7 @@ private fun NavigationMark(mark: String, tint: Color) {
 
 @Composable
 private fun AppTile(app: LauncherApp, repository: AppRepository, generation: Int,
-    pinned: Boolean, motion: String, onLaunch: () -> Unit, onPin: () -> Unit) {
+    pinned: Boolean, motion: String, onLaunch: () -> Unit, onPin: () -> Unit, modifier: Modifier = Modifier) {
     SideEffect { RenderDiagnostics.tileComposed() }
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused && motion != "Minimal") if (motion == "Cinematic") 1.055f else 1.035f else 1f,
@@ -126,7 +127,7 @@ private fun AppTile(app: LauncherApp, repository: AppRepository, generation: Int
         value = null; value = repository.icon(app.packageName)
     }
     Column(Modifier.width(172.dp).padding(6.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Button(onLaunch, Modifier.fillMaxWidth().height(122.dp).onFocusChanged { focused = it.isFocused }
+        Button(onLaunch, Modifier.then(modifier).fillMaxWidth().height(122.dp).onFocusChanged { focused = it.isFocused }
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .drawBehind {
                 if (focused && motion != "Minimal") drawRoundRect(
@@ -157,12 +158,19 @@ fun CinematicLauncher(
     query: String, onQuery: (String) -> Unit, clock: String, homeStatus: String,
     onLaunch: (LauncherApp) -> Unit, onPin: (LauncherApp) -> Unit, onRetry: () -> Unit,
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
+    onSaveOrder: suspend (List<String>) -> Boolean,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
     SideEffect { RenderDiagnostics.shellComposed() }
+    val homeListState = rememberLazyListState()
     val motion = if (prefs.reducedMotion) "Minimal" else prefs.motion
-    val visible = remember(discovery.apps, section, query, prefs.favourites) { discovery.apps.filter { (section != "Search" || it.label.contains(query, true)) &&
-        (section != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) } }
+    val visible = remember(discovery.apps, section, query, prefs.favourites, prefs.favouriteOrder) { discovery.apps.filter { (section != "Search" || it.label.contains(query, true)) &&
+        (section != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) }.let { filtered ->
+            if (section == "Home" && prefs.favouriteOrder.isNotEmpty()) {
+                val order = orderedFavouritePackages(prefs, discovery.apps)
+                filtered.sortedBy { order.indexOf(it.packageName).let { rank -> if (rank < 0) Int.MAX_VALUE else rank } }
+            } else filtered
+        } }
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist")
         Row(Modifier.fillMaxSize().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
@@ -218,12 +226,24 @@ fun CinematicLauncher(
                         discovery.error?.let { Text(it, color = MaterialTheme.colorScheme.error); FocusButton("Retry discovery", motion) { onRetry() } }
                         if (!discovery.loaded) Text("Discovering apps…", color = Ice)
                         else if (visible.isEmpty()) Text("No matching applications. Try Apps or change your search.", color = Ice)
-                        if (section == "Home") LazyRow(Modifier.fillMaxWidth().height(220.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
-                            items(visible, key = { it.packageName }) { app -> HomeAppCard(app, repository, iconGeneration, motion, { onLaunch(app) }) }
+                        if (section == "Home") LazyRow(Modifier.fillMaxWidth().height(220.dp), state = homeListState, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
+                            items(visible, key = { it.packageName }) { app ->
+                                AppActionHost(app, repository, prefs, discovery.apps, motion, true, { onLaunch(app) }, { onPin(app) }, { order ->
+                                    val saved = onSaveOrder(order)
+                                    if (saved) homeListState.requestScrollToItem(order.filter { pkg -> discovery.apps.any { it.packageName == pkg } }.indexOf(app.packageName).coerceAtLeast(0))
+                                    saved
+                                }) { modifier ->
+                                    HomeAppCard(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier)
+                                }
+                            }
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
-                            items(visible, key = { it.packageName }) { app -> AppTile(app, repository, iconGeneration, app.packageName in prefs.favourites, motion, { onLaunch(app) }, { onPin(app) }) }
+                            items(visible, key = { it.packageName }) { app ->
+                                AppActionHost(app, repository, prefs, discovery.apps, motion, false, { onLaunch(app) }, { onPin(app) }, onSaveOrder) { modifier ->
+                                    AppTile(app, repository, iconGeneration, app.packageName in prefs.favourites, motion, { onLaunch(app) }, { onPin(app) }, modifier)
+                                }
+                            }
                         }
-                        Text("D-pad to explore    ·    Select to open    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = .5f))
+                        Text("D-pad to explore    ·    Select to open    ·    Hold Select for options    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = .5f))
                     }
                 }
             }

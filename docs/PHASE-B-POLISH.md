@@ -21,3 +21,17 @@ Wallpaper collections and downloads; USB/local SAF imports; adjustable rotation;
 ## Increment 2 — navigation and motion
 
 Removed the unexplained RC avatar. Expanded rail retains icons beside labels; 24dp marks, cached layered glass material and illuminated edges. Width is read during drawing; rail focus remains locally scoped. Balanced uses high damping; Cinematic permits a small overshoot. Minimal snaps and no longer draws a focused Home halo. No blur or continuous animation. Debug/profile builds, unit tests and lint pass; actual-TV rail/focus screenshots captured and DataStore remains byte-identical. Performance comparison follows in final verification.
+
+## Application actions — implementation and acceptance boundary
+
+Home, Apps and Search use the same physical Select/Enter handler. It tracks initial down, repeat, platform long-press timeout, cancelled release and focus loss; a handled hold never launches on release. The popup suppresses only events sharing the opening press timestamp. Accessibility long-click also opens options. Popup positioning uses actual tile bounds and clamps to the viewport; spring entrance is skipped in Minimal. Back closes the popup; leaving the activity closes panels.
+
+Menu supports Favourite, Rearrange (when more than one favourite), Android App Information, and Android-confirmed Uninstall for non-system apps where user restrictions permit. Failure gives feedback; Android remains the final authority for uninstall restrictions. No silent uninstall API. REQUEST_DELETE_PACKAGES is declared; no broad package-delete permission.
+
+Ordered favourites add an optional DataStore order key. Existing sets keep their original displayed order without an eager migration write; unavailable favourites remain preserved. Saving validates the entire membership inside the DataStore transaction to reject stale edits. Rearrange works on a local draft with explicit Save, Cancel and Back cancellation. Directional move is bounded; Down explicitly targets Save. Existing Apps/Search Pin/Unpin controls remain pending physical remote acceptance.
+
+Twelve tests per variant pass, including five added tests for short/hold/repeat/cancel/focus-loss state and legacy/saved order resolution. Debug/profile builds and lint pass with zero errors and the same seven advisory warnings as before.
+
+Actual Xiaomi checks: generated short/long Select opens the correct launch/menu path; App Information reaches the selected package's Android screen. Uninstall displays “Do you want to uninstall this app?” with OK/Cancel; cancelled with Back and the package remains installed. D-pad-only Rearrange/Cancel restores the original tile focus without writing; Save survives force-stop/relaunch. Original eight-package order restored through Save. Moving the tile now explicitly requests its new list position so lazy-list anchoring cannot hide it. Focus restoration also returns to keyboard input after pointer interaction. A physical-remote check was requested from the user; its result is not inferred from ADB input.
+
+The original preferences remain unchanged in meaning. The additional optional favourite_order key records the original displayed order after Save testing; the favourite set and theme/motion/reduced-motion values remain intact. At start the TV actually had Cinematic motion selected (the historical report's Minimal setting was not assumed).

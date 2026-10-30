@@ -4,9 +4,9 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Cinematic Glass 2.0 Home review checkpoint; not version 1.0.** Development is paused for the user's requested visual feedback before context-menu, Settings and personalisation work. Phase A is merged; this branch preserves discovery/launching, favourites, search and safe Back/Home recovery. See [the Home review, measurements and continuation plan](docs/GLASS-2-HOME-REVIEW.md), [the previous Back/performance fix](docs/PHASE-B-BACK-AND-PERFORMANCE.md) and [the master specification](docs/MASTER-SPECIFICATION.md).
+**Phase B polish and application-actions preview; not version 1.0.** The approved Cinematic Glass Home direction is preserved. Typography and grouped Settings, layered glass navigation and restrained focus springs are implemented. Long-press Select opens a floating application menu with favourites, draft reordering, Android App Information and Android-confirmed Uninstall. See [the current implementation and verification report](docs/PHASE-B-POLISH.md) and [the original Home review](docs/GLASS-2-HOME-REVIEW.md).
 
-Home now uses larger glass cards and 80dp installed icons, layered reflections, luminous focus edges and the original mountain artwork. Decorative wallpaper headings and Home Pin/Unpin controls are removed. Temporary Apps/Search favourite controls remain until the tested long-press menu is implemented. Existing themes and motion choices persist. The larger shelf has a measured Minimal-mode cost; see the review report rather than treating prior smaller-card results as current guarantees. No additional expensive effects, AI integration or online services have been added.
+Android system sans-serif typography is shared across sections. Minimal skips focus scaling and panel entrance effects; reduced motion takes priority. Existing Apps/Search Pin controls remain until physical-remote acceptance of the replacement interaction. Saved favourites migrate without resetting membership or preferences. No full personalisation system, account integration or RC Assist is included.
 
 ## Build
 
@@ -16,7 +16,7 @@ On Windows: ` .\gradlew.bat assembleDebug testDebugUnitTest lintDebug`
 
 On macOS/Linux: `sh gradlew assembleDebug testDebugUnitTest lintDebug`
 
-The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.2-glass-home-review). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
+The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.5-application-actions). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
 
 ## Install and recover
 
