@@ -4,9 +4,9 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase B first design preview; not version 1.0.** Phase A passed the user's functional Xiaomi Android 11 device tests and is merged into main. This branch begins Cinematic Glass from that verified checkpoint. It preserves installed app discovery/launching, preferred app ordering, DataStore favourites, search, five sections and safe Home recovery. See [the first increment and rollback guide](docs/PHASE-B-CINEMATIC-GLASS.md) and [the master specification](docs/MASTER-SPECIFICATION.md).
+**Cinematic Glass 2.0 Home review checkpoint; not version 1.0.** Development is paused for the user's requested visual feedback before context-menu, Settings and personalisation work. Phase A is merged; this branch preserves discovery/launching, favourites, search and safe Back/Home recovery. See [the Home review, measurements and continuation plan](docs/GLASS-2-HOME-REVIEW.md), [the previous Back/performance fix](docs/PHASE-B-BACK-AND-PERFORMANCE.md) and [the master specification](docs/MASTER-SPECIFICATION.md).
 
-The native Compose preview adds original cinematic landscape artwork, translucent glass surfaces, a compact expanding rail, polished installed-app tiles and RC TV / “Your world. In focus.” branding. Cinematic and Minimalist appearances and three motion intensities persist across restarts. Home Back stays within RC TV; other sections return Home. The [Back and performance fix report](docs/PHASE-B-BACK-AND-PERFORMANCE.md) records matched release-like improvements to about 0.5–2% jank in the measured workload. Minimal remains the safe default; broader acceptance is outstanding. Wallpaper selection/rotation, full transitions, focus restoration, custom ordering, profiles, media/file management, weather and companion features remain future increments. The future long-press menu and RC Assist are recorded in the [interaction roadmap](docs/INTERACTION-ROADMAP.md).
+Home now uses larger glass cards and 80dp installed icons, layered reflections, luminous focus edges and the original mountain artwork. Decorative wallpaper headings and Home Pin/Unpin controls are removed. Temporary Apps/Search favourite controls remain until the tested long-press menu is implemented. Existing themes and motion choices persist. The larger shelf has a measured Minimal-mode cost; see the review report rather than treating prior smaller-card results as current guarantees. No additional expensive effects, AI integration or online services have been added.
 
 ## Build
 
@@ -16,7 +16,7 @@ On Windows: ` .\gradlew.bat assembleDebug testDebugUnitTest lintDebug`
 
 On macOS/Linux: `sh gradlew assembleDebug testDebugUnitTest lintDebug`
 
-The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.1-cinematic-fixes). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV performance review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Phase A and the preceding Phase B APKs remain under local `releases/rollback/`; see the current fix report before downgrading from the profile build.
+The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.2-glass-home-review). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
 
 ## Install and recover
 

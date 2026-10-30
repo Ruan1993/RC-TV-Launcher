@@ -15,4 +15,4 @@ Preserve short-press Select to launch. Distinguish hold from key repeats, preven
 
 ## RC Assist
 
-Plan a future RC Assist menu entry and assistant surface. Actions must be permission-based, explain the intended operation and require the appropriate Android permission or user confirmation. No AI integration, network provider, background listener, new permission or working-looking menu entry is introduced by this fix. Provider selection, data handling and action scope require a later design review.
+Plan a future RC Assist menu entry and floating glass assistant surface, using a secure Gemini Flash backend. It should support questions, settings navigation and permission-based configuration changes. Keep backend credentials and API keys outside the APK. Actions must explain the intended operation and require the appropriate Android permission or user confirmation. No AI integration, network provider, background listener, new permission or working-looking menu entry is introduced by the Home redesign. Backend authentication, data handling and action scope require a later design review.

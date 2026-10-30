@@ -24,15 +24,16 @@ class AppRepository(private val context: Context) {
     }
     fun invalidateIcons() = icons.evictAll()
 
-    suspend fun icon(packageName: String): Bitmap? = withContext(Dispatchers.IO) {
-        icons.get(packageName) ?: try {
+    suspend fun icon(packageName: String, sizeDp: Int = 48): Bitmap? = withContext(Dispatchers.IO) {
+        val size = (sizeDp * context.resources.displayMetrics.density).toInt().coerceIn(48, 192)
+        val cacheKey = "$packageName@$size"
+        icons.get(cacheKey) ?: try {
             val drawable = context.packageManager.getApplicationIcon(packageName)
             RenderDiagnostics.iconRasterized()
-            val size = (48 * context.resources.displayMetrics.density).toInt().coerceIn(48, 128)
             val bitmap = createBitmap(size, size)
             drawable.setBounds(0, 0, size, size)
             drawable.draw(Canvas(bitmap))
-            icons.put(packageName, bitmap)
+            icons.put(cacheKey, bitmap)
             bitmap
         } catch (failure: Exception) {
             android.util.Log.w("RcIcons", "Unable to load installed app icon", failure)

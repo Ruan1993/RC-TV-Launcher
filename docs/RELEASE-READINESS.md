@@ -1,5 +1,7 @@
 # Release readiness and next milestones
 
+Current checkpoint: Cinematic Glass 2.0 Home is installed for actual-TV design review. Pause before expanding the visual redesign or implementing further features. GLASS-2-HOME-REVIEW.md records completed work, measured Minimal-mode regression, rollback and the continuation order: approve Home → context menu/ordering → Settings → personalisation. RC Assist is future architecture only, with a secure Gemini Flash backend and no client API keys.
+
 Phase A has passed the user's functional physical-remote tests and is merged. This branch is a Phase B design preview, not the complete specification or a production release. Initial screenshots/debug samples are in PHASE-B-CINEMATIC-GLASS.md; the current Back fix and matched release-like performance improvements are in PHASE-B-BACK-AND-PERFORMANCE.md. Full performance/thermal/long-session acceptance, reboot/Home recovery on both boxes and the transitive licence audit remain outstanding. Future context-menu and RC Assist requirements are recorded in INTERACTION-ROADMAP.md and are not implemented by the bug-fix increment.
 
 - Phase A: obtain successful APK build, unit tests and lint; test Home/reboot/recovery on both Xiaomi boxes. Record compatibility limits.

@@ -78,25 +78,25 @@ private fun GlassPanel(modifier: Modifier = Modifier, content: @Composable Colum
 
 @Composable
 private fun FocusButton(label: String, motion: String, modifier: Modifier = Modifier,
-    selected: Boolean = false, onClick: () -> Unit) {
+    selected: Boolean = false, quiet: Boolean = false, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused && motion != "Minimal") 1.025f else 1f,
         if (motion == "Minimal") snap() else spring(dampingRatio = .85f, stiffness = 550f), label = "buttonFocus")
-    val tint by animateColorAsState(if (focused) Ice else if (selected) Color.White.copy(alpha = .18f) else Color.White.copy(alpha = .045f), animationSpec = if (motion == "Minimal") snap() else spring(stiffness = 600f), label = "buttonTint")
+    val tint by animateColorAsState(if (focused) if (quiet) Ice.copy(alpha = .22f) else Ice else if (selected) Color.White.copy(alpha = if (quiet) .12f else .18f) else Color.White.copy(alpha = .045f), animationSpec = if (motion == "Minimal") snap() else spring(stiffness = 600f), label = "buttonTint")
     Button(onClick, modifier.onFocusChanged { focused = it.isFocused }
         .graphicsLayer { scaleX = scale; scaleY = scale }
         .drawBehind { drawRoundRect(tint, cornerRadius = CornerRadius(14.dp.toPx())) }
         .border(1.dp, if (focused) Ice else Color.White.copy(alpha = .10f), RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent,
-            contentColor = if (focused) Ink else Color.White), contentPadding = PaddingValues(12.dp, 10.dp)) {
-        if (label in listOf("H", "S", "A", "L", "···")) NavigationMark(label, if (focused) Ink else Ice)
+            contentColor = if (focused && !quiet) Ink else Color.White), contentPadding = PaddingValues(12.dp, 10.dp)) {
+        if (label in listOf("H", "S", "A", "L", "···")) NavigationMark(label, if (focused && !quiet) Ink else Ice)
         else Text(label, fontSize = 14.sp, maxLines = 1)
     }
 }
 
 @Composable
 private fun NavigationMark(mark: String, tint: Color) {
-    Canvas(Modifier.size(20.dp)) {
+    Canvas(Modifier.size(22.dp)) {
         val w = size.width; val h = size.height; val stroke = 1.6.dp.toPx()
         when (mark) {
             "H" -> {
@@ -200,8 +200,6 @@ fun CinematicLauncher(
                     else -> {
                         if (section == "Home") {
                             Spacer(Modifier.weight(1f))
-                            Text(if (prefs.theme == "Minimalist") "Home" else "Quiet horizons.", fontSize = 44.sp, fontWeight = FontWeight.ExtraLight, letterSpacing = (-1).sp, color = Color.White)
-                            if (prefs.theme != "Minimalist") Text("BLUE HOUR  /  THE CINEMATIC COLLECTION", fontSize = 10.sp, letterSpacing = 2.sp, color = Ice.copy(alpha = .8f))
                         } else Text(section, fontSize = 28.sp, fontWeight = FontWeight.Light)
                         if (section == "Search") OutlinedTextField(query, onQuery, Modifier.fillMaxWidth(), label = { Text("Search installed apps") }, singleLine = true)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -211,8 +209,8 @@ fun CinematicLauncher(
                         discovery.error?.let { Text(it, color = MaterialTheme.colorScheme.error); FocusButton("Retry discovery", motion) { onRetry() } }
                         if (!discovery.loaded) Text("Discovering apps…", color = Ice)
                         else if (visible.isEmpty()) Text("No matching applications. Try Apps or change your search.", color = Ice)
-                        if (section == "Home") LazyRow(Modifier.fillMaxWidth().height(196.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(4.dp)) {
-                            items(visible, key = { it.packageName }) { app -> AppTile(app, repository, iconGeneration, app.packageName in prefs.favourites, motion, { onLaunch(app) }, { onPin(app) }) }
+                        if (section == "Home") LazyRow(Modifier.fillMaxWidth().height(220.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
+                            items(visible, key = { it.packageName }) { app -> HomeAppCard(app, repository, iconGeneration, motion, { onLaunch(app) }) }
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
                             items(visible, key = { it.packageName }) { app -> AppTile(app, repository, iconGeneration, app.packageName in prefs.favourites, motion, { onLaunch(app) }, { onPin(app) }) }
                         }
@@ -244,7 +242,7 @@ private fun CinematicNavigation(section: String, onSection: (String) -> Unit, mo
             Text("RC", color = Ice, fontSize = 24.sp, fontWeight = FontWeight.Light, modifier = Modifier.padding(6.dp, 15.dp))
             listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Library" to "L", "Settings" to "···").forEach { (name, symbol) ->
                 Box(Modifier.semantics { contentDescription = name }) {
-                    FocusButton(if (railFocused) name else symbol, motion, Modifier.width(if (railFocused) 126.dp else 56.dp), selected = section == name) { onSection(name) }
+                    FocusButton(if (railFocused) name else symbol, motion, Modifier.width(if (railFocused) 126.dp else 56.dp), selected = section == name, quiet = true) { onSection(name) }
                 }
             }
             Spacer(Modifier.weight(1f))

@@ -10,8 +10,8 @@ android {
         applicationId = "za.co.rc.tv"
         minSdk = 30
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.1-cinematic-fixes"
+        versionCode = 4
+        versionName = "0.2.2-glass-home-review"
     }
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }
