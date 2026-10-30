@@ -187,6 +187,7 @@ fun CinematicLauncher(
     discovery: AppDiscoveryState, repository: AppRepository, iconGeneration: Int,
     prefs: LauncherPreferences, section: String, onSection: (String) -> Unit,
     query: String, onQuery: (String) -> Unit, clock: String, homeStatus: String,
+    keyboardStatus: String, onKeyboardPreview: () -> Unit, onKeyboardEnable: () -> Unit, onKeyboardChoose: () -> Unit,
     onLaunch: (LauncherApp) -> Unit, onPin: (LauncherApp) -> Unit, onRetry: () -> Unit,
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
     wallpapers: List<WallpaperOption>, wallpaperBusy: Boolean, onImportWallpaper: () -> Unit,
@@ -340,6 +341,16 @@ fun CinematicLauncher(
                         }
                         FocusButton("Reduced motion: ${if (prefs.reducedMotion) "on" else "off"}", motion) { onReducedMotion() }
                         Text("Choose how much movement feels right. Reduced motion takes priority over the selected intensity.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .78f))
+                        }
+                        GlassPanel(Modifier.fillMaxWidth()) {
+                        Text("RC TV Keyboard", style = MaterialTheme.typography.titleLarge, color = Ice)
+                        Text(keyboardStatus, style = MaterialTheme.typography.bodyMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            FocusButton("Try keyboard", motion, onClick = onKeyboardPreview)
+                            FocusButton("Enable in Android…", motion, onClick = onKeyboardEnable)
+                            FocusButton("Choose keyboard…", motion, onClick = onKeyboardChoose)
+                        }
+                        Text("Offline, no text logging or storage. Keep your existing keyboard enabled as fallback.", style = MaterialTheme.typography.bodySmall)
                         }
                         GlassPanel(Modifier.fillMaxWidth()) {
                         Text("Default launcher & recovery", style = MaterialTheme.typography.titleLarge, color = Ice)

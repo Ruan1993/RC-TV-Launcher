@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
                 var discovery by remember { mutableStateOf(AppDiscoveryState()) }
                 var section by rememberSaveable { mutableStateOf("Home") }
                 var query by rememberSaveable { mutableStateOf("") }
+                var keyboardStatus by remember { mutableStateOf("") }
                 var homeStatus by remember { mutableStateOf("") }
                 var refresh by remember { mutableIntStateOf(0) }
                 var iconGeneration by remember { mutableIntStateOf(0) }
@@ -97,6 +98,11 @@ class MainActivity : ComponentActivity() {
                         repository.invalidateIcons()
                         iconGeneration++
                         android.util.Log.d("RcDiscovery", "Refresh complete: ${discovery.apps.size} apps, error=${discovery.error != null}")
+                        val input = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                        val ownKeyboard = android.content.ComponentName(this@MainActivity, za.co.rc.tv.keyboard.RcInputMethodService::class.java)
+                        val enabled = input.enabledInputMethodList.any { android.content.ComponentName(it.packageName, it.serviceName) == ownKeyboard }
+                        val selected = android.content.ComponentName.unflattenFromString(Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD).orEmpty()) == ownKeyboard
+                        keyboardStatus = if (selected) "RC TV Keyboard is selected." else if (enabled) "Enabled; choose it in Android when you want to use it." else "Optional keyboard is disabled. Your existing keyboard is unchanged."
                         homeStatus = HomeIntegration.inspect(this@MainActivity).description(packageName)
                     }
                 }
@@ -107,7 +113,10 @@ class MainActivity : ComponentActivity() {
                 za.co.rc.tv.ui.CinematicLauncher(
                     discovery = discovery, repository = repository, iconGeneration = iconGeneration,
                     prefs = prefs, section = section, onSection = { section = it },
-                    query = query, onQuery = { query = it }, clock = clock, homeStatus = homeStatus,
+                    query = query, onQuery = { query = it }, clock = clock, homeStatus = homeStatus, keyboardStatus = keyboardStatus,
+                    onKeyboardPreview = { startActivity(Intent(this@MainActivity, za.co.rc.tv.keyboard.KeyboardPreviewActivity::class.java)) },
+                    onKeyboardEnable = { runCatching { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }.onFailure { message("Keyboard settings unavailable.") } },
+                    onKeyboardChoose = { getSystemService(android.view.inputmethod.InputMethodManager::class.java).showInputMethodPicker() },
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
                     wallpapers = wallpapers, wallpaperBusy = wallpaperBusy,

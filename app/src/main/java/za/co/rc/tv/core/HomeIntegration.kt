@@ -27,7 +27,7 @@ object HomeIntegration {
         val current = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), PackageManager.MATCH_DEFAULT_ONLY)
         val roles = context.getSystemService(RoleManager::class.java)
         val available = runCatching { roles.isRoleAvailable(RoleManager.ROLE_HOME) }.getOrDefault(false)
-        return HomeIntegrationState(current?.activityInfo?.packageName, current?.loadLabel(context.packageManager)?.toString() ?: "System chooser / unavailable",
+        return HomeIntegrationState(current?.activityInfo?.packageName, current?.activityInfo?.applicationInfo?.loadLabel(context.packageManager)?.toString() ?: "System chooser / unavailable",
             available, available && runCatching { roles.isRoleHeld(RoleManager.ROLE_HOME) }.getOrDefault(false), homeSettings(context) != null)
     }
 }
