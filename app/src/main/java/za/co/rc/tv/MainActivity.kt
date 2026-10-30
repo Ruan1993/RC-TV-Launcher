@@ -63,7 +63,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { while (true) { clock = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()); kotlinx.coroutines.delay(30_000) } } }
-                BackHandler(section != "Home") { section = "Home" }
+                // Home is the navigation root, not an exit to the previous Android task.
+                // Keep this active at Home as well as in launcher sections.
+                BackHandler { section = "Home" }
                 za.co.rc.tv.ui.CinematicLauncher(
                     discovery = discovery, repository = repository, iconGeneration = iconGeneration,
                     prefs = prefs, section = section, onSection = { section = it },
