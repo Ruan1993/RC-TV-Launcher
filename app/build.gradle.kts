@@ -11,8 +11,8 @@ android {
         testInstrumentationRunner = "za.co.rc.tv.WallpaperImportCheck"
         minSdk = 30
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.3.1-back-focus"
+        versionCode = 14
+        versionName = "0.4.0-home-integration"
     }
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }

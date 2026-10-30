@@ -48,11 +48,16 @@ class MainActivity : ComponentActivity() {
         runCatching { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
             .onFailure { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }.onFailure { message("Open Android Settings from your original launcher.") } }
     }
+    private val homeSelection = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) {
+        message(HomeIntegration.inspect(this).description(packageName))
+    }
     private fun selectHome() {
+        val state = HomeIntegration.inspect(this)
         val roles = getSystemService(RoleManager::class.java)
-        if (roles.isRoleAvailable(RoleManager.ROLE_HOME) && !roles.isRoleHeld(RoleManager.ROLE_HOME)) {
-            runCatching { startActivity(roles.createRequestRoleIntent(RoleManager.ROLE_HOME)) }.onFailure { openSettings() }
-        } else openSettings()
+        val intent = if (state.roleAvailable && !state.roleHeld) roles.createRequestRoleIntent(RoleManager.ROLE_HOME)
+            else HomeIntegration.homeSettings(this)
+        if (intent == null) message("This firmware does not expose supported Home selection. Continue launching RC TV as an app; Xiaomi Home is unchanged.")
+        else runCatching { homeSelection.launch(intent) }.onFailure { message("Home selection is unavailable on this firmware. Xiaomi's launcher remains installed.") }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,8 +97,7 @@ class MainActivity : ComponentActivity() {
                         repository.invalidateIcons()
                         iconGeneration++
                         android.util.Log.d("RcDiscovery", "Refresh complete: ${discovery.apps.size} apps, error=${discovery.error != null}")
-                        val current = packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
-                        homeStatus = if (current?.activityInfo?.packageName == packageName) "RC TV Launcher is your default Home." else "Current Home: ${current?.loadLabel(packageManager) ?: "System chooser / unavailable"}"
+                        homeStatus = HomeIntegration.inspect(this@MainActivity).description(packageName)
                     }
                 }
                 LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { while (true) { clock = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()); kotlinx.coroutines.delay(30_000) } } }

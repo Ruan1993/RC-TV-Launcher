@@ -342,10 +342,11 @@ fun CinematicLauncher(
                         Text("Choose how much movement feels right. Reduced motion takes priority over the selected intensity.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .78f))
                         }
                         GlassPanel(Modifier.fillMaxWidth()) {
-                        Text("Launcher & recovery", style = MaterialTheme.typography.titleLarge, color = Ice)
+                        Text("Default launcher & recovery", style = MaterialTheme.typography.titleLarge, color = Ice)
                         Text(homeStatus, style = MaterialTheme.typography.bodyMedium)
                         FocusButton("Android settings", motion) { onAndroidSettings() }
-                        FocusButton("Choose default Home", motion) { onChooseHome() }
+                        Text("Choosing Home is optional. Android asks you to select; keep Xiaomi’s launcher available for recovery.", style = MaterialTheme.typography.bodySmall)
+                        FocusButton("Choose RC TV as Home…", motion) { onChooseHome() }
                         FocusButton("Open Home settings / restore", motion) { onRestoreHome() }
                         Text("Keep Xiaomi's original launcher installed and enabled. Restore it in Android Settings → Apps → Default apps → Home.", style = MaterialTheme.typography.bodyMedium)
                     }
