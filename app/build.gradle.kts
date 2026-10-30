@@ -10,8 +10,8 @@ android {
         applicationId = "za.co.rc.tv"
         minSdk = 30
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.2.8-navigation-details"
+        versionCode = 11
+        versionName = "0.2.9-wallpaper-selection"
     }
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }

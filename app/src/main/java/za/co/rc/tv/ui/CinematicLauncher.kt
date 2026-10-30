@@ -63,13 +63,12 @@ private val GlassShape = RoundedCornerShape(22.dp)
 
 /** No backdrop blur or continuously running effects: safe for API 30 TV GPUs. */
 @Composable
-private fun Wallpaper(minimal: Boolean) {
+private fun Wallpaper(minimal: Boolean, id: String) {
     SideEffect { RenderDiagnostics.wallpaperComposed() }
     val context = LocalContext.current.applicationContext
-    val wallpaper by produceState<android.graphics.Bitmap?>(null, minimal) {
+    val wallpaper by produceState<android.graphics.Bitmap?>(null, minimal, id) {
         value = if (minimal) null else withContext(Dispatchers.IO) {
-            RenderDiagnostics.wallpaperDecoded()
-            renderCinematicBackdrop(context)
+            WallpaperCache.load(context, id)
         }
     }
     Box(Modifier.fillMaxSize().background(Ink)) {
@@ -175,10 +174,16 @@ fun CinematicLauncher(
     query: String, onQuery: (String) -> Unit, clock: String, homeStatus: String,
     onLaunch: (LauncherApp) -> Unit, onPin: (LauncherApp) -> Unit, onRetry: () -> Unit,
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
+    onApplyWallpaper: suspend (String) -> Boolean,
     onSaveOrder: suspend (List<String>) -> Boolean,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
     SideEffect { RenderDiagnostics.shellComposed() }
+    var wallpaperSettingsOpen by remember { mutableStateOf(false) }
+    var wallpaperChoice by remember { mutableStateOf<String?>(null) }
+    var previewWallpaper by remember { mutableStateOf<String?>(null) }
+    var applyingWallpaper by remember { mutableStateOf(false) }
+    val previewApplyFocus = remember { FocusRequester() }
     val homeListState = rememberLazyListState()
     val searchResultsFocus = remember { FocusRequester() }
     val searchFieldFocus = remember { FocusRequester() }
@@ -192,10 +197,25 @@ fun CinematicLauncher(
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) { draftOrder = null; movingPackage = null; returnFocusPackage = null }
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) { draftOrder = null; movingPackage = null; returnFocusPackage = null; previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null }
         }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
+    }
+    val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null } }
+    BackHandler(section == "Settings" && wallpaperSettingsOpen) { closeWallpapers() }
+    BackHandler(previewWallpaper != null) { if (!applyingWallpaper) previewWallpaper = null }
+    val applyWallpaper: (String) -> Unit = { id ->
+        if (!applyingWallpaper) {
+            applyingWallpaper = true
+            scope.launch {
+                if (onApplyWallpaper(id)) previewWallpaper = null
+                applyingWallpaper = false
+            }
+        }
+    }
+    LaunchedEffect(previewWallpaper) {
+        if (previewWallpaper != null) { withFrameNanos { }; previewApplyFocus.requestFocus() }
     }
     val cancelMove = { if (!savingOrder) { returnFocusPackage = movingPackage; draftOrder = null; movingPackage = null } }
     BackHandler(draftOrder != null) { cancelMove() }
@@ -232,17 +252,18 @@ fun CinematicLauncher(
         }
     }
     val motion = if (prefs.reducedMotion) "Minimal" else prefs.motion
-    val visible = remember(discovery.apps, section, query, prefs.favourites, prefs.favouriteOrder, draftOrder) { discovery.apps.filter { (section != "Search" || it.label.contains(query, true)) &&
-        (section != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) }.let { filtered ->
-            if (section == "Home" && (draftOrder != null || prefs.favouriteOrder.isNotEmpty())) {
+    val contentSection = if (previewWallpaper != null) "Home" else section
+    val visible = remember(discovery.apps, contentSection, query, prefs.favourites, prefs.favouriteOrder, draftOrder) { discovery.apps.filter { (contentSection != "Search" || it.label.contains(query, true)) &&
+        (contentSection != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) }.let { filtered ->
+            if (contentSection == "Home" && (draftOrder != null || prefs.favouriteOrder.isNotEmpty())) {
                 val order = draftOrder ?: orderedFavouritePackages(prefs, discovery.apps)
                 filtered.sortedBy { order.indexOf(it.packageName).let { rank -> if (rank < 0) Int.MAX_VALUE else rank } }
             } else filtered
         } }
     Box(Modifier.fillMaxSize()) {
-        Wallpaper(prefs.theme == "Minimalist")
+        Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper)
         Row(Modifier.fillMaxSize().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
-            CinematicNavigation(section, { next -> if (!savingOrder) { cancelMove(); onSection(next) } }, motion)
+            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); onSection(next) } }, motion)
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -251,9 +272,19 @@ fun CinematicLauncher(
                     }
                     Text(clock, fontSize = 28.sp, fontWeight = FontWeight.Normal, color = Color.White)
                 }
-                when (section) {
-                    "Settings" -> Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                when (contentSection) {
+                    "Settings" -> if (wallpaperSettingsOpen) Box(Modifier.weight(1f)) {
+                        WallpaperSettings(wallpaperChoice ?: prefs.wallpaper, prefs.wallpaper, motion, applyingWallpaper,
+                            prefs.theme == "Minimalist", { wallpaperChoice = it },
+                            { previewWallpaper = wallpaperChoice ?: prefs.wallpaper },
+                            { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers)
+                    } else Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                         Text("Settings", style = MaterialTheme.typography.headlineLarge)
+                        GlassPanel(Modifier.fillMaxWidth()) {
+                            Text("Wallpaper", style = MaterialTheme.typography.titleLarge, color = Ice)
+                            Text(BundledWallpaper.fromId(prefs.wallpaper).title, style = MaterialTheme.typography.bodyMedium)
+                            FocusButton("Choose wallpaper", motion) { wallpaperSettingsOpen = true }
+                        }
                         GlassPanel(Modifier.fillMaxWidth()) {
                                                 Text("Appearance", style = MaterialTheme.typography.titleLarge, color = Ice)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -283,10 +314,10 @@ fun CinematicLauncher(
                         FocusButton("Browse apps", motion) { onSection("Apps") }
                     }
                     else -> {
-                        if (section == "Home") {
+                        if (contentSection == "Home") {
                             Spacer(Modifier.weight(1f))
-                        } else Text(section, fontSize = 28.sp, fontWeight = FontWeight.Normal)
-                        if (section == "Search") OutlinedTextField(query, onQuery, Modifier.fillMaxWidth().focusRequester(searchFieldFocus)
+                        } else Text(contentSection, fontSize = 28.sp, fontWeight = FontWeight.Normal)
+                        if (contentSection == "Search") OutlinedTextField(query, onQuery, Modifier.fillMaxWidth().focusRequester(searchFieldFocus)
                             .onPreviewKeyEvent { event ->
                                 val key = event.nativeKeyEvent
                                 if (key.keyCode == android.view.KeyEvent.KEYCODE_DPAD_DOWN && visible.isNotEmpty()) {
@@ -295,15 +326,17 @@ fun CinematicLauncher(
                                 } else false
                             }, label = { Text("Search installed apps") }, singleLine = true)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(if (section == "Home" && prefs.favourites.isNotEmpty()) "Your favourites" else "Your applications", fontSize = 17.sp, color = Color.White)
+                            Text(if (contentSection == "Home" && prefs.favourites.isNotEmpty()) "Your favourites" else "Your applications", fontSize = 17.sp, color = Color.White)
                             Text("${visible.size} APPS", fontSize = 12.sp, letterSpacing = 1.sp, color = Ice.copy(alpha = .7f))
                         }
                         discovery.error?.let { Text(it, color = MaterialTheme.colorScheme.error); FocusButton("Retry discovery", motion) { onRetry() } }
                         if (!discovery.loaded) Text("Discovering apps…", color = Ice)
                         else if (visible.isEmpty()) Text("No matching applications. Try Apps or change your search.", color = Ice)
-                        if (section == "Home") LazyRow(Modifier.fillMaxWidth().height(220.dp), state = homeListState, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
+                        if (contentSection == "Home") LazyRow(Modifier.fillMaxWidth().height(220.dp), state = homeListState, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
                             items(visible, key = { it.packageName }) { app ->
-                                if (draftOrder != null) {
+                                if (previewWallpaper != null) {
+                                    HomeAppCard(app, repository, iconGeneration, motion, {}, Modifier.focusProperties { canFocus = false })
+                                } else if (draftOrder != null) {
                                     val selected = movingPackage == app.packageName
                                     val order = draftOrder.orEmpty()
                                     val position = order.indexOf(app.packageName)
@@ -339,11 +372,18 @@ fun CinematicLauncher(
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
                             items(visible, key = { it.packageName }) { app ->
                                 AppActionHost(app, repository, prefs, discovery.apps, motion, false, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
-                                    AppTile(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier.then(if (section == "Search" && app.packageName == visible.firstOrNull()?.packageName) Modifier.focusRequester(searchResultsFocus).focusProperties { up = searchFieldFocus } else Modifier))
+                                    AppTile(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier.then(if (contentSection == "Search" && app.packageName == visible.firstOrNull()?.packageName) Modifier.focusRequester(searchResultsFocus).focusProperties { up = searchFieldFocus } else Modifier))
                                 }
                             }
                         }
-                        if (draftOrder != null) {
+                        if (previewWallpaper != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Preview · ${BundledWallpaper.fromId(previewWallpaper).title}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                FocusButton(if (applyingWallpaper) "Applying…" else "Apply wallpaper", motion,
+                                    Modifier.focusProperties { canFocus = true }.focusRequester(previewApplyFocus)) { applyWallpaper(previewWallpaper!!) }
+                                FocusButton("Cancel preview", motion) { if (!applyingWallpaper) previewWallpaper = null }
+                            }
+                        } else if (draftOrder != null) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("Left / Right to move · Select to save · Back to cancel", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                                 FocusButton(if (savingOrder) "Saving…" else "Save", motion, Modifier.focusRequester(saveFocus).focusProperties { up = movingFocus }, onClick = saveMove)

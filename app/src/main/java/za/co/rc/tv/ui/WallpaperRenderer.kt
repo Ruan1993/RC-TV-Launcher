@@ -7,16 +7,56 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import za.co.rc.tv.core.BundledWallpaper
+import za.co.rc.tv.core.RenderDiagnostics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.createBitmap
 import za.co.rc.tv.R
 
+internal fun BundledWallpaper.imageResource() = when (this) {
+    BundledWallpaper.MOUNTAIN -> R.drawable.cinematic_horizon
+    BundledWallpaper.COAST -> R.drawable.tidal_dusk
+    BundledWallpaper.DESERT -> R.drawable.desert_afterglow
+}
+internal fun BundledWallpaper.thumbnailResource() = when (this) {
+    BundledWallpaper.MOUNTAIN -> R.drawable.cinematic_horizon_thumb
+    BundledWallpaper.COAST -> R.drawable.tidal_dusk_thumb
+    BundledWallpaper.DESERT -> R.drawable.desert_afterglow_thumb
+}
+
+/** One retained full backdrop; serialised IO prevents overlapping preview decodes. Never recycle a published bitmap. */
+internal object WallpaperCache {
+    private val mutex = Mutex()
+    private var cachedId: String? = null
+    private var cached: Bitmap? = null
+    suspend fun load(context: Context, id: String): Bitmap? = mutex.withLock {
+        currentCoroutineContext().ensureActive()
+        if (cachedId == id && cached != null) return@withLock cached
+        RenderDiagnostics.wallpaperDecoded()
+        val result = renderCinematicBackdrop(context, BundledWallpaper.fromId(id))
+        currentCoroutineContext().ensureActive()
+        if (result != null) { cachedId = id; cached = result }
+        result
+    }
+}
+
 /** Run on IO. The original scrims are baked once, avoiding two full-screen blends per frame. */
-internal fun renderCinematicBackdrop(context: Context): Bitmap? {
+internal fun renderCinematicBackdrop(context: Context, wallpaper: BundledWallpaper = BundledWallpaper.MOUNTAIN): Bitmap? {
     android.os.Trace.beginSection("RC.wallpaper.decodeAndScrim")
     try {
-        val source = BitmapFactory.decodeResource(context.resources, R.drawable.cinematic_horizon) ?: return null
+        val resource = wallpaper.imageResource()
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeResource(context.resources, resource, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (bounds.outWidth / sample > 2048 || bounds.outHeight / sample > 1152) sample *= 2
+        val options = BitmapFactory.Options().apply { inSampleSize = sample; inScaled = false }
+        val source = BitmapFactory.decodeResource(context.resources, resource, options) ?: return null
         val result = createBitmap(source.width, source.height)
         val canvas = Canvas(result)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG)

@@ -60,8 +60,27 @@ print(f"{args.label}: configure motion and cold start", flush=True)
 launch()
 settings = next(n for n in ui().iter("node") if n.get("content-desc") == "Settings")
 tap(settings)
-mode = [n for n in ui().iter("node") if n.get("text") == args.motion][-1]  # Cinematic also names the theme.
-tap(mode)
+def find_motion_button(tree, value):
+    nodes = list(tree.iter("node"))
+    balanced = next((n for n in nodes if n.get("text") == "Balanced"), None)
+    if balanced is None:
+        return None
+    def centre_y(node):
+        bounds = list(map(int, re.findall(r"\d+", node.get("bounds"))))
+        return (bounds[1] + bounds[3]) / 2
+    row_y = centre_y(balanced)
+    return next((n for n in nodes if n.get("text") == value and abs(centre_y(n) - row_y) < 12), None)
+
+for attempt in range(6):
+    mode = find_motion_button(ui(), args.motion)
+    if mode is not None:
+        tap(mode)
+        break
+    # Settings can grow; reveal the Motion row before selecting a labelled control.
+    adb("shell", "input", "swipe", "1500", "900", "1500", "450", "350")
+    time.sleep(.3)
+else:
+    raise RuntimeError("Motion controls were not found in Settings")
 adb("shell", "input", "keyevent", "KEYCODE_BACK")
 save("-cold-start.txt", launch())
 pid = adb("shell", "pidof", "za.co.rc.tv").strip()

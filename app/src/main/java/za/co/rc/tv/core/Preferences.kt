@@ -13,16 +13,17 @@ import kotlinx.coroutines.flow.catch
 import java.io.IOException
 
 private val Context.store by preferencesDataStore("launcher", corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() })
-data class LauncherPreferences(val favourites: Set<String> = emptySet(), val reducedMotion: Boolean = false, val theme: String = "Cinematic", val motion: String = "Minimal", val favouriteOrder: List<String> = emptyList())
+data class LauncherPreferences(val favourites: Set<String> = emptySet(), val reducedMotion: Boolean = false, val theme: String = "Cinematic", val motion: String = "Minimal", val favouriteOrder: List<String> = emptyList(), val wallpaper: String = BundledWallpaper.MOUNTAIN.id)
 class Preferences(context: Context) {
     private val store = context.applicationContext.store
     private val favourites = stringSetPreferencesKey("favourites")
     private val order = stringPreferencesKey("favourite_order")
     private val motion = booleanPreferencesKey("reduced_motion")
     private val theme = stringPreferencesKey("theme")
+    private val wallpaper = stringPreferencesKey("wallpaper")
     private val intensity = stringPreferencesKey("animation_intensity")
     val state = store.data.catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { LauncherPreferences(it[favourites].orEmpty(), it[motion] ?: false, validTheme(it[theme]), validMotion(it[intensity]), it[order]?.split("\n")?.filter(String::isNotBlank).orEmpty()) }
+        .map { LauncherPreferences(it[favourites].orEmpty(), it[motion] ?: false, validTheme(it[theme]), validMotion(it[intensity]), it[order]?.split("\n")?.filter(String::isNotBlank).orEmpty(), validWallpaper(it[wallpaper])) }
     suspend fun toggleFavourite(packageName: String) { store.edit { p ->
         val current = p[favourites].orEmpty(); p[favourites] = if (packageName in current) current - packageName else current + packageName
     } }
@@ -30,6 +31,10 @@ class Preferences(context: Context) {
         require(packages.distinct().size == packages.size && packages.toSet() == p[favourites].orEmpty())
         p[order] = packages.joinToString("\n")
     } }
+    suspend fun setWallpaper(value: String) {
+        require(BundledWallpaper.entries.any { it.id == value })
+        store.edit { it[wallpaper] = value }
+    }
     suspend fun setTheme(value: String) { store.edit { it[theme] = validTheme(value) } }
     suspend fun setMotion(value: String) { store.edit { it[intensity] = validMotion(value) } }
     suspend fun setReducedMotion(enabled: Boolean) { store.edit { it[motion] = enabled } }

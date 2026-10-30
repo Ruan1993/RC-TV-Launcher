@@ -14,3 +14,7 @@ Generation prompt (built-in tool, no CLI/API key):
 ## Other artwork
 
 RC launcher vectors remain original project artwork. Navigation marks are code-drawn house, search, app grid, library and settings symbols. App icons are read at runtime from installed packages and are not bundled or claimed as RC artwork. Platform sans-serif fonts are used without redistributing fonts.
+
+## Wallpaper selector collection
+
+Two additional original, text-generated landscapes and dedicated thumbnails are recorded in [WALLPAPER-ASSETS.md](WALLPAPER-ASSETS.md), including exact prompts, bundled paths, encoding and provenance. The mountain original is unchanged.

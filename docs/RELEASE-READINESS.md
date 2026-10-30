@@ -1,15 +1,50 @@
-# Release readiness and next milestones
+# Release readiness — 1.0 gates
 
-Current checkpoint: the user approved the Home visual direction and authorised Phase B interface polish. Typography/Settings and sidebar/motion increments are committed separately; application actions are under actual-TV verification. See PHASE-B-POLISH.md for current evidence and remaining acceptance. GLASS-2-HOME-REVIEW.md is the historical checkpoint and its pause has been superseded by the user's new request.
+Current work is a **Phase B development preview**, not a feature-complete 1.0 release. The approved Home is preserved. See WALLPAPER-SELECTION-CHECKPOINT.md and PHASE-B-POLISH.md for evidence. Keep draft PR #2 unmerged, repository visibility unchanged and stock Home as default.
 
-Phase A is merged. This remains a Phase B preview. The user physically confirmed the new menu and Back/Home behaviour. Inline shelf rearranging then replaced the dialog at the user’s request and has generated-key device verification. Thermal/long-session checks, both-box recovery and licence audit remain release gates. Keep draft PR #2 unmerged. Full personalisation and RC Assist remain future work, including optional profiles and a secure Gemini Flash backend without APK keys.
+## Core and device acceptance
 
-- Phase A: obtain successful APK build, unit tests and lint; test Home/reboot/recovery on both Xiaomi boxes. Record compatibility limits.
-- Phase B: landscape assets with rights inventory; bounded image decoding, SAF wallpaper choice/rotation, lifecycle-paused ambient, adaptive/collapsing sidebar, stable focus restoration, sorting/hiding/labels, settings and accessibility. Verify with remote UI tests and reduced system motion.
-- Phase C: per-profile preferences and layouts; local watchlist and typed integrations; SAF file browse/copy/move/rename/delete/open; real opt-in throughput/latency test with transparent endpoints/history; versioned validated backup and cross-device missing-resource handling. Add business-logic and critical-flow tests with each feature.
-- Phase D (optional): authenticated paired phone companion, evaluated SMB library, supported voice input and provider integrations. No protected-service scraping or unauthenticated server.
-- Phase E: full licence notices, dependency update assessment, privacy/security review, visual/device QA, performance and accessibility measurements, release signing and reproducible release instructions.
+| Area | Implemented / verified | Remaining release gate |
+| --- | --- | --- |
+| Core launcher | Dynamic installed-app discovery, cached icons, launch, discovery error/retry, favourites, direct shelf ordering and short/long Select | Missing/disabled/removed apps, zero/one/many favourites, interrupted saves and longer sessions |
+| Search | Installed-app filtering and explicit Down/Up result focus | IME, external keyboard/mouse, empty/error cases and second device |
+| TV remote | Physical Xiaomi menu/short Select/Back/Home confirmed; new wallpaper flow tested through device input | Physical feedback on picker, second Xiaomi, repeated/cancelled keys and accessibility matrix |
+| Home / recovery | Home intent registration, current default status, setup/recovery controls; stock Home unchanged | Both-box reboot/recovery and firmware-specific default-Home selection acceptance |
+| Persistent settings | DataStore theme/motion/reduced motion/favourites/order; stable wallpaper IDs and default fallback | Migration/read/write failure cases and validated backup/restore |
+| Errors | Retry/failure feedback and unknown wallpaper fallback | Storage exhaustion, corruption and external-provider failures when imports are implemented |
 
-Release gates: all implemented features compile/test/lint; no false working integrations; both device checklists completed; Home recovery proven; all assets and resolved dependencies audited; backup/file/network abuse cases tested when added; no secrets in distribution; APK checksum and signing provenance recorded.
+## Wallpaper and appearance
 
-Future-device enhancements: evaluate blur only on capable APIs/hardware, optional network wallpaper caching with attribution, supported media-provider channels and smart-home provider contracts. Never assume frame-rate, DRM, PiP, casting or Home overrides are universally controllable.
+- [x] Preserve original mountain default, large cards, icons, glass and Home layout.
+- [x] Original bundled collection; asset paths, exact generation prompts and provenance in WALLPAPER-ASSETS.md.
+- [x] Dedicated thumbnail previews, Home preview, explicit Apply/Cancel and persistent selection.
+- [x] Background bounds-first decoding, serialized full-image loads, one cached backdrop and precomposited scrims; no live blur.
+- [ ] **Feedback gate:** pause after the first usable selector is installed/tested. Do not implement the following personalisation increments before feedback.
+- [ ] SAF local/USB imports; JPEG/PNG/WebP checks; unsupported/corrupt images; private copies or persistent grants; bounded cache and storage errors.
+- [ ] Rotation enable/disable, participating scenes, 5/15/30 minutes and 1/24 hours; lifecycle-bound scheduling with honest inactive-launcher timing.
+- [ ] Instant/Crossfade/Gentle Slide with motion settings and GPU/memory verification; no decorative background service.
+- [x] Existing Cinematic/Minimalist theme and motion controls remain functional.
+- [ ] Glass transparency, a small system/licensed font selection, live appearance previews.
+- [ ] Confirmed Reset to Defaults with clear scope; never unexpectedly erase favourites or imported content.
+- [ ] Per-profile appearance after launcher profiles exist.
+
+## Performance, accessibility and distribution
+
+- [x] Builds, unit tests, lint, device screenshots and raw profiling records for implemented increments.
+- [ ] Minimal glass/scroll regression remains an investigation gate. Compare equivalent geometry/order, warm-up and input pacing; distinguish thermal/trace/background variance from a proven fix.
+- [ ] Long-session/thermal, low-memory/process recreation, 1080p/4K and both-box compatibility. No universal 60fps claim.
+- [ ] Complete wallpaper preview peak-memory/decoding acceptance; ensure focus does not trigger full-image decoding.
+- [ ] TV-distance typography, font scaling/high contrast, reduced motion, semantic selection and clear focus on both devices. System accessibility changes require explicit approval.
+- [x] Increasing development version codes, working/rollback APKs and SHA-256 records; no application data clear.
+- [ ] Production signing key/secure backup; debug-key builds are not public release artifacts.
+- [ ] Transitive dependency/licence/notice audit and current dependency assessment before distribution.
+- [ ] Final installation, same-key rollback, recovery, privacy/permissions and reproducible signed-release documentation.
+- [ ] User approval before merging PR #2, public release or repository visibility changes.
+
+## Broader master specification still incomplete
+
+Do not silently label these complete or remove them from 1.0 scope: app hiding/custom labels/icon customisation and configurable rows; launcher profiles; local file/media browsing and permitted operations; local watchlist/provider search; genuine user-initiated network diagnostics/history; versioned validated configuration export/import with missing-app/resource handling. Weather/Continue Watching require supported optional integrations. Optional voice, paired phone companion, SMB and advanced integrations need separate design/security/device acceptance.
+
+Decide the release scope explicitly before declaring 1.0 feature-complete. No fake integrations, protected-service scraping, device account assumptions or unauthenticated companion server.
+
+**RC Assist stays future and optional:** permission-based actions and a secure Gemini Flash backend, no APK credentials and no implementation here.

@@ -90,6 +90,8 @@ class MainActivity : ComponentActivity() {
                     query = query, onQuery = { query = it }, clock = clock, homeStatus = homeStatus,
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
+                    onApplyWallpaper = { id -> runCatching { preferences.setWallpaper(id) }
+                        .onFailure { message("Could not apply wallpaper. Please try again.") }.isSuccess },
                     onSaveOrder = { order -> runCatching { preferences.reorderFavourites(order) }
                         .onFailure { message("Could not save order. Favourites may have changed; try again.") }.isSuccess },
                     onRetry = { refresh++ }, onChooseHome = { selectHome() }, onRestoreHome = { openSettings() },
