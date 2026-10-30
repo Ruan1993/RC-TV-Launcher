@@ -19,14 +19,17 @@ Current work is a **Phase B development preview**, not a feature-complete 1.0 re
 - [x] Original bundled collection; asset paths, exact generation prompts and provenance in WALLPAPER-ASSETS.md.
 - [x] Dedicated thumbnail previews, Home preview, explicit Apply/Cancel and persistent selection.
 - [x] Background bounds-first decoding, serialized full-image loads, one cached backdrop and precomposited scrims; no live blur.
-- [ ] **Feedback gate:** pause after the first usable selector is installed/tested. Do not implement the following personalisation increments before feedback.
-- [ ] SAF local/USB imports; JPEG/PNG/WebP checks; unsupported/corrupt images; private copies or persistent grants; bounded cache and storage errors.
-- [ ] Rotation enable/disable, participating scenes, 5/15/30 minutes and 1/24 hours; lifecycle-bound scheduling with honest inactive-launcher timing.
-- [ ] Instant/Crossfade/Gentle Slide with motion settings and GPU/memory verification; no decorative background service.
+- [x] Original Home, navigation and first selector approved. Current high-efficiency sprint supersedes the old feedback pause; see SPRINT-WALLPAPERS.md.
+- [x] System document-picker import; JPEG/PNG/WebP validation, normalized private copies, bounded dimensions/source size/count, corrupt input errors and confirmed removal.
+- [ ] Physical picker/USB provider acceptance: this Xiaomi exposes only Google’s DocumentsStub; no working picker was installed or substituted. Import pipeline tested separately on device.
+- [x] Rotation enable/disable, participants and 5/15/30 minute, 1/24 hour intervals persist; Home/RESUMED scheduling, overdue return handled once, no service.
+- [ ] Longer real-time rotation/power/lifecycle sessions across devices.
+- [x] Instant/Crossfade/Gentle Slide implemented; short local transitions, Minimal/reduced motion instant.
+- [ ] Final-release transition GPU/memory acceptance; prior Minimal regression reserved for dedicated optimisation.
 - [x] Existing Cinematic/Minimalist theme and motion controls remain functional.
 - [ ] Glass transparency, a small system/licensed font selection, live appearance previews.
 - [ ] Confirmed Reset to Defaults with clear scope; never unexpectedly erase favourites or imported content.
-- [ ] Per-profile appearance after launcher profiles exist.
+- [ ] Optional profiles/per-profile appearance are outside the 1.0 critical path.
 
 ## Performance, accessibility and distribution
 
@@ -45,6 +48,6 @@ Current work is a **Phase B development preview**, not a feature-complete 1.0 re
 
 Do not silently label these complete or remove them from 1.0 scope: app hiding/custom labels/icon customisation and configurable rows; launcher profiles; local file/media browsing and permitted operations; local watchlist/provider search; genuine user-initiated network diagnostics/history; versioned validated configuration export/import with missing-app/resource handling. Weather/Continue Watching require supported optional integrations. Optional voice, paired phone companion, SMB and advanced integrations need separate design/security/device acceptance.
 
-Decide the release scope explicitly before declaring 1.0 feature-complete. No fake integrations, protected-service scraping, device account assumptions or unauthenticated companion server.
+Prioritise the 1.0 critical path: reliable everyday launch/return, remote focus, wallpaper/appearance persistence, error recovery, targeted performance optimisation, production signing and installation. Optional user profiles and RC Assist are outside that path. Scope other broader capabilities separately before declaring 1.0 feature-complete. No fake integrations, protected-service scraping, device account assumptions or unauthenticated companion server.
 
 **RC Assist stays future and optional:** permission-based actions and a secure Gemini Flash backend, no APK credentials and no implementation here.

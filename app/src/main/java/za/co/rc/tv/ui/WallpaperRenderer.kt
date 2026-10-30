@@ -12,6 +12,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import za.co.rc.tv.core.BundledWallpaper
+import za.co.rc.tv.core.isImportedWallpaper
+import za.co.rc.tv.core.WallpaperStore
 import za.co.rc.tv.core.RenderDiagnostics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -38,7 +40,7 @@ internal object WallpaperCache {
         currentCoroutineContext().ensureActive()
         if (cachedId == id && cached != null) return@withLock cached
         RenderDiagnostics.wallpaperDecoded()
-        val result = renderCinematicBackdrop(context, BundledWallpaper.fromId(id))
+        val result = renderCinematicBackdrop(context, id)
         currentCoroutineContext().ensureActive()
         if (result != null) { cachedId = id; cached = result }
         result
@@ -46,17 +48,21 @@ internal object WallpaperCache {
 }
 
 /** Run on IO. The original scrims are baked once, avoiding two full-screen blends per frame. */
-internal fun renderCinematicBackdrop(context: Context, wallpaper: BundledWallpaper = BundledWallpaper.MOUNTAIN): Bitmap? {
+internal fun renderCinematicBackdrop(context: Context, id: String = "mountain"): Bitmap? {
     android.os.Trace.beginSection("RC.wallpaper.decodeAndScrim")
     try {
-        val resource = wallpaper.imageResource()
+        val resource = BundledWallpaper.fromId(id).imageResource()
+        val local = if (isImportedWallpaper(id)) WallpaperStore.image(context, id) else null
+        if (local != null && !local.isFile) return renderCinematicBackdrop(context, "mountain")
+        fun decode(options: BitmapFactory.Options): Bitmap? = if (local == null)
+            BitmapFactory.decodeResource(context.resources, resource, options) else BitmapFactory.decodeFile(local.path, options)
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeResource(context.resources, resource, bounds)
+        decode(bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         var sample = 1
         while (bounds.outWidth / sample > 2048 || bounds.outHeight / sample > 1152) sample *= 2
         val options = BitmapFactory.Options().apply { inSampleSize = sample; inScaled = false }
-        val source = BitmapFactory.decodeResource(context.resources, resource, options) ?: return null
+        val source = decode(options) ?: return if (id != "mountain") renderCinematicBackdrop(context, "mountain") else null
         val result = createBitmap(source.width, source.height)
         val canvas = Canvas(result)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -75,3 +81,7 @@ internal fun renderCinematicBackdrop(context: Context, wallpaper: BundledWallpap
         android.os.Trace.endSection()
     }
 }
+
+internal fun wallpaperThumbnail(context: Context, id: String): Bitmap? = if (isImportedWallpaper(id))
+    BitmapFactory.decodeFile(WallpaperStore.image(context, id, true).path)
+else BitmapFactory.decodeResource(context.resources, BundledWallpaper.fromId(id).thumbnailResource())

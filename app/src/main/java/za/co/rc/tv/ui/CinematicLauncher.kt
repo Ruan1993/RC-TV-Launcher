@@ -1,11 +1,19 @@
 package za.co.rc.tv.ui
 
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import kotlinx.coroutines.launch
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -63,7 +71,7 @@ private val GlassShape = RoundedCornerShape(22.dp)
 
 /** No backdrop blur or continuously running effects: safe for API 30 TV GPUs. */
 @Composable
-private fun Wallpaper(minimal: Boolean, id: String) {
+private fun Wallpaper(minimal: Boolean, id: String, transition: String, motion: String) {
     SideEffect { RenderDiagnostics.wallpaperComposed() }
     val context = LocalContext.current.applicationContext
     val wallpaper by produceState<android.graphics.Bitmap?>(null, minimal, id) {
@@ -72,8 +80,15 @@ private fun Wallpaper(minimal: Boolean, id: String) {
         }
     }
     Box(Modifier.fillMaxSize().background(Ink)) {
-        if (!minimal && wallpaper != null) Image(wallpaper!!.asImageBitmap(), null,
-            Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        if (!minimal) AnimatedContent(wallpaper, Modifier.fillMaxSize(), transitionSpec = {
+            val duration = if (motion == "Minimal" || transition == "Instant") 0 else if (motion == "Cinematic") 320 else 180
+            if (transition == "Gentle Slide" && duration > 0)
+                (fadeIn(tween(duration)) + slideInHorizontally(tween(duration)) { it / 40 }) togetherWith
+                    (fadeOut(tween(duration)) + slideOutHorizontally(tween(duration)) { -it / 40 })
+            else fadeIn(tween(duration)) togetherWith fadeOut(tween(duration))
+        }, label = "wallpaperTransition") { bitmap ->
+            bitmap?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        }
     }
 }
 
@@ -174,12 +189,16 @@ fun CinematicLauncher(
     query: String, onQuery: (String) -> Unit, clock: String, homeStatus: String,
     onLaunch: (LauncherApp) -> Unit, onPin: (LauncherApp) -> Unit, onRetry: () -> Unit,
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
+    wallpapers: List<WallpaperOption>, wallpaperBusy: Boolean, onImportWallpaper: () -> Unit,
+    onRemoveWallpaper: suspend (String) -> Boolean, onRotation: (Boolean) -> Unit,
+    onRotationInterval: (Int) -> Unit, onRotationPool: (String) -> Unit,
+    onTransition: (String) -> Unit, onRotateWallpaper: suspend () -> Unit,
     onApplyWallpaper: suspend (String) -> Boolean,
     onSaveOrder: suspend (List<String>) -> Boolean,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
     SideEffect { RenderDiagnostics.shellComposed() }
-    var wallpaperSettingsOpen by remember { mutableStateOf(false) }
+    var wallpaperSettingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var wallpaperChoice by remember { mutableStateOf<String?>(null) }
     var previewWallpaper by remember { mutableStateOf<String?>(null) }
     var applyingWallpaper by remember { mutableStateOf(false) }
@@ -197,12 +216,12 @@ fun CinematicLauncher(
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) { draftOrder = null; movingPackage = null; returnFocusPackage = null; previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null }
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) { draftOrder = null; movingPackage = null; returnFocusPackage = null; previewWallpaper = null }
         }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
-    val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null } }
+    val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null } }
     BackHandler(section == "Settings" && wallpaperSettingsOpen) { closeWallpapers() }
     BackHandler(previewWallpaper != null) { if (!applyingWallpaper) previewWallpaper = null }
     val applyWallpaper: (String) -> Unit = { id ->
@@ -252,6 +271,16 @@ fun CinematicLauncher(
         }
     }
     val motion = if (prefs.reducedMotion) "Minimal" else prefs.motion
+    LaunchedEffect(lifecycle, section, previewWallpaper != null, draftOrder != null,
+        prefs.rotationEnabled, prefs.rotationMinutes, prefs.rotationPool, prefs.rotationAt, prefs.theme, wallpapers) {
+        if (prefs.rotationEnabled && prefs.theme != "Minimalist" && section == "Home" && previewWallpaper == null && draftOrder == null &&
+            nextWallpaper(prefs.wallpaper, prefs.rotationPool, wallpapers.map { it.id }) != null) {
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                kotlinx.coroutines.delay(rotationDelay(System.currentTimeMillis(), prefs.rotationAt, prefs.rotationMinutes))
+                onRotateWallpaper()
+            }
+        }
+    }
     val contentSection = if (previewWallpaper != null) "Home" else section
     val visible = remember(discovery.apps, contentSection, query, prefs.favourites, prefs.favouriteOrder, draftOrder) { discovery.apps.filter { (contentSection != "Search" || it.label.contains(query, true)) &&
         (contentSection != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) }.let { filtered ->
@@ -261,7 +290,7 @@ fun CinematicLauncher(
             } else filtered
         } }
     Box(Modifier.fillMaxSize()) {
-        Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper)
+        Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion)
         Row(Modifier.fillMaxSize().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
             CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); onSection(next) } }, motion)
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -274,7 +303,9 @@ fun CinematicLauncher(
                 }
                 when (contentSection) {
                     "Settings" -> if (wallpaperSettingsOpen) Box(Modifier.weight(1f)) {
-                        WallpaperSettings(wallpaperChoice ?: prefs.wallpaper, prefs.wallpaper, motion, applyingWallpaper,
+                        WallpaperSettings(wallpapers, prefs, onImportWallpaper, onRemoveWallpaper, onRotation, onRotationInterval,
+                            onRotationPool, onTransition, { scope.launch { onRotateWallpaper() } },
+                            wallpaperChoice ?: prefs.wallpaper, prefs.wallpaper, motion, applyingWallpaper || wallpaperBusy,
                             prefs.theme == "Minimalist", { wallpaperChoice = it },
                             { previewWallpaper = wallpaperChoice ?: prefs.wallpaper },
                             { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers)
@@ -282,7 +313,7 @@ fun CinematicLauncher(
                         Text("Settings", style = MaterialTheme.typography.headlineLarge)
                         GlassPanel(Modifier.fillMaxWidth()) {
                             Text("Wallpaper", style = MaterialTheme.typography.titleLarge, color = Ice)
-                            Text(BundledWallpaper.fromId(prefs.wallpaper).title, style = MaterialTheme.typography.bodyMedium)
+                            Text(wallpapers.firstOrNull { it.id == prefs.wallpaper }?.title ?: "Mountain horizon", style = MaterialTheme.typography.bodyMedium)
                             FocusButton("Choose wallpaper", motion) { wallpaperSettingsOpen = true }
                         }
                         GlassPanel(Modifier.fillMaxWidth()) {
@@ -378,7 +409,7 @@ fun CinematicLauncher(
                         }
                         if (previewWallpaper != null) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Preview · ${BundledWallpaper.fromId(previewWallpaper).title}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                Text("Preview · ${wallpapers.firstOrNull { it.id == previewWallpaper }?.title ?: "Wallpaper"}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                                 FocusButton(if (applyingWallpaper) "Applying…" else "Apply wallpaper", motion,
                                     Modifier.focusProperties { canFocus = true }.focusRequester(previewApplyFocus)) { applyWallpaper(previewWallpaper!!) }
                                 FocusButton("Cancel preview", motion) { if (!applyingWallpaper) previewWallpaper = null }

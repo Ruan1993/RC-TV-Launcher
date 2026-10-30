@@ -8,10 +8,11 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "za.co.rc.tv"
+        testInstrumentationRunner = "za.co.rc.tv.WallpaperImportCheck"
         minSdk = 30
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.2.9-wallpaper-selection"
+        versionCode = 12
+        versionName = "0.3.0-wallpaper-personalisation"
     }
     buildFeatures { compose = true; buildConfig = true }
     defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }

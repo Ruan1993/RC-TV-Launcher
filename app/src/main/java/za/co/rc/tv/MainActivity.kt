@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
         super.onPause()
     }
     private val repository by lazy { AppRepository(this) }
+    private val wallpaperStore by lazy { WallpaperStore(this) }
     private val preferences by lazy { Preferences(this) }
     private fun message(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
     private fun openSettings() {
@@ -67,9 +68,24 @@ class MainActivity : ComponentActivity() {
                 var iconGeneration by remember { mutableIntStateOf(0) }
                 var clock by remember { mutableStateOf("") }
                 val scope = rememberCoroutineScope()
+                val saveWallpaperSetting: (suspend () -> Unit) -> Unit = { action ->
+                    scope.launch { runCatching { action() }.onFailure { message("Could not save wallpaper settings.") } }; Unit
+                }
+                var wallpapers by remember { mutableStateOf(bundledWallpapers) }
+                var wallpaperBusy by remember { mutableStateOf(false) }
+                val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+                    if (uri != null) scope.launch {
+                        wallpaperBusy = true
+                        try { wallpaperStore.import(uri); wallpapers = wallpaperStore.list(); message("Wallpaper imported. Select it in the gallery.") }
+                        catch (failure: Exception) { message(failure.message ?: "Could not import this image.") }
+                        finally { wallpaperBusy = false }
+                    }
+                }
                 val lifecycle = LocalLifecycleOwner.current.lifecycle
                 LaunchedEffect(lifecycle, refresh) {
                     lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        wallpapers = runCatching { wallpaperStore.list() }.getOrElse { message("Wallpaper library unavailable."); bundledWallpapers }
                         discovery = refreshDiscovery(discovery, { repository.discover() }) {
                             android.util.Log.e("RcDiscovery", "Installed app discovery failed", it)
                         }
@@ -90,6 +106,22 @@ class MainActivity : ComponentActivity() {
                     query = query, onQuery = { query = it }, clock = clock, homeStatus = homeStatus,
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
+                    wallpapers = wallpapers, wallpaperBusy = wallpaperBusy,
+                    onImportWallpaper = {
+                        val handler = packageManager.resolveActivity(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                        if (handler == null || handler.activityInfo.packageName == "com.google.android.tv.frameworkpackagestubs")
+                            message("This TV has no working document picker. A compatible Android document picker is needed for local or USB imports.")
+                        else runCatching { picker.launch(arrayOf("image/jpeg", "image/png", "image/webp")) }.onFailure { message("No document picker is available on this TV.") }
+                    },
+                    onRemoveWallpaper = { id ->
+                        runCatching { preferences.removeWallpaper(id); wallpaperStore.remove(id); wallpapers = wallpaperStore.list() }
+                            .onFailure { message("Could not remove wallpaper.") }.isSuccess
+                    },
+                    onRotation = { value -> saveWallpaperSetting { preferences.setRotation(value) } },
+                    onRotationInterval = { value -> saveWallpaperSetting { preferences.setRotationMinutes(value) } },
+                    onRotationPool = { id -> saveWallpaperSetting { preferences.toggleRotationWallpaper(id) } },
+                    onTransition = { value -> saveWallpaperSetting { preferences.setWallpaperTransition(value) } },
+                    onRotateWallpaper = { runCatching { preferences.advanceWallpaper(wallpapers.map { it.id }) }.onFailure { message("Could not rotate wallpaper.") }; Unit },
                     onApplyWallpaper = { id -> runCatching { preferences.setWallpaper(id) }
                         .onFailure { message("Could not apply wallpaper. Please try again.") }.isSuccess },
                     onSaveOrder = { order -> runCatching { preferences.reorderFavourites(order) }
