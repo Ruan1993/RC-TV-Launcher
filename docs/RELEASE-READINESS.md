@@ -1,6 +1,6 @@
 # Release readiness and next milestones
 
-This is a Phase A source implementation, not the complete master specification or a daily-use release. No hardware tests, performance measurements, visual device review, or full transitive licence audit have passed yet.
+Phase A has passed the user's functional physical-remote tests and is merged. This branch is the first Phase B design preview, not the complete specification or a production release. Actual Xiaomi screenshots, smoke tests and debug performance samples are documented in PHASE-B-CINEMATIC-GLASS.md. Animated modes have significant measured jank; full performance acceptance, reboot/Home recovery on both boxes and the transitive licence audit remain outstanding.
 
 - Phase A: obtain successful APK build, unit tests and lint; test Home/reboot/recovery on both Xiaomi boxes. Record compatibility limits.
 - Phase B: landscape assets with rights inventory; bounded image decoding, SAF wallpaper choice/rotation, lifecycle-paused ambient, adaptive/collapsing sidebar, stable focus restoration, sorting/hiding/labels, settings and accessibility. Verify with remote UI tests and reduced system motion.

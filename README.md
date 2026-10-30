@@ -4,9 +4,9 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase A foundation; not version 1.0.** This repository begins implementation of [the master specification](docs/MASTER-SPECIFICATION.md). It discovers installed TV and conventional launcher apps, opens them through Android intents, prioritises YouCine / YouTube Music / YouTube / F1 TV when present, stores pinned favourites in DataStore, searches apps, and provides five navigation sections and safe Home setup. Library explicitly explains its unavailable features.
+**Phase B first design preview; not version 1.0.** Phase A passed the user's functional Xiaomi Android 11 device tests and is merged into main. This branch begins Cinematic Glass from that verified checkpoint. It preserves installed app discovery/launching, preferred app ordering, DataStore favourites, search, five sections and safe Home recovery. See [the first increment and rollback guide](docs/PHASE-B-CINEMATIC-GLASS.md) and [the master specification](docs/MASTER-SPECIFICATION.md).
 
-The dark glass-inspired interface is native Compose. It currently uses a procedural gradient, installed application icons with fallback artwork, and static focus borders. Subtle RC TV branding carries the tagline “Your world. In focus.” Landscape artwork, collapsible sidebar, focus restoration, profiles, advanced customisation, media/file management, diagnostics, backup, weather, ambient mode and companion support remain future work. No unavailable integration is presented as working.
+The native Compose preview adds original cinematic landscape artwork, translucent glass surfaces, a compact expanding rail, polished installed-app tiles and RC TV / “Your world. In focus.” branding. Cinematic and Minimalist appearances and three motion intensities persist across restarts. Minimal motion is the safe default; animated modes still need performance work on the Xiaomi. Wallpaper selection/rotation, full transitions, focus restoration, custom ordering, profiles, media/file management, weather and companion features remain future increments.
 
 ## Build
 
@@ -16,11 +16,11 @@ On Windows: ` .\gradlew.bat assembleDebug testDebugUnitTest lintDebug`
 
 On macOS/Linux: `sh gradlew assembleDebug testDebugUnitTest lintDebug`
 
-The APK is `app/build/outputs/apk/debug/app-debug.apk`. It supports Android 11 (API 30) and later, targets API 36, and is a development build signed with the local debug key. Do not use the debug key for public releases.
+The APK is `app/build/outputs/apk/debug/app-debug.apk` (0.2.0-cinematic-preview). It supports Android 11 (API 30) and later, targets API 36, and is a development build signed with the local debug key. Do not use the debug key for public releases. The device-tested Phase A APK is preserved locally under `releases/rollback/`; see the rollback guide before downgrading.
 
 ## Install and recover
 
-**Device-test update:** the Xiaomi MiTV-AFKR0 / Android 11 startup crash was traced through ADB to accessing the insets controller before the decor view existed. Insets setup now runs after content creation. The updated APK opens on the real box; broader acceptance testing remains outstanding and Phase B is on hold. See [startup investigation and Windows ADB log capture](docs/STARTUP-DIAGNOSTICS.md).
+**Device-test update:** the Android 11 startup crash is fixed and Phase A functional acceptance passed. Phase B is now authorised and underway. The default Home remains Xiaomi's stock launcher. See [startup investigation and Windows ADB log capture](docs/STARTUP-DIAGNOSTICS.md) for the historical diagnosis.
 
 See [setup and recovery](docs/SETUP-AND-RECOVERY.md). Do not replace the default Home until you have confirmed that Android Settings and the original launcher remain accessible. Test both Xiaomi boxes with [the checklist](docs/DEVICE-TESTS.md).
 

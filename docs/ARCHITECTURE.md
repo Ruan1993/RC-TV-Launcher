@@ -2,6 +2,8 @@
 
 ## Foundation boundaries
 
+Phase B introduces `ui/CinematicLauncher.kt` for the wallpaper renderer, translucent surfaces, focus-aware buttons/tiles and navigation shell. Platform actions and the proven discovery lifecycle remain in MainActivity. Appearance and motion extend the existing DataStore without renaming its file or favourite keys. Defaults validate unknown values; Minimal motion is the safe preview default. The renderer has no network dependency, continuous animation loop or live blur; see PHASE-B-CINEMATIC-GLASS.md for measured limits and the incremental roadmap.
+
 `core/AppRepository` queries both TV and conventional MAIN launcher categories on an IO coroutine. It removes duplicate packages and uses supported launch intents. Availability is refreshed when the activity resumes. Package visibility is restricted to launcher/Home intent queries; QUERY_ALL_PACKAGES is not requested.
 
 Discovery has one lifecycle-driven refresh while resumed. Cancellation propagates without becoming an error; genuine exceptions are logged and displayed with Retry, retaining the last successful app list. A successful refresh, including an empty result, clears the error. Installed icons use PackageManager off the main thread, rasterised to 48dp (maximum 128 pixels per side) with a 2 MiB LRU cache and lazy-grid loading. Icons are invalidated on refresh; unavailable icons use bundled RC artwork. No network image requests or bundled third-party app artwork are needed.
