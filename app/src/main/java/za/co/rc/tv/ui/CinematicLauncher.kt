@@ -73,7 +73,7 @@ private fun Wallpaper(minimal: Boolean) {
 @Composable
 private fun GlassPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Column(modifier.clip(GlassShape).background(Ink.copy(alpha = .64f))
-        .border(1.dp, Color.White.copy(alpha = .12f), GlassShape).padding(20.dp), content = content)
+        .border(1.dp, Color.White.copy(alpha = .12f), GlassShape).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
 }
 
 @Composable
@@ -83,14 +83,14 @@ private fun FocusButton(label: String, motion: String, modifier: Modifier = Modi
     val scale by animateFloatAsState(if (focused && motion != "Minimal") 1.025f else 1f,
         if (motion == "Minimal") snap() else spring(dampingRatio = .85f, stiffness = 550f), label = "buttonFocus")
     val tint by animateColorAsState(if (focused) if (quiet) Ice.copy(alpha = .22f) else Ice else if (selected) Color.White.copy(alpha = if (quiet) .12f else .18f) else Color.White.copy(alpha = .045f), animationSpec = if (motion == "Minimal") snap() else spring(stiffness = 600f), label = "buttonTint")
-    Button(onClick, modifier.onFocusChanged { focused = it.isFocused }
+    Button(onClick, modifier.heightIn(min = 48.dp).onFocusChanged { focused = it.isFocused }
         .graphicsLayer { scaleX = scale; scaleY = scale }
         .drawBehind { drawRoundRect(tint, cornerRadius = CornerRadius(14.dp.toPx())) }
         .border(1.dp, if (focused) Ice else Color.White.copy(alpha = .10f), RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent,
             contentColor = if (focused && !quiet) Ink else Color.White), contentPadding = PaddingValues(12.dp, 10.dp)) {
         if (label in listOf("H", "S", "A", "L", "···")) NavigationMark(label, if (focused && !quiet) Ink else Ice)
-        else Text(label, fontSize = 14.sp, maxLines = 1)
+        else Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
     }
 }
 
@@ -166,45 +166,50 @@ fun CinematicLauncher(
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("RC TV", fontSize = 20.sp, fontWeight = FontWeight.Light, letterSpacing = 3.sp, color = Color.White)
-                        Text("Your world. In focus.", fontSize = 11.sp, color = Color.White.copy(alpha = .65f))
+                        Text("RC TV", fontSize = 20.sp, fontWeight = FontWeight.Normal, letterSpacing = 3.sp, color = Color.White)
+                        Text("Your world. In focus.", fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
                     }
-                    Text(clock, fontSize = 28.sp, fontWeight = FontWeight.Light, color = Color.White)
+                    Text(clock, fontSize = 28.sp, fontWeight = FontWeight.Normal, color = Color.White)
                 }
                 when (section) {
-                    "Settings" -> GlassPanel(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
-                        Text("Make it yours", fontSize = 28.sp, fontWeight = FontWeight.Light)
-                        Text("Appearance", color = Ice, modifier = Modifier.padding(top = 12.dp))
+                    "Settings" -> Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                        Text("Settings", style = MaterialTheme.typography.headlineLarge)
+                        GlassPanel(Modifier.fillMaxWidth()) {
+                                                Text("Appearance", style = MaterialTheme.typography.titleLarge, color = Ice)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             listOf("Cinematic", "Minimalist").forEach { theme -> FocusButton(theme, motion, selected = prefs.theme == theme) { onTheme(theme) } }
                         }
-                        Text("Motion", color = Ice, modifier = Modifier.padding(top = 12.dp))
+                        }
+                        GlassPanel(Modifier.fillMaxWidth()) {
+                        Text("Motion", style = MaterialTheme.typography.titleLarge, color = Ice)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf("Minimal", "Balanced", "Cinematic").forEach { value -> FocusButton(value, motion, selected = prefs.motion == value) { onMotion(value) } }
                         }
                         FocusButton("Reduced motion: ${if (prefs.reducedMotion) "on" else "off"}", motion) { onReducedMotion() }
-                        Text("Choose how much movement feels right. Reduced motion takes priority over the selected intensity.", fontSize = 12.sp, color = Color.White.copy(alpha = .65f))
-                        HorizontalDivider(Modifier.padding(vertical = 16.dp), color = Color.White.copy(alpha = .12f))
-                        Text("Launcher & recovery", fontSize = 20.sp)
-                        Text(homeStatus, fontSize = 13.sp)
+                        Text("Choose how much movement feels right. Reduced motion takes priority over the selected intensity.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .78f))
+                        }
+                        GlassPanel(Modifier.fillMaxWidth()) {
+                        Text("Launcher & recovery", style = MaterialTheme.typography.titleLarge, color = Ice)
+                        Text(homeStatus, style = MaterialTheme.typography.bodyMedium)
                         FocusButton("Android settings", motion) { onAndroidSettings() }
                         FocusButton("Choose default Home", motion) { onChooseHome() }
                         FocusButton("Open Home settings / restore", motion) { onRestoreHome() }
-                        Text("Keep Xiaomi's original launcher installed and enabled. Restore it in Android Settings → Apps → Default apps → Home.", fontSize = 12.sp)
+                        Text("Keep Xiaomi's original launcher installed and enabled. Restore it in Android Settings → Apps → Default apps → Home.", style = MaterialTheme.typography.bodyMedium)
+                    }
                     }
                     "Library" -> GlassPanel(Modifier.fillMaxWidth()) {
-                        Text("A place for your stories", fontSize = 28.sp, fontWeight = FontWeight.Light)
+                        Text("A place for your stories", fontSize = 28.sp, fontWeight = FontWeight.Normal)
                         Text("Local media and watchlists are planned. Your installed apps are ready now.", modifier = Modifier.padding(vertical = 16.dp))
                         FocusButton("Browse apps", motion) { onSection("Apps") }
                     }
                     else -> {
                         if (section == "Home") {
                             Spacer(Modifier.weight(1f))
-                        } else Text(section, fontSize = 28.sp, fontWeight = FontWeight.Light)
+                        } else Text(section, fontSize = 28.sp, fontWeight = FontWeight.Normal)
                         if (section == "Search") OutlinedTextField(query, onQuery, Modifier.fillMaxWidth(), label = { Text("Search installed apps") }, singleLine = true)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(if (section == "Home" && prefs.favourites.isNotEmpty()) "Your favourites" else "Your applications", fontSize = 17.sp, color = Color.White)
-                            Text("${visible.size} APPS", fontSize = 10.sp, letterSpacing = 1.sp, color = Ice.copy(alpha = .7f))
+                            Text("${visible.size} APPS", fontSize = 12.sp, letterSpacing = 1.sp, color = Ice.copy(alpha = .7f))
                         }
                         discovery.error?.let { Text(it, color = MaterialTheme.colorScheme.error); FocusButton("Retry discovery", motion) { onRetry() } }
                         if (!discovery.loaded) Text("Discovering apps…", color = Ice)
@@ -214,7 +219,7 @@ fun CinematicLauncher(
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
                             items(visible, key = { it.packageName }) { app -> AppTile(app, repository, iconGeneration, app.packageName in prefs.favourites, motion, { onLaunch(app) }, { onPin(app) }) }
                         }
-                        Text("D-pad to explore    ·    Select to open    ·    Back to Home", fontSize = 10.sp, color = Color.White.copy(alpha = .5f))
+                        Text("D-pad to explore    ·    Select to open    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = .5f))
                     }
                 }
             }
@@ -239,14 +244,14 @@ private fun CinematicNavigation(section: String, onSection: (String) -> Unit, mo
                 clipRect(right = width) { this@drawWithContent.drawContent() }
             }
             .padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("RC", color = Ice, fontSize = 24.sp, fontWeight = FontWeight.Light, modifier = Modifier.padding(6.dp, 15.dp))
+            Text("RC", color = Ice, fontSize = 24.sp, fontWeight = FontWeight.Normal, modifier = Modifier.padding(6.dp, 15.dp))
             listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Library" to "L", "Settings" to "···").forEach { (name, symbol) ->
                 Box(Modifier.semantics { contentDescription = name }) {
                     FocusButton(if (railFocused) name else symbol, motion, Modifier.width(if (railFocused) 126.dp else 56.dp), selected = section == name, quiet = true) { onSection(name) }
                 }
             }
             Spacer(Modifier.weight(1f))
-            Text("RC TV", fontSize = 10.sp, color = Color.White.copy(alpha = .45f), modifier = Modifier.padding(5.dp))
+            Text("RC TV", fontSize = 12.sp, color = Color.White.copy(alpha = .45f), modifier = Modifier.padding(5.dp))
         }
     }
 
