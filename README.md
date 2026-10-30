@@ -20,6 +20,8 @@ The APK is `app/build/outputs/apk/debug/app-debug.apk`. It supports Android 11 (
 
 ## Install and recover
 
+**Device-test blocker:** startup on Xiaomi MiTV-AFKR0 / Android 11 currently returns to Xiaomi Home before showing the interface. Cause is unconfirmed; Phase B is on hold. See [startup investigation and Windows ADB log capture](docs/STARTUP-DIAGNOSTICS.md).
+
 See [setup and recovery](docs/SETUP-AND-RECOVERY.md). Do not replace the default Home until you have confirmed that Android Settings and the original launcher remain accessible. Test both Xiaomi boxes with [the checklist](docs/DEVICE-TESTS.md).
 
 ## Architecture and rights

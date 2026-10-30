@@ -1,5 +1,7 @@
 # Foundation verification — 30 October 2026
 
+**Real-device update:** installation succeeded on Xiaomi MiTV-AFKR0 / Android 11, but opening the icon briefly shows black then returns to Xiaomi Home. Startup acceptance failed; cause awaits device logs. See [startup diagnostics](STARTUP-DIAGNOSTICS.md). A fresh 53-task build/test/lint rerun passed with 2 tests and 0 lint errors / 7 warnings; it does not resolve or verify this runtime failure. Phase B remains on hold.
+
 Executed on the Windows development machine with JDK 21, Android SDK 36 and Gradle 8.13.
 
 - `gradlew.bat assembleDebug testDebugUnitTest lintDebug --rerun-tasks`: **BUILD SUCCESSFUL**, with all 53 tasks executed in the pre-commit rerun. Android 11 backup is explicitly disabled with `fullBackupContent="false"`; Android 12+ retains explicit backup/transfer exclusions.
