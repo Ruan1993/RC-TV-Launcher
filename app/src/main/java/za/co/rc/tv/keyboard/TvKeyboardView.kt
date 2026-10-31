@@ -37,7 +37,7 @@ class TvKeyboardView(context: Context, private val onKey: (TvKey) -> Unit) : Lin
             val row = LinearLayout(context).apply { orientation = HORIZONTAL }
             val controls = keys.mapIndexed { columnIndex, key ->
                 Button(context).apply {
-                    text = key.label; contentDescription = if (key.action == KeyAction.DELETE) "Backspace" else key.label
+                    text = key.label; contentDescription = when (key.action) { KeyAction.DELETE -> "Backspace"; KeyAction.CURSOR_LEFT -> "Cursor left"; KeyAction.CURSOR_RIGHT -> "Cursor right"; else -> key.label }
                     isAllCaps = false; textSize = if (key.label.length > 4) 16f else 19f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                     background = android.graphics.drawable.StateListDrawable().apply {
                         addState(intArrayOf(android.R.attr.state_selected), surface(true)); addState(intArrayOf(), surface(false))
@@ -74,14 +74,20 @@ class TvKeyboardView(context: Context, private val onKey: (TvKey) -> Unit) : Lin
             KeyEvent.KEYCODE_DPAD_RIGHT -> KeyboardModel.move(rows, cursor, horizontal = 1)
             KeyEvent.KEYCODE_DPAD_UP -> KeyboardModel.move(rows, cursor, vertical = -1)
             KeyEvent.KEYCODE_DPAD_DOWN -> KeyboardModel.move(rows, cursor, vertical = 1)
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> { buttons[cursor.row][cursor.column].isPressed = true; return true }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                buttons[cursor.row][cursor.column].isPressed = true
+                if (rows[cursor.row][cursor.column].action in listOf(KeyAction.CURSOR_LEFT, KeyAction.CURSOR_RIGHT)) activate()
+                return true
+            }
             else -> return false
         }
         select(position); return true
     }
     fun remoteUp(code: Int, cancelled: Boolean): Boolean {
         if (code in listOf(KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER)) {
-            buttons[cursor.row][cursor.column].isPressed = false; if (!cancelled) activate(); return true
+            buttons[cursor.row][cursor.column].isPressed = false
+            if (!cancelled && rows[cursor.row][cursor.column].action !in listOf(KeyAction.CURSOR_LEFT, KeyAction.CURSOR_RIGHT)) activate()
+            return true
         }
         return code in listOf(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN)
     }

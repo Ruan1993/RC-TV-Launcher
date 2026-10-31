@@ -40,7 +40,14 @@ class KeyboardPreviewActivity : ComponentActivity() {
         keyboard = TvKeyboardView(this) { key -> when (key.action) {
             KeyAction.HIDE -> finish()
             KeyAction.SWITCH -> getSystemService(InputMethodManager::class.java).showInputMethodPicker()
-            else -> KeyboardInput.send(key, field.onCreateInputConnection(info()), info())
+            else -> {
+                val connection = field.onCreateInputConnection(info())
+                val previewConnection = object : android.view.inputmethod.InputConnectionWrapper(connection, false) {
+                    // The preview keys hold focus; a real IME leaves focus in the host editor.
+                    override fun sendKeyEvent(event: android.view.KeyEvent) = field.dispatchKeyEvent(event)
+                }
+                KeyboardInput.send(key, previewConnection, info(), field.selectionStart, field.selectionEnd)
+            }
         } }
         root.addView(keyboard)
         setContentView(root)

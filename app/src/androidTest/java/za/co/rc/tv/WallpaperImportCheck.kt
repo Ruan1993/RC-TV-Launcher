@@ -21,10 +21,16 @@ import java.io.File
 /** Targeted platform-decoder check; lives only in the separate test APK. */
 class WallpaperImportCheck : Instrumentation() {
     private var overdue = false
-    override fun onCreate(arguments: Bundle?) { overdue = arguments?.getString("mode") == "overdue"; super.onCreate(arguments); start() }
+    private var keyboard = false
+    override fun onCreate(arguments: Bundle?) { overdue = arguments?.getString("mode") == "overdue"; keyboard = arguments?.getString("mode") == "keyboard"; super.onCreate(arguments); start() }
     override fun onStart() {
         val result = Bundle()
         try {
+            if (keyboard) {
+                KeyboardEditingCheck.run(this)
+                result.putString("verification", "Native editor: cursor movement, middle insertion, selection deletion, Unicode, empty fields and repeat passed")
+                finish(Activity.RESULT_OK, result); return
+            }
             if (overdue) {
                 runBlocking {
                     val job = Job(); val scope = CoroutineScope(Dispatchers.IO + job)

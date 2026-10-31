@@ -1,7 +1,7 @@
 package za.co.rc.tv.keyboard
 
 enum class KeyboardMode { LETTERS, SYMBOLS, NUMBERS }
-enum class KeyAction { TEXT, SHIFT, MODE, DELETE, ENTER, SWITCH, HIDE }
+enum class KeyAction { TEXT, SHIFT, MODE, DELETE, ENTER, SWITCH, HIDE, CURSOR_LEFT, CURSOR_RIGHT }
 data class TvKey(val label: String, val text: String = label, val action: KeyAction = KeyAction.TEXT, val weight: Float = 1f)
 data class KeyPosition(val row: Int, val column: Int)
 
@@ -17,6 +17,7 @@ object KeyboardModel {
         }
         val modeLabel = when (mode) { KeyboardMode.LETTERS -> "?123"; KeyboardMode.SYMBOLS -> "123"; KeyboardMode.NUMBERS -> "ABC" }
         return content + listOf(listOf(TvKey(modeLabel, action = KeyAction.MODE, weight = 1.5f), TvKey("Space", " ", weight = 4f),
+            TvKey("◀", action = KeyAction.CURSOR_LEFT), TvKey("▶", action = KeyAction.CURSOR_RIGHT),
             TvKey("Switch", action = KeyAction.SWITCH, weight = 1.5f), TvKey(enter, action = KeyAction.ENTER, weight = 2f), TvKey("Hide", action = KeyAction.HIDE, weight = 1.5f)))
     }
     fun move(rows: List<List<TvKey>>, from: KeyPosition, horizontal: Int = 0, vertical: Int = 0): KeyPosition {
