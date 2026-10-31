@@ -19,6 +19,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -131,6 +133,15 @@ private fun NavigationMark(mark: String, tint: Color) {
             "S" -> { drawCircle(tint, w*.28f, Offset(w*.42f,h*.42f), style = Stroke(stroke)); drawLine(tint, Offset(w*.63f,h*.63f), Offset(w*.9f,h*.9f), stroke) }
             "A" -> for (x in listOf(.12f,.58f)) for (y in listOf(.12f,.58f)) drawRect(tint, Offset(w*x,h*y), Size(w*.3f,h*.3f), style = Stroke(stroke))
             "L" -> { for (x in listOf(.18f,.4f,.7f)) drawLine(tint, Offset(w*x,h*.15f), Offset(w*(x+.05f),h*.88f), stroke) }
+            "C" -> {
+                drawRect(tint, Offset(w*.3f,h*.15f), Size(w*.6f,h*.6f), style = Stroke(stroke))
+                drawCircle(tint, w*.055f, Offset(w*.12f,h*.88f))
+                drawArc(tint, -90f, 90f, false, Offset(-w*.07f,h*.5f), Size(w*.38f,h*.38f), style = Stroke(stroke))
+            }
+            "T" -> {
+                drawArc(tint, 180f, 180f, false, Offset(w*.08f,h*.12f), Size(w*.84f,h*.84f), style = Stroke(stroke))
+                drawLine(tint, Offset(w*.5f,h*.54f), Offset(w*.75f,h*.28f), stroke)
+            }
             "R" -> {
                 drawRoundRect(tint, Offset(w*.25f,h*.05f), Size(w*.5f,h*.9f), CornerRadius(w*.12f), style = Stroke(stroke))
                 drawCircle(tint, w*.12f, Offset(w*.5f,h*.38f), style = Stroke(stroke))
@@ -313,9 +324,9 @@ fun CinematicLauncher(
         } }
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion)
-        Row(Modifier.fillMaxSize().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
+        Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> onSection(next) } } }, motion)
-            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("RC TV", fontSize = 20.sp, fontWeight = FontWeight.Normal, letterSpacing = 3.sp, color = Color.White)
@@ -324,6 +335,10 @@ fun CinematicLauncher(
                     Text(clock, fontSize = 28.sp, fontWeight = FontWeight.Normal, color = Color.White)
                 }
                 when (contentSection) {
+                    "Cast", "Speed Test" -> GlassPanel(Modifier.fillMaxWidth()) {
+                        Text(contentSection, style = MaterialTheme.typography.headlineLarge)
+                        Text("This utility is not configured yet. No test or casting session has started.")
+                    }
                     "Settings" -> if (wallpaperSettingsOpen) Box(Modifier.weight(1f)) {
                         WallpaperSettings(wallpapers, prefs, onImportWallpaper, onRemoveWallpaper, onRotation, onRotationInterval,
                             onRotationPool, onTransition, { scope.launch { onRotateWallpaper() } },
@@ -464,39 +479,28 @@ fun CinematicLauncher(
     }
 }
 
-/** Focus/width state is scoped here: rail animation cannot recompose the screen. */
+/** Scrolls only enough to reveal the focused item; labels are never compressed to fit. */
 @Composable
 private fun CinematicNavigation(section: String, onSection: (String) -> Unit, motion: String) {
-    var railFocused by remember { mutableStateOf(false) }
-    val railWidth by animateDpAsState(if (railFocused) 146.dp else 76.dp,
-        if (motion == "Minimal") snap() else spring(dampingRatio = if (motion == "Cinematic") .88f else 1f, stiffness = 600f), label = "railWidth")
-    Box(Modifier.width(146.dp).fillMaxHeight()) {
-        Column(Modifier.width(146.dp).fillMaxHeight().onFocusChanged { railFocused = it.hasFocus }.focusGroup()
-            .drawWithCache {
-                val material = Brush.verticalGradient(listOf(Color(0xCF263A45), Color(0xB30B131B), Color(0xD910202A)))
-                val edge = Brush.linearGradient(listOf(Color(0x88DAF3EE), Color(0x18FFFFFF), Color(0x4DC7E9E2)))
-                val highlight = Brush.verticalGradient(listOf(Color.White.copy(alpha = .07f), Color.Transparent))
-                onDrawWithContent {
-                val width = railWidth.toPx()
-                val panelSize = Size(width, size.height)
-                val corners = CornerRadius(22.dp.toPx())
-                drawRoundRect(material, size = panelSize, cornerRadius = corners)
-                drawRoundRect(highlight, Offset(5.dp.toPx(), 5.dp.toPx()), Size(width - 10.dp.toPx(), size.height * .3f), corners)
-                drawRoundRect(edge, size = panelSize, cornerRadius = corners, style = Stroke(1.dp.toPx()))
-                clipRect(right = width) { this@onDrawWithContent.drawContent() }
+    val state = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    Column(Modifier.fillMaxWidth()) {
+        LazyRow(Modifier.fillMaxWidth().focusGroup()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xCF263A45), Color(0xB30B131B), Color(0xD910202A))))
+            .border(1.dp, Color.White.copy(alpha = .20f), RoundedCornerShape(22.dp)),
+            state = state, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(8.dp)) {
+            items(listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Remote" to "R", "Keyboard" to "K", "Cast" to "C", "Speed Test" to "T", "Settings" to "···"), key = { it.first }) { (name, symbol) ->
+                val bring = remember { BringIntoViewRequester() }
+                Box(Modifier.bringIntoViewRequester(bring).onFocusChanged { if (it.hasFocus) scope.launch { bring.bringIntoView() } }.semantics { contentDescription = name }) {
+                    FocusButton(name, motion, Modifier.widthIn(min = 108.dp), selected = section == name, quiet = true, icon = symbol) { onSection(name) }
                 }
             }
-            .padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Spacer(Modifier.height(10.dp))
-            listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Library" to "L", "Remote" to "R", "Keyboard" to "K", "Settings" to "···").forEach { (name, symbol) ->
-                Box(Modifier.semantics { contentDescription = name }) {
-                    FocusButton(if (railFocused) name else "", motion, Modifier.width(if (railFocused) 126.dp else 56.dp), selected = section == name, quiet = true, icon = symbol) { onSection(name) }
-                }
-            }
-            Spacer(Modifier.weight(1f))
         }
+        if (state.canScrollBackward || state.canScrollForward) Text(
+            if (state.canScrollBackward && state.canScrollForward) "‹ More controls · Use Left / Right ›" else if (state.canScrollForward) "More controls · Use Right ›" else "‹ Use Left for more controls",
+            style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = .70f), modifier = Modifier.padding(start = 12.dp, top = 3.dp))
     }
-
 }
 
 private fun visibleFavouriteIndex(prefs: LauncherPreferences, apps: List<LauncherApp>, pkg: String): Int =
