@@ -23,6 +23,11 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    private var remoteAction: ((String, String) -> Boolean)? = null
+    private val companion by lazy { za.co.rc.tv.companion.CompanionServer(this) { key, text ->
+        lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && window.decorView.hasWindowFocus() && remoteAction?.invoke(key, text) == true
+    } }
+    override fun onStop() { companion.stop("RC TV left the screen. Start pairing again to reconnect."); super.onStop() }
     private fun traceBackKey(event: android.view.KeyEvent) {
         if (BuildConfig.PROFILE_DIAGNOSTICS && event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
             android.util.Log.i("RcNavigation", "Back keyCode=${event.keyCode} action=${event.action} repeat=${event.repeatCount}")
@@ -37,6 +42,7 @@ class MainActivity : ComponentActivity() {
         return super.onKeyUp(keyCode, event)
     }
     override fun onPause() {
+        companion.stop("RC TV is no longer active. Start pairing again to reconnect.")
         RenderDiagnostics.snapshot()
         super.onPause()
     }
@@ -68,6 +74,25 @@ class MainActivity : ComponentActivity() {
                 var discovery by remember { mutableStateOf(AppDiscoveryState()) }
                 var section by rememberSaveable { mutableStateOf("Home") }
                 var query by rememberSaveable { mutableStateOf("") }
+                var companionOpen by remember { mutableStateOf(false) }
+                val remoteInputMode = androidx.compose.ui.platform.LocalInputModeManager.current
+                SideEffect {
+                    remoteAction = { key, text ->
+                        remoteInputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
+                        when (key) {
+                            "HOME" -> { section = "Home"; true }
+                            "SEARCH_TEXT" -> { section = "Search"; query = text; true }
+                            "BACK" -> { onBackPressedDispatcher.onBackPressed(); true }
+                            else -> {
+                                val code = mapOf("UP" to 19, "DOWN" to 20, "LEFT" to 21, "RIGHT" to 22, "OK" to 23, "BACK" to 4)[key]
+                                if (code == null) false else {
+                                    window.decorView.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code))
+                                    window.decorView.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code)); true
+                                }
+                            }
+                        }
+                    }
+                }
                 var keyboardStatus by remember { mutableStateOf("") }
                 var homeStatus by remember { mutableStateOf("") }
                 var refresh by remember { mutableIntStateOf(0) }
@@ -120,6 +145,7 @@ class MainActivity : ComponentActivity() {
                     onKeyboardPreview = { startActivity(Intent(this@MainActivity, za.co.rc.tv.keyboard.KeyboardPreviewActivity::class.java)) },
                     onKeyboardEnable = { runCatching { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }.onFailure { message("Keyboard settings unavailable.") } },
                     onKeyboardChoose = { getSystemService(android.view.inputmethod.InputMethodManager::class.java).showInputMethodPicker() },
+                    onCompanion = { companionOpen = true },
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
                     wallpapers = wallpapers, wallpaperBusy = wallpaperBusy,
@@ -146,6 +172,8 @@ class MainActivity : ComponentActivity() {
                     onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
                     onReducedMotion = { scope.launch { runCatching { preferences.setReducedMotion(!prefs.reducedMotion) }.onFailure { message("Could not save preference.") } } }
                 )
+                if (companionOpen) za.co.rc.tv.companion.CompanionSettings(companion) { companionOpen = false }
+                za.co.rc.tv.companion.CompanionApproval(companion)
                 }
             }
         }

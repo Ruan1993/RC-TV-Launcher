@@ -11,10 +11,11 @@ android {
         testInstrumentationRunner = "za.co.rc.tv.WallpaperImportCheck"
         minSdk = 30
         targetSdk = 36
-        versionCode = 17
-        versionName = "0.5.0-cursor-editing"
+        versionCode = 18
+        versionName = "0.5.1-local-companion"
     }
     buildFeatures { compose = true; buildConfig = true }
+    sourceSets.getByName("main").java.srcDir(rootProject.file("shared/src"))
     defaultConfig { buildConfigField("boolean", "PROFILE_DIAGNOSTICS", "false") }
     buildTypes {
         create("profile") {

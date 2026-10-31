@@ -4,7 +4,7 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase C development preview (0.4.2), not version 1.0.** Approved Home, favourites and wallpaper styling are preserved. Supported Home selection explains Xiaomi's role/routing mismatch without changing the default. Optional offline RC TV Keyboard includes an isolated preview and user-controlled Android setup. Native image browsing now bypasses Xiaomi's broken document picker for indexed JPEG/PNG/WebP images and reuses private wallpaper imports. USB depends on Android indexing or a working document provider. See [Phase C verification and limitations](docs/PHASE-C.md) and the [complete roadmap](docs/FEATURE-ROADMAP.md).
+**Phase D development preview (TV 0.5.1 / Android Remote 0.1.0), not version 1.0.** Approved Home and saved preferences are preserved. Keyboard adds cursor-left/right, repeat and safe middle/selection editing. Optional Android companion provides encrypted local pairing with TV approval and RC TV-only navigation/search; physical-phone acceptance remains pending. See [connection instructions](docs/COMPANION.md), [Phase D checks](docs/PHASE-D.md), [casting findings](docs/CASTING-COMPATIBILITY.md) and [RC Assist architecture](docs/RC-ASSIST-ARCHITECTURE.md).
 
 Physical app context menu, direct-shelf favourites rearranging, Search, saved theme/motion and eight favourites remain preserved. No RC Assist or optional profile implementation. [Release blockers](docs/RELEASE-READINESS.md) remain explicit; the old Minimal regression is reserved for a dedicated optimisation checkpoint.
 

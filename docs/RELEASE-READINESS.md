@@ -1,6 +1,6 @@
 # Release readiness — 1.0 gates
 
-Current work is a **Phase C development preview**, not a feature-complete 1.0 release. The approved Home is preserved. See WALLPAPER-SELECTION-CHECKPOINT.md and PHASE-B-POLISH.md for evidence. Keep draft PR #2 unmerged, repository visibility unchanged and stock Home as default.
+Current work is a **Phase D development preview**, not a feature-complete 1.0 release. The approved Home is preserved. See WALLPAPER-SELECTION-CHECKPOINT.md and PHASE-B-POLISH.md for evidence. Keep draft PR #2 unmerged, repository visibility unchanged and stock Home as default.
 
 ## Core and device acceptance
 
@@ -58,3 +58,10 @@ Prioritise the 1.0 critical path: reliable everyday launch/return, remote focus,
 - [ ] Real IME Search entry/Backspace/Back and exact Gboard restoration now verified with user approval; cross-app/password/numeric/editor-action and physical-remote acceptance remain.
 - [ ] Xiaomi Home role/resolution mismatch: actual Home selection/reboot requires explicit user approval and firmware acceptance.
 - [ ] Android 13/14 image permissions/selected access, USB providers, revoked permissions, large libraries and second-device acceptance.
+
+## Phase D follow-up gates
+- [x] Keyboard cursor controls/repeat and native editor insertion, selection, empty-field and Unicode checks.
+- [x] Optional Android companion: pinned TLS, TV approval, authenticated RC TV-only controls and disconnect/revocation.
+- [ ] Physical-phone UI/discovery/router/lifecycle acceptance, longer sessions and security review before production distribution. Automatic discovery is not yet verified on this LAN; manual address fallback implemented.
+- [ ] Google Cast sender discovery/playback/stop acceptance. Installed receiver alone is not functional-casting evidence.
+- [x] RC Assist contract/security architecture documented; no assistant/backend implementation this sprint.
