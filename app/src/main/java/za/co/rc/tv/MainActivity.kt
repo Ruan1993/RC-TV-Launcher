@@ -71,6 +71,8 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val suggestSetup = SetupProgress.offerOnFirstOpen(getSharedPreferences("easy-setup", MODE_PRIVATE).getBoolean("seen", false),
+            java.io.File(filesDir, "datastore/launcher.preferences_pb").exists())
         setContent {
             MaterialTheme(typography = za.co.rc.tv.ui.LauncherTypography, colorScheme = darkColorScheme(primary = Color(0xFF9FE9D5), background = Color(0xFF09151F), surface = Color(0xFF182D39))) {
                 CompositionLocalProvider(LocalContentColor provides Color.White) {
@@ -78,6 +80,8 @@ class MainActivity : ComponentActivity() {
                 var discovery by remember { mutableStateOf(AppDiscoveryState()) }
                 var section by rememberSaveable { mutableStateOf("Home") }
                 var query by rememberSaveable { mutableStateOf("") }
+                val setupPrefs = remember { getSharedPreferences("easy-setup", MODE_PRIVATE) }
+                var setupOpen by rememberSaveable { mutableStateOf(suggestSetup) }
                 var companionOpen by remember { mutableStateOf(false) }
                 var companionPage by remember { mutableIntStateOf(0) }
                 var offerOtherApps by remember { mutableStateOf(false) }
@@ -91,7 +95,7 @@ class MainActivity : ComponentActivity() {
                         val config = getSharedPreferences("companion-connection", MODE_PRIVATE)
                         if ((!za.co.rc.tv.companion.RemoteRuntime.access.value.connected || !za.co.rc.tv.companion.RemoteRuntime.optedIn(this@MainActivity)) && !config.getBoolean("setup-offered", false)) {
                             config.edit().putBoolean("setup-offered", true).apply()
-                            offerOtherApps = true
+                            if (!setupOpen) offerOtherApps = true
                         }
                     }
                 }
@@ -168,6 +172,7 @@ class MainActivity : ComponentActivity() {
                     onKeyboardChoose = { getSystemService(android.view.inputmethod.InputMethodManager::class.java).showInputMethodPicker() },
                     onCompanion = { companionPage = 0; companionOpen = true },
                     onPhoneTyping = { companionPage = 2; companionOpen = true },
+                    onEasySetup = { setupOpen = true },
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
                     wallpapers = wallpapers, wallpaperBusy = wallpaperBusy,
@@ -194,6 +199,9 @@ class MainActivity : ComponentActivity() {
                     onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
                     onReducedMotion = { scope.launch { runCatching { preferences.setReducedMotion(!prefs.reducedMotion) }.onFailure { message("Could not save preference.") } } }
                 )
+                if (setupOpen) za.co.rc.tv.ui.SetupWizard(companion, { selectHome() }, { openSettings() }) {
+                    setupPrefs.edit().putBoolean("seen", true).apply(); setupOpen = false
+                }
                 if (companionOpen) za.co.rc.tv.companion.CompanionSettings(companion, companionPage) { companionOpen = false }
                 if (offerOtherApps) AlertDialog(onDismissRequest = { offerOtherApps = false }, title = { Text("Phone connected successfully") },
                     text = { Text("Use your phone in YouCine and other supported apps? Complete the Android permission setup once. Your physical remote keeps working.") },
