@@ -374,7 +374,7 @@ fun CinematicLauncher(
             CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> { utilityReturn=null; settingsPage=null; onSection(next) } } } }, motion, settingsFocus, clockFocus)
             Column(Modifier.weight(1f).fillMaxWidth().vividContrast(vivid && contentSection != "Home"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         BrandWordmark()
                         Text("Your world. In focus.", style=floatingTextStyle(), fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
                     }
