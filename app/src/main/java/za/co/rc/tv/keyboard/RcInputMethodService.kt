@@ -14,9 +14,9 @@ class RcInputMethodService : InputMethodService() {
             val service = active ?: return za.co.rc.tv.companion.CommandResult(false, "Choose RC TV Keyboard and focus a text field first.")
             val info = service.currentInputEditorInfo
             val connection = service.currentInputConnection
-            if (!service.isInputViewShown || info == null || info.packageName != expectedPackage || connection == null ||
+            if (info == null || info.packageName != expectedPackage || connection == null ||
                 info.inputType == 0 || KeyboardInput.isPassword(info) || text.isEmpty() || text.length > 160) {
-                return za.co.rc.tv.companion.CommandResult(false, "Text needs a visible RC TV Keyboard in an active non-password field. Custom keyboards may be unsupported.")
+                return za.co.rc.tv.companion.CommandResult(false, "Select a normal TV text field and choose RC TV Keyboard. Password fields are not supported.")
             }
             return za.co.rc.tv.companion.CommandResult(connection.commitText(text, 1), "The app did not accept text. Use its keyboard or physical remote.")
         }
@@ -24,6 +24,10 @@ class RcInputMethodService : InputMethodService() {
     private var keyboard: TvKeyboardView? = null
     private var selectionStart = -1
     private var selectionEnd = -1
+    override fun onStartInput(info: EditorInfo, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        active = this
+    }
     override fun onCreateInputView(): View = TvKeyboardView(this) { key ->
         when (key.action) {
             KeyAction.HIDE -> requestHideSelf(0)

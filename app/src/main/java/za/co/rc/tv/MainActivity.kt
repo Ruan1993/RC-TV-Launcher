@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         za.co.rc.tv.companion.RemoteRuntime.foreground = { key, text ->
-            lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && window.decorView.hasWindowFocus() && remoteAction?.invoke(key, text) == true
+            lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && (window.decorView.hasWindowFocus() || key == "CLOSE_SETUP") && remoteAction?.invoke(key, text) == true
         }
         companion.resume()
     }
@@ -79,11 +79,28 @@ class MainActivity : ComponentActivity() {
                 var section by rememberSaveable { mutableStateOf("Home") }
                 var query by rememberSaveable { mutableStateOf("") }
                 var companionOpen by remember { mutableStateOf(false) }
+                var companionPage by remember { mutableIntStateOf(0) }
+                var offerOtherApps by remember { mutableStateOf(false) }
+                val companionState by companion.state.collectAsStateWithLifecycle()
+                var seenConnection by remember { mutableLongStateOf(companionState.connectionEvent) }
+                LaunchedEffect(companionState.connectionEvent) {
+                    if (companionState.connectionEvent > seenConnection) {
+                        seenConnection = companionState.connectionEvent
+                        companionOpen = false
+                        message("Phone connected successfully")
+                        val config = getSharedPreferences("companion-connection", MODE_PRIVATE)
+                        if ((!za.co.rc.tv.companion.RemoteRuntime.access.value.connected || !za.co.rc.tv.companion.RemoteRuntime.optedIn(this@MainActivity)) && !config.getBoolean("setup-offered", false)) {
+                            config.edit().putBoolean("setup-offered", true).apply()
+                            offerOtherApps = true
+                        }
+                    }
+                }
                 val remoteInputMode = androidx.compose.ui.platform.LocalInputModeManager.current
                 SideEffect {
                     remoteAction = { key, text ->
                         remoteInputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
                         when (key) {
+                            "CLOSE_SETUP" -> if (companionOpen && companionState.pending == null && !offerOtherApps) { companionOpen = false; true } else false
                             "HOME" -> { section = "Home"; true }
                             "SEARCH_TEXT" -> { section = "Search"; query = text; true }
                             "BACK" -> { onBackPressedDispatcher.onBackPressed(); true }
@@ -149,7 +166,8 @@ class MainActivity : ComponentActivity() {
                     onKeyboardPreview = { startActivity(Intent(this@MainActivity, za.co.rc.tv.keyboard.KeyboardPreviewActivity::class.java)) },
                     onKeyboardEnable = { runCatching { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }.onFailure { message("Keyboard settings unavailable.") } },
                     onKeyboardChoose = { getSystemService(android.view.inputmethod.InputMethodManager::class.java).showInputMethodPicker() },
-                    onCompanion = { companionOpen = true },
+                    onCompanion = { companionPage = 0; companionOpen = true },
+                    onPhoneTyping = { companionPage = 2; companionOpen = true },
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
                     wallpapers = wallpapers, wallpaperBusy = wallpaperBusy,
@@ -176,7 +194,11 @@ class MainActivity : ComponentActivity() {
                     onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
                     onReducedMotion = { scope.launch { runCatching { preferences.setReducedMotion(!prefs.reducedMotion) }.onFailure { message("Could not save preference.") } } }
                 )
-                if (companionOpen) za.co.rc.tv.companion.CompanionSettings(companion) { companionOpen = false }
+                if (companionOpen) za.co.rc.tv.companion.CompanionSettings(companion, companionPage) { companionOpen = false }
+                if (offerOtherApps) AlertDialog(onDismissRequest = { offerOtherApps = false }, title = { Text("Phone connected successfully") },
+                    text = { Text("Use your phone in YouCine and other supported apps? Complete the Android permission setup once. Your physical remote keeps working.") },
+                    confirmButton = { za.co.rc.tv.ui.FocusButton("Set up other apps", "Minimal") { offerOtherApps = false; companionPage = 1; companionOpen = true } },
+                    dismissButton = { za.co.rc.tv.ui.FocusButton("Later", "Minimal") { offerOtherApps = false } })
                 za.co.rc.tv.companion.CompanionApproval(companion)
 
                 }

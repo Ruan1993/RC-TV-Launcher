@@ -4,7 +4,7 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase F development preview (TV 0.7.0 / Remote 0.3.0), not version 1.0.** RC Assist is postponed and removed from the active app. Optional, explicitly consented accessibility control extends the encrypted companion beyond RC TV. Android 11 uses app-exposed focus/click actions, not arbitrary D-pad injection. Home/Back use system global actions; media requests and optional RC TV Keyboard text have app-specific limits. Third-party acceptance remains pending user accessibility consent. See [Phase F research, setup and verification](docs/PHASE-F.md).
+**Phase F development preview (TV 0.7.3 / Remote 0.4.0), not version 1.0.** RC Assist is postponed and removed from the active app. Optional, explicitly consented accessibility control extends the encrypted companion beyond RC TV. Android 11 uses app-exposed focus/click actions, not arbitrary D-pad injection. Home/Back use system global actions; media requests and optional RC TV Keyboard text have app-specific limits. User reports YouCine control works after enabling Android Accessibility. Text-entry follow-up is in device acceptance; see the Phase F report. See [Phase F research, setup and verification](docs/PHASE-F.md).
 
 Physical app context menu, direct-shelf favourites rearranging, Search, saved theme/motion and eight favourites remain preserved. RC Assist remains available in Git history at `e8e20c4`. [Release blockers](docs/RELEASE-READINESS.md) remain explicit; the old Minimal regression is reserved for a dedicated optimisation checkpoint.
 
@@ -16,7 +16,7 @@ On Windows: ` .\gradlew.bat assembleDebug testDebugUnitTest lintDebug`
 
 On macOS/Linux: `sh gradlew assembleDebug testDebugUnitTest lintDebug`
 
-The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.7.0-system-remote). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
+The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.7.3-system-remote). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
 
 ## Install and recover
 

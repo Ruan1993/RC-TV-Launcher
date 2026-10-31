@@ -29,7 +29,15 @@ class RemoteAccessibilityService : AccessibilityService() {
             if (RemotePolicy.localOnly(pkg, packageName)) {
                 return CommandResult(false, "Use the physical remote for TV settings, permissions and RC TV dialogs.")
             }
-            if (key == "INPUT_TEXT") return za.co.rc.tv.keyboard.RcInputMethodService.remoteText(text, pkg)
+            if (key == "INPUT_TEXT") {
+                val editor = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                    ?: return CommandResult(false, "Select the TV search or text field first.")
+                return try {
+                    if (!editor.isEditable || !editor.isEnabled || editor.isPassword || editor.packageName?.toString() != pkg)
+                        CommandResult(false, "Select a normal non-password text field. This app may use an unsupported custom keyboard.")
+                    else za.co.rc.tv.keyboard.RcInputMethodService.remoteText(text, pkg)
+                } finally { editor.recycle() }
+            }
             val media = mapOf("MEDIA_PLAY_PAUSE" to KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
                 "MEDIA_NEXT" to KeyEvent.KEYCODE_MEDIA_NEXT, "MEDIA_PREVIOUS" to KeyEvent.KEYCODE_MEDIA_PREVIOUS)[key]
             if (media != null) {

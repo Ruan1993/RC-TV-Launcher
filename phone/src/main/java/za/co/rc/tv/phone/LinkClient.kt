@@ -23,7 +23,11 @@ class LinkClient(val host: String, val port: Int, pin: String? = null) {
         return fingerprint ?: error("Missing identity")
     }
     fun request(value: JSONObject): JSONObject = exchange(value, false)
-    fun resume() { lease = request(JSONObject().put("op", "resume").put("token", token ?: error("Pair first"))).getString("lease"); sequence = 0 }
+    fun resume(): JSONObject {
+        val response = request(JSONObject().put("op", "resume").put("token", token ?: error("Pair first")))
+        lease = response.getString("lease"); sequence = 0
+        return response
+    }
     fun status() = request(JSONObject().put("op", "status").put("token", token).put("lease", lease))
     fun command(key: String, text: String = "") = request(JSONObject().put("op", "command").put("token", token ?: error("Pair first"))
         .put("lease", lease).put("sequence", ++sequence).put("key", key).put("text", text))

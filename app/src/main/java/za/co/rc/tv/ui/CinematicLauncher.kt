@@ -131,6 +131,16 @@ private fun NavigationMark(mark: String, tint: Color) {
             "S" -> { drawCircle(tint, w*.28f, Offset(w*.42f,h*.42f), style = Stroke(stroke)); drawLine(tint, Offset(w*.63f,h*.63f), Offset(w*.9f,h*.9f), stroke) }
             "A" -> for (x in listOf(.12f,.58f)) for (y in listOf(.12f,.58f)) drawRect(tint, Offset(w*x,h*y), Size(w*.3f,h*.3f), style = Stroke(stroke))
             "L" -> { for (x in listOf(.18f,.4f,.7f)) drawLine(tint, Offset(w*x,h*.15f), Offset(w*(x+.05f),h*.88f), stroke) }
+            "R" -> {
+                drawRoundRect(tint, Offset(w*.25f,h*.05f), Size(w*.5f,h*.9f), CornerRadius(w*.12f), style = Stroke(stroke))
+                drawCircle(tint, w*.12f, Offset(w*.5f,h*.38f), style = Stroke(stroke))
+                drawLine(tint, Offset(w*.4f,h*.68f), Offset(w*.6f,h*.68f), stroke)
+            }
+            "K" -> {
+                drawRoundRect(tint, Offset(w*.05f,h*.2f), Size(w*.9f,h*.6f), CornerRadius(w*.08f), style = Stroke(stroke))
+                for (x in listOf(.25f,.5f,.75f)) drawCircle(tint, w*.04f, Offset(w*x,h*.4f))
+                drawLine(tint, Offset(w*.3f,h*.63f), Offset(w*.7f,h*.63f), stroke)
+            }
             else -> {
                 val cog = Path().apply {
                     for (i in 0 until 48) {
@@ -187,7 +197,7 @@ fun CinematicLauncher(
     discovery: AppDiscoveryState, repository: AppRepository, iconGeneration: Int,
     prefs: LauncherPreferences, section: String, onSection: (String) -> Unit,
     query: String, onQuery: (String) -> Unit, clock: String, homeStatus: String,
-    keyboardStatus: String, onKeyboardPreview: () -> Unit, onKeyboardEnable: () -> Unit, onKeyboardChoose: () -> Unit, onCompanion: () -> Unit,
+    keyboardStatus: String, onKeyboardPreview: () -> Unit, onKeyboardEnable: () -> Unit, onKeyboardChoose: () -> Unit, onCompanion: () -> Unit, onPhoneTyping: () -> Unit,
     onLaunch: (LauncherApp) -> Unit, onPin: (LauncherApp) -> Unit, onRetry: () -> Unit,
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
     wallpapers: List<WallpaperOption>, wallpaperBusy: Boolean, onImportWallpaper: () -> Unit,
@@ -304,7 +314,7 @@ fun CinematicLauncher(
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion)
         Row(Modifier.fillMaxSize().padding(24.dp), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
-            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); onSection(next) } }, motion)
+            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> onSection(next) } } }, motion)
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -477,7 +487,7 @@ private fun CinematicNavigation(section: String, onSection: (String) -> Unit, mo
             }
             .padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Spacer(Modifier.height(10.dp))
-            listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Library" to "L", "Settings" to "···").forEach { (name, symbol) ->
+            listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Library" to "L", "Remote" to "R", "Keyboard" to "K", "Settings" to "···").forEach { (name, symbol) ->
                 Box(Modifier.semantics { contentDescription = name }) {
                     FocusButton(if (railFocused) name else "", motion, Modifier.width(if (railFocused) 126.dp else 56.dp), selected = section == name, quiet = true, icon = symbol) { onSection(name) }
                 }

@@ -23,7 +23,7 @@ import za.co.rc.tv.link.SecureRecord
 
 data class CompanionState(val running: Boolean = false, val message: String = "Off. Start when you want to pair a phone.",
     val address: String = "", val code: String = "", val fingerprint: String = "",
-    val pending: PairingGate.Pending? = null, val devices: List<PairingGate.Session> = emptyList())
+    val pending: PairingGate.Pending? = null, val devices: List<PairingGate.Session> = emptyList(), val connectionEvent: Long = 0)
 
 /** Explicit opt-in listener bound to one private LAN address, never INADDR_ANY. */
 class CompanionServer(context: Context, private val command: (String, String) -> CommandResult) {
@@ -33,6 +33,7 @@ class CompanionServer(context: Context, private val command: (String, String) ->
     private val storage = SecureRecord(context, "companion-grants")
     private val config = context.getSharedPreferences("companion-connection", Context.MODE_PRIVATE)
     private var loaded = false
+    private var connectionEvent = 0L
     private val mutable = MutableStateFlow(CompanionState())
     val state = mutable.asStateFlow()
     @Volatile private var running = false
@@ -139,9 +140,12 @@ class CompanionServer(context: Context, private val command: (String, String) ->
             "hello" -> JSONObject().put("ok", true).put("name", "RC TV").put("protocol", 2)
             "pair" -> gate.request(request.optString("code").take(16), request.optString("name"))?.let { JSONObject().put("ok", true).put("request", it) } ?: errorReply("Pairing unavailable, expired or rate limited. Check the TV.")
             "poll" -> gate.poll(request.optString("request").take(128))?.let { JSONObject().put("ok", true).put("approved", it.first).apply { it.second?.let { value -> put("token", value) } } } ?: errorReply("Pairing expired or declined.")
-            "resume" -> gate.resume(token)?.let { JSONObject().put("ok", true).put("lease", it) } ?: errorReply("Pairing expired or revoked.", "revoked")
+            "resume" -> gate.resume(token)?.let { lease ->
+                main.post { connectionEvent++; mutable.value = mutable.value.copy(connectionEvent = connectionEvent) }
+                accessReply().put("lease", lease)
+            } ?: errorReply("Pairing expired or revoked.", "revoked")
             "status" -> if (!gate.authenticated(token)) errorReply("Disconnected or revoked. Pair again.", "revoked")
-                else if (!gate.validLease(token, request.optString("lease"))) errorReply("Resume this connection.", "resume") else JSONObject().put("ok", true)
+                else if (!gate.validLease(token, request.optString("lease"))) errorReply("Resume this connection.", "resume") else accessReply()
             "disconnect" -> if (gate.authenticated(token)) { gate.disconnect(token); persist(); JSONObject().put("ok", true) } else errorReply("Not authorised", "revoked")
             "command" -> {
                 val key = request.optString("key")
@@ -162,6 +166,9 @@ class CompanionServer(context: Context, private val command: (String, String) ->
         refresh(); return result
     }
     private fun errorReply(message: String, reason: String = "rejected") = JSONObject().put("ok", false).put("error", message).put("reason", reason)
+    private fun accessReply() = JSONObject().put("ok", true)
+        .put("systemControl", RemoteRuntime.optedIn(context))
+        .put("accessibilityConnected", RemoteRuntime.accessibility != null)
     private fun sameSubnet(peer: InetAddress, local: InetAddress, prefix: Int): Boolean {
         if (peer !is Inet4Address || !peer.isSiteLocalAddress || prefix !in 1..32) return false
         val a = peer.address; val b = local.address

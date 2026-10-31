@@ -16,6 +16,8 @@ class RemotePolicyTest {
         assertTrue(RemotePolicy.validPayload("INPUT_TEXT", "a".repeat(160)))
         assertFalse(RemotePolicy.validPayload("INPUT_TEXT", "a".repeat(161)))
         assertTrue(RemotePolicy.validPayload("MEDIA_PLAY_PAUSE", ""))
+        assertTrue(RemotePolicy.validPayload("CLOSE_SETUP", ""))
+        assertFalse(RemotePolicy.validPayload("CLOSE_SETUP", "unexpected"))
         assertFalse(RemotePolicy.validPayload("HOME", "unexpected"))
         assertFalse(RemotePolicy.validPayload("SHELL", ""))
         assertFalse(RemotePolicy.validPayload("ASSIST_PROMPT", "hello"))

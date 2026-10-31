@@ -38,6 +38,7 @@ class PhoneActivity : Activity() {
     private var lastCommand = 0L
     private val credentials by lazy { za.co.rc.tv.link.SecureRecord(this, "approved-tv") }
     private var connected = false
+    private var setupStatus: TextView? = null
     private val nsd by lazy { getSystemService(NsdManager::class.java) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -172,10 +173,18 @@ class PhoneActivity : Activity() {
             } catch (_: Exception) { main.post { if (current == generation) message("Pairing declined, stopped or expired.") } }
         } }, 1000)
     }
-    private fun remote() {
+    private fun updateSetupStatus(response: JSONObject) {
+        setupStatus?.text = if (response.optBoolean("systemControl") && response.optBoolean("accessibilityConnected"))
+            "Other-app control is ready. Some controls depend on the TV app. Your physical remote still works."
+        else "RC TV control is ready. To stay connected in YouCine: on TV choose Remote > Other apps and complete both permission steps."
+    }
+    private fun remote(response: JSONObject) {
         controls.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(0xF5283D49.toInt(), 0xFA11232D.toInt())).apply { cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0x557DA99F) }
         controls.setPadding(dp(16), dp(12), dp(16), dp(12))
         connected = true; controls.removeAllViews(); message("Connected · encrypted local control")
+        Toast.makeText(this, "Connected to TV successfully", Toast.LENGTH_SHORT).show()
+        setupStatus = text("", 14, controls); updateSetupStatus(response)
+        button("Close TV setup screen", controls) { send("CLOSE_SETUP") }
         button("↑", controls) { send("UP") }
         val row = LinearLayout(this); controls.addView(row)
         for ((label, key) in listOf("←" to "LEFT", "OK" to "OK", "→" to "RIGHT")) {
@@ -185,29 +194,38 @@ class PhoneActivity : Activity() {
         button("Play / Pause", controls) { send("MEDIA_PLAY_PAUSE") }
         button("Previous media", controls) { send("MEDIA_PREVIOUS") }
         button("Next media", controls) { send("MEDIA_NEXT") }
-        val input = editor("Text for active TV field - no passwords", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS); controls.addView(input)
-        button("Send text - RC TV Keyboard", controls) { val value = input.text.toString().take(160); input.text.clear(); send("INPUT_TEXT", value) }
+        text("Typing: first select the TV search or text box. RC TV Keyboard must be selected; it can stay hidden in apps such as YouCine.", 14, controls)
+        val input = editor("Text for TV - no passwords", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS)
+        input.filters = arrayOf(android.text.InputFilter.LengthFilter(160)); controls.addView(input)
+        button("Send text", controls) {
+            val value = input.text.toString()
+            if (value.isEmpty()) Toast.makeText(this, "Type something here first", Toast.LENGTH_SHORT).show()
+            else send("INPUT_TEXT", value) { if (input.text.toString() == value) input.text.clear() }
+        }
         val search = editor("App name · never enter passwords", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS); controls.addView(search)
         button("Search apps on TV", controls) { val value = search.text.toString().take(160); search.text.clear(); send("SEARCH_TEXT", value) }
         button("Disconnect & forget TV", controls) {
             generation++; val old = client; client = null; connected = false; controls.removeAllViews(); background { credentials.clear(); old?.disconnect() }; message("Disconnected. Pair again on the TV to reconnect.")
         }
     }
-    private fun send(key: String, text: String = "") {
+    private fun send(key: String, text: String = "", accepted: () -> Unit = {}) {
         if (SystemClock.uptimeMillis() - lastCommand < 80) return
         if (!connected) return
         lastCommand = SystemClock.uptimeMillis(); val connection = client ?: return; val current = generation
         background { if (!visible || current != generation) return@background
-            try { val response = connection.command(key, text); main.post { if (current == generation) message(response.optString("message", "Command accepted")) } }
+            try { val response = connection.command(key, text); main.post { if (current == generation) {
+                message(response.optString("message", "Command accepted")); accepted()
+                if (key == "INPUT_TEXT") Toast.makeText(this, "Text sent to TV", Toast.LENGTH_SHORT).show()
+            } } }
             catch (failure: LinkRejected) { main.post { if (current == generation) {
                 if (failure.reason in listOf("resume", "revoked")) { generation++; reconnect(connection, generation, 0) }
-                else message(failure.message ?: "Close TV dialogs with the physical remote.")
+                else { message(failure.message ?: "Use the physical remote for this screen."); Toast.makeText(this, failure.message ?: "Control unavailable", Toast.LENGTH_LONG).show() }
             } } }
             catch (_: Exception) { main.post { if (current == generation) { generation++; reconnect(connection, generation, 0) } } } }
     }
     private fun heartbeat(connection: LinkClient, current: Int) {
         main.postDelayed({ if (visible && current == generation) background {
-            try { connection.status(); main.post { if (current == generation) heartbeat(connection, current) } }
+            try { val response = connection.status(); main.post { if (current == generation) { updateSetupStatus(response); heartbeat(connection, current) } } }
             catch (_: Exception) { main.post { if (current == generation) { generation++; reconnect(connection, generation, 0) } } }
         } }, 5000)
     }
@@ -216,9 +234,9 @@ class PhoneActivity : Activity() {
         connected = false; client = connection; controls.removeAllViews(); message("Reconnecting · check TV network and system control, or return to RC TV")
         main.postDelayed({ if (visible && current == generation) background {
             try {
-                connection.resume()
+                val response = connection.resume()
                 credentials.write(JSONObject().put("host", connection.host).put("port", connection.port).put("pin", connection.fingerprint).put("token", connection.token))
-                main.post { if (visible && current == generation) { remote(); heartbeat(connection, current) } }
+                main.post { if (visible && current == generation) { remote(response); heartbeat(connection, current) } }
             } catch (failure: LinkRejected) { main.post { if (current == generation) {
                 client = null; connected = false; credentials.clear(); controls.removeAllViews(); message("Disconnected · pairing expired or revoked. Pair again.")
             } } }

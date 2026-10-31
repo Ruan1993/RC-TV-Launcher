@@ -3,29 +3,37 @@ package za.co.rc.tv.companion
 import android.content.Context
 
 data class CommandResult(val accepted: Boolean, val message: String)
+data class RemoteAccess(val optedIn: Boolean = false, val connected: Boolean = false)
 
 /** One listener and one grant store, shared by the foreground UI and opt-in system service. */
 object RemoteRuntime {
+    private val mutableAccess = kotlinx.coroutines.flow.MutableStateFlow(RemoteAccess())
+    val access: kotlinx.coroutines.flow.StateFlow<RemoteAccess> = mutableAccess
     private var instance: CompanionServer? = null
     var foreground: ((String, String) -> Boolean)? = null
-    var accessibility: RemoteAccessibilityService? = null
+    @Volatile var accessibility: RemoteAccessibilityService? = null
         private set
     fun server(context: Context): CompanionServer = instance ?: CompanionServer(context.applicationContext, ::dispatch)
-        .also { instance = it }
+        .also { instance = it; updateAccess(context) }
+    private fun updateAccess(context: Context) { mutableAccess.value = RemoteAccess(optedIn(context), accessibility != null) }
     fun optedIn(context: Context) = context.getSharedPreferences("companion-connection", Context.MODE_PRIVATE)
         .getBoolean("system-wide", false)
     fun setOptIn(context: Context, enabled: Boolean) {
         context.getSharedPreferences("companion-connection", Context.MODE_PRIVATE).edit().putBoolean("system-wide", enabled).apply()
+        updateAccess(context)
         // Invalidate leases on any authority change; encrypted approvals are preserved.
         server(context).suspendConnection("Remote permissions changed. Reconnecting…")
         if (foreground != null || (enabled && accessibility != null)) server(context).resume()
     }
     fun attach(service: RemoteAccessibilityService) {
         accessibility = service
+        updateAccess(service)
         if (optedIn(service)) server(service).resume()
     }
     fun detach(service: RemoteAccessibilityService) {
-        if (accessibility === service) accessibility = null
+        if (accessibility !== service) return
+        accessibility = null
+        updateAccess(service)
         server(service).suspendConnection("System control disconnected. Return to RC TV or enable accessibility again.")
         if (foreground != null) server(service).resume()
     }
