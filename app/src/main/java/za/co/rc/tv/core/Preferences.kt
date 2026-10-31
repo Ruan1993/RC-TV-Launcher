@@ -49,6 +49,13 @@ class Preferences(context: Context) {
         store.edit { it[wallpaper] = value; it[rotatedAt] = System.currentTimeMillis() }
     }
     suspend fun setRotation(enabled: Boolean) { store.edit { it[rotate] = enabled; it[rotatedAt] = System.currentTimeMillis() } }
+    suspend fun setWallpaperIfCurrent(value: String, expected: String) {
+        require(BundledWallpaper.entries.any { it.id == value })
+        store.edit { p -> check(validWallpaper(p[wallpaper]) == expected) { "Wallpaper changed; ask again" }; p[wallpaper] = value; p[rotatedAt] = System.currentTimeMillis() }
+    }
+    suspend fun setRotationIfCurrent(value: Boolean, expected: Boolean) {
+        store.edit { p -> check((p[rotate] ?: false) == expected) { "Rotation changed; ask again" }; p[rotate] = value; p[rotatedAt] = System.currentTimeMillis() }
+    }
     suspend fun setRotationMinutes(value: Int) { require(value in rotationIntervals); store.edit { it[interval] = value; it[rotatedAt] = System.currentTimeMillis() } }
     suspend fun setWallpaperTransition(value: String) { require(validWallpaperTransition(value) == value); store.edit { it[transition] = value } }
     suspend fun toggleRotationWallpaper(id: String) { require(validWallpaper(id) == id); store.edit { p ->

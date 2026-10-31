@@ -1,6 +1,6 @@
 # Release readiness — 1.0 gates
 
-Current work is a **Phase D development preview**, not a feature-complete 1.0 release. The approved Home is preserved. See WALLPAPER-SELECTION-CHECKPOINT.md and PHASE-B-POLISH.md for evidence. Keep draft PR #2 unmerged, repository visibility unchanged and stock Home as default.
+Current work is a **Phase E development preview**, not a feature-complete 1.0 release. The approved Home is preserved. See WALLPAPER-SELECTION-CHECKPOINT.md and PHASE-B-POLISH.md for evidence. Keep draft PR #2 unmerged, repository visibility unchanged and stock Home as default.
 
 ## Core and device acceptance
 
@@ -65,3 +65,10 @@ Prioritise the 1.0 critical path: reliable everyday launch/return, remote focus,
 - [ ] Physical-phone UI/discovery/router/lifecycle acceptance, longer sessions and security review before production distribution. Automatic discovery is not yet verified on this LAN; manual address fallback implemented.
 - [ ] Google Cast sender discovery/playback/stop acceptance. Installed receiver alone is not functional-casting evidence.
 - [x] RC Assist contract/security architecture documented; no assistant/backend implementation this sprint.
+
+## Phase E follow-up gates
+- [x] Encrypted companion approval and fresh reconnect leases; YouCine pause/return and process-recreation/revocation checks.
+- [ ] Upgrade both TV/phone APKs and complete one fresh pairing; physical-phone Reconnecting/Connected/revoked UX, network-change and longer-session acceptance. No YouCine/system-wide controls promised.
+- [x] RC Assist local UI, read commands, allowlisted confirmed app/preference actions and unconfigured-backend feedback.
+- [ ] Authorised Gemini credential/backend with authenticated short-lived sessions, server limits and explicit deployment approval. No online AI is connected.
+- [ ] Broader app/editor/device/accessibility coverage; keep previous performance/signing gates.

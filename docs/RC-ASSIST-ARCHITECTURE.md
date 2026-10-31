@@ -23,3 +23,6 @@ Keep a supported Gemini Flash model configurable on the server; verify current m
 The backend can suggest actions but has no direct launcher execution capability. A deterministic local executor owns validation and confirmation. Future voice uses a supported Android speech service with explicit microphone consent and a visible listening state, never continuous background capture.
 
 Reference: [Google API-key security guidance](https://ai.google.dev/gemini-api/docs/api-key). This is an architecture boundary, not a deployed assistant or a promise of model availability.
+
+## Phase E implementation
+Local interpreter/typed proposals, bounded session UI and confirmed executor are now implemented in the assist package. Pref writes compare expected values atomically. The backend adapter is ready for a runtime session provider but is unconfigured; backend replies are prose-only and cannot invoke the executor. An authorised backend still needs the authentication, rate limiting and deployment gates above before Gemini activation.

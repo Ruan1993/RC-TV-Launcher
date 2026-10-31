@@ -4,7 +4,7 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase D development preview (TV 0.5.1 / Android Remote 0.1.0), not version 1.0.** Approved Home and saved preferences are preserved. Keyboard adds cursor-left/right, repeat and safe middle/selection editing. Optional Android companion provides encrypted local pairing with TV approval and RC TV-only navigation/search; physical-phone acceptance remains pending. See [connection instructions](docs/COMPANION.md), [Phase D checks](docs/PHASE-D.md), [casting findings](docs/CASTING-COMPATIBILITY.md) and [RC Assist architecture](docs/RC-ASSIST-ARCHITECTURE.md).
+**Phase E development preview (TV 0.6.0 / Remote 0.2.0), not version 1.0.** Approved Home and favourites are preserved. Companion pairing is encrypted and reconnects when RC TV returns after another app; no background or YouCine control service. Update both APKs and pair once. RC Assist opens in Settings, supports local app lookup/navigation and confirmed wallpaper/rotation/app-launch actions. Gemini is **not connected**; no backend was deployed. See [Phase E evidence and limits](docs/PHASE-E.md) and [companion upgrade instructions](docs/COMPANION.md).
 
 Physical app context menu, direct-shelf favourites rearranging, Search, saved theme/motion and eight favourites remain preserved. No RC Assist or optional profile implementation. [Release blockers](docs/RELEASE-READINESS.md) remain explicit; the old Minimal regression is reserved for a dedicated optimisation checkpoint.
 
