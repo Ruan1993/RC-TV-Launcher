@@ -71,12 +71,13 @@ class CompanionServer(context: Context, private val command: (String, String) ->
                     if (!loaded) {
                         val records = storage.read()?.optJSONArray("grants")
                         gate.restore((0 until (records?.length() ?: 0)).map { i -> records!!.getJSONObject(i).let { PairingGate.Record(it.getString("hash"), it.getString("id"), it.getString("name"), it.getLong("until")) } })
+                        persist() // Save migrated, unexpired approvals without changing their credential hashes.
                         loaded = true
                     }
                     config.edit().putInt("port", listener.localPort).apply()
                     workers = ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS, ArrayBlockingQueue(4))
                     val code = if (newPairing || gate.records().isEmpty()) gate.pairingCode() else ""
-                    mutable.value = CompanionState(true, "Ready. System control requires separate TV opt-in and accessibility consent. Pairing expires after seven days.",
+                    mutable.value = CompanionState(true, "Ready. System control requires separate TV opt-in and accessibility consent. Phones stay paired until you forget or revoke them.",
                         "${link.address.hostAddress}:${listener.localPort}", code, identity.fingerprint, devices = gate.sessions())
                     networkWatch = object : ConnectivityManager.NetworkCallback() { override fun onLost(lost: android.net.Network) { if (lost == active) suspendConnection("Network changed. Return to RC TV or retry to reconnect.") } }
                     network.registerDefaultNetworkCallback(networkWatch!!)

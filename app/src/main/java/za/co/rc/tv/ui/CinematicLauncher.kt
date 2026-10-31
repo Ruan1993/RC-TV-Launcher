@@ -341,10 +341,7 @@ fun CinematicLauncher(
                 }
                 when (contentSection) {
                     "Speed Test" -> SpeedTestScreen(motion)
-                    "Cast" -> GlassPanel(Modifier.fillMaxWidth()) {
-                        Text(contentSection, style = MaterialTheme.typography.headlineLarge)
-                        Text("This utility is not configured yet. No test or casting session has started.")
-                    }
+                    "Cast" -> CastScreen(motion)
                     "Settings" -> if (wallpaperSettingsOpen) Box(Modifier.weight(1f)) {
                         WallpaperSettings(wallpapers, prefs, onImportWallpaper, onRemoveWallpaper, onRotation, onRotationInterval,
                             onRotationPool, onTransition, { scope.launch { onRotateWallpaper() } },

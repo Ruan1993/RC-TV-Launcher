@@ -36,8 +36,21 @@ class PairingGateTest {
         now = 60_001; val request = gate.request(code, "Test")!!
         now += 60_001; assertNull(gate.poll(request)); assertNull(gate.request(code, "Test"))
         val id = gate.request(gate.start(), "Test")!!; gate.approve(id); val token = gate.poll(id)!!.second!!
-        now += 7 * 24 * 60 * 60_000L; assertFalse(gate.authenticated(token))
+        now += 30 * 24 * 60 * 60_000L; assertTrue(gate.authenticated(token))
         gate.start(); assertNull(gate.poll(id)); assertTrue(gate.sessions().isEmpty())
+    }
+    @Test fun legacyMigrationAndLeaseExpiryKeepApprovalButRejectExpiredRecords() {
+        var now = 1000L; val gate = PairingGate { now }
+        val id = gate.request(gate.start(), "Phone")!!; gate.approve(id)
+        val token = gate.poll(id)!!.second!!
+        val record = gate.records().single().copy(until = now + 60_000)
+        gate.restore(listOf(record)); assertEquals(Long.MAX_VALUE, gate.records().single().until)
+        val lease = gate.resume(token)!!; assertTrue(gate.validLease(token, lease))
+        now += 30 * 60_000L
+        assertFalse(gate.validLease(token, lease)); assertFalse(gate.authorize(token, 1, lease))
+        assertTrue(gate.authenticated(token)); val fresh = gate.resume(token)!!
+        assertNotEquals(lease, fresh); assertTrue(gate.authorize(token, 1, fresh))
+        gate.restore(listOf(record)); assertTrue(gate.records().isEmpty()); assertNull(gate.resume(token))
     }
     @Test fun rejectionAndPendingLimit() {
         val gate = PairingGate(); val code = gate.start(); val id = gate.request(code, "Phone")!!

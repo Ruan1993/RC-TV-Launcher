@@ -65,7 +65,7 @@ import za.co.rc.tv.ui.FocusButton
                     Text("1. Open RC TV Remote on your phone. Use the same Wi-Fi or local network.\n2. Choose this TV and compare the security fingerprint.\n3. Enter the code, then approve your phone on this TV.")
                     if (state.running) {
                         Text("Security fingerprint\n${LinkWire.displayFingerprint(state.fingerprint)}", style = MaterialTheme.typography.bodySmall)
-                        Text("A code lasts two minutes. Once connected, this screen closes automatically. Approved phones reconnect for up to seven days.")
+                        Text("A code lasts two minutes. Once connected, this screen closes automatically. Approved phones reconnect until you remove them.")
                         for (device in state.devices) FocusButton("Remove ${device.name}", "Minimal") { server.revoke(device.id) }
                         FocusButton("Stop and forget all phones", "Minimal") { server.stop() }
                     } else {
@@ -103,7 +103,7 @@ import za.co.rc.tv.ui.FocusButton
             decline.requestFocus()
         }
         AlertDialog(onDismissRequest = { server.reject(request.id) }, title = { Text("Allow ${request.name}?") },
-            text = { Text("Only approve the phone you are pairing. It can reconnect for up to seven days. If you enable system control separately, approved phones can also control supported apps and send non-password text through RC TV Keyboard. Revoke it at any time in Phone companion settings.") },
+            text = { Text("Only approve the phone you are pairing. It can reconnect until you remove it. If you enable system control separately, approved phones can also control supported apps and send non-password text through RC TV Keyboard. Revoke it at any time in Phone companion settings.") },
             confirmButton = { FocusButton("Approve phone", "Minimal") { server.approve(request.id) } },
             dismissButton = { FocusButton("Decline", "Minimal", Modifier.focusRequester(decline)) { server.reject(request.id) } })
     }
