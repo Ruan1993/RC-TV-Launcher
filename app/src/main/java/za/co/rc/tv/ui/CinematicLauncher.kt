@@ -230,6 +230,8 @@ fun CinematicLauncher(
     onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onResetAppearance: () -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
+    val weatherContext = LocalContext.current.applicationContext
+    val weather = remember(weatherContext) { WeatherRepository(weatherContext) }
     val Ice = LocalAppearance.current.accent
     SideEffect { RenderDiagnostics.shellComposed() }
     var wallpaperSettingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
@@ -344,6 +346,10 @@ fun CinematicLauncher(
                         Text("RC TV", fontSize = 20.sp, fontWeight = FontWeight.Normal, letterSpacing = 3.sp, color = Color.White)
                         Text("Your world. In focus.", fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
                     }
+                    if (contentSection == "Home") {
+                        WeatherGlance(weather, Modifier.weight(1f).padding(horizontal=16.dp), now = System.currentTimeMillis())
+                        NowPlayingGlance(Modifier.weight(1f).padding(horizontal=8.dp))
+                    }
                     Text(clock, fontSize = 28.sp, fontWeight = FontWeight.Normal, color = Color.White)
                 }
                 when (contentSection) {
@@ -370,6 +376,9 @@ fun CinematicLauncher(
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             listOf("Cinematic", "Minimalist").forEach { theme -> FocusButton(theme, motion, selected = prefs.theme == theme) { onTheme(theme) } }
                         }
+                        }
+                        GlassPanel(Modifier.fillMaxWidth()) {
+                        WeatherSettings(weather, motion)
                         }
                         GlassPanel(Modifier.fillMaxWidth()) {
                         Text("Motion", style = MaterialTheme.typography.titleLarge, color = Ice)

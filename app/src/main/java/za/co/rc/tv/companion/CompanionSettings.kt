@@ -15,6 +15,8 @@ import za.co.rc.tv.ui.FocusButton
     val state by server.state.collectAsState()
     val access by RemoteRuntime.access.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+    var download by remember { mutableStateOf(false) }
+    if (download) { za.co.rc.tv.ui.RemoteDownload({ download=false; server.preparePairing() }, { download=false }); return }
     var page by remember { mutableIntStateOf(initialPage) }
     var confirmSystem by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
@@ -62,6 +64,7 @@ import za.co.rc.tv.ui.FocusButton
         Column(Modifier.heightIn(max = 185.dp).verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (page) {
                 0 -> {
+                    FocusButton("Download RC TV Remote", "Minimal") { download=true }
                     Text("1. Open RC TV Remote on your phone. Use the same Wi-Fi or local network.\n2. Choose this TV and compare the security fingerprint.\n3. Enter the code, then approve your phone on this TV.")
                     if (state.running) {
                         Text("Security fingerprint\n${LinkWire.displayFingerprint(state.fingerprint)}", style = MaterialTheme.typography.bodySmall)

@@ -30,6 +30,8 @@ import za.co.rc.tv.core.SetupProgress
     var phoneConnected by rememberSaveable { mutableStateOf(false) }
     var consent by remember { mutableStateOf(false) }
     var pairing by remember { mutableStateOf(false) }
+    var download by remember { mutableStateOf(false) }
+    if (download) { RemoteDownload({ download=false; server.start(); pairing=true }, { download=false }); return }
     var help by remember { mutableStateOf(false) }
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) home = HomeIntegration.inspect(context) }
@@ -89,6 +91,7 @@ import za.co.rc.tv.core.SetupProgress
                         if (help) Text("Open Android Settings > Device Preferences > Accessibility using your physical remote. RC TV cannot turn this permission on for you.")
                     }
                     3 -> {
+                        FocusButton("Download RC TV Remote", "Minimal") { download=true }
                         Text("Install the RC TV Remote phone app supplied with RC TV. Open it on your Android phone. Connect both devices to the same Wi-Fi or local network.")
                         FocusButton(if (connection.devices.isEmpty()) "Connect phone" else "Connect or add a phone", "Minimal") { server.start(); pairing = true }
                         Text("Choose this TV on your phone, compare its security fingerprint, enter the TV code, then approve on this TV.")
