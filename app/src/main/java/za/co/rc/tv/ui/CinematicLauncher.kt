@@ -103,16 +103,15 @@ private fun GlassPanel(modifier: Modifier = Modifier, content: @Composable Colum
 
 @Composable
 internal fun FocusButton(label: String, motion: String, modifier: Modifier = Modifier,
-    selected: Boolean = false, quiet: Boolean = false, icon: String? = null, onClick: () -> Unit) {
+    selected: Boolean = false, quiet: Boolean = false, icon: String? = null, prominent: Boolean = false, onClick: () -> Unit) {
     val Ice = LocalAppearance.current.accent
     var focused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (focused && motion != "Minimal") 1.025f else 1f,
-        if (motion == "Minimal") snap() else spring(dampingRatio = if (motion == "Cinematic") .78f else .9f, stiffness = 550f), label = "buttonFocus")
     val tint by animateColorAsState(if (focused) if (quiet) Ice.copy(alpha = .22f) else Ice else if (selected) Color.White.copy(alpha = if (quiet) .12f else .18f) else Color.White.copy(alpha = .045f), animationSpec = if (motion == "Minimal") snap() else spring(stiffness = 600f), label = "buttonTint")
     Button(onClick, modifier.heightIn(min = 48.dp).onFocusChanged { focused = it.isFocused }
-        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .cinematicFocus()
+        .background(if(prominent) Ice.copy(alpha=.12f) else Color.Transparent,RoundedCornerShape(14.dp))
         .drawBehind { drawRoundRect(tint, cornerRadius = CornerRadius(14.dp.toPx())) }
-        .border(1.dp, if (focused) Ice else Color.White.copy(alpha = .10f), RoundedCornerShape(14.dp)),
+        .border(if(prominent) 1.5.dp else 1.dp, if (focused || prominent) Ice.copy(alpha=if(focused) 1f else .5f) else Color.White.copy(alpha = .10f), RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent,
             contentColor = if (focused && !quiet) Ink else Color.White), contentPadding = PaddingValues(12.dp, 10.dp)) {
         if (icon != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -235,11 +234,18 @@ fun CinematicLauncher(
     onTransition: (String) -> Unit, onRotateWallpaper: suspend () -> Unit,
     onApplyWallpaper: suspend (String) -> Boolean,
     onSaveOrder: suspend (List<String>) -> Boolean,
-    onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onResetAppearance: () -> Unit,
+    onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onFocusAnimation: (String) -> Unit, onResetAppearance: () -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
     val weatherContext = LocalContext.current.applicationContext
     val weather = remember(weatherContext) { WeatherRepository(weatherContext) }
+    val network = remember(weatherContext) { NetworkStatusMonitor(weatherContext) }
+    val settingsFocus=remember { FocusRequester() }; val clockFocus=remember { FocusRequester() }
+    var previousSection by remember { mutableStateOf(section) }
+    LaunchedEffect(section) {
+        if(previousSection=="Settings" && section=="Home") { withFrameNanos { }; runCatching { settingsFocus.requestFocus() } }
+        previousSection=section
+    }
     val Ice = LocalAppearance.current.accent
     SideEffect { RenderDiagnostics.shellComposed() }
     var settingsPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
@@ -356,18 +362,20 @@ fun CinematicLauncher(
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion, prefs.wallpaperVisibility)
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> { utilityReturn=null; settingsPage=null; onSection(next) } } } }, motion)
+            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> { utilityReturn=null; settingsPage=null; onSection(next) } } } }, motion, settingsFocus, clockFocus)
             Column(Modifier.weight(1f).fillMaxWidth().vividContrast(vivid && contentSection != "Home"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.fillMaxWidth().vividContrast(vivid && contentSection == "Home"), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("RC TV", fontSize = 20.sp, fontWeight = FontWeight.Normal, letterSpacing = 3.sp, color = Color.White)
-                        Text("Your world. In focus.", fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
+                        Text("RC TV", style=floatingTextStyle(), fontSize = 20.sp, fontWeight = FontWeight.Normal, letterSpacing = 3.sp, color = Color.White)
+                        Text("Your world. In focus.", style=floatingTextStyle(), fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
                     }
                     if (contentSection == "Home") {
                         WeatherGlance(weather, Modifier.weight(1f).padding(horizontal=16.dp), now = System.currentTimeMillis(), details = { weatherDetails=true })
                         NowPlayingGlance(Modifier.weight(1f).padding(horizontal=8.dp))
                     }
-                    Text(clock, fontSize = 28.sp, fontWeight = FontWeight.Normal, color = Color.White)
+                    ClockNetwork(clock,network,clockFocus,settingsFocus) {
+                        lastSettingsCategory="connections"; settingsPage="connections"; utilityReturn=null; onSection("Settings")
+                    }
                 }
                 when (contentSection) {
                     "Speed Test" -> SpeedTestScreen(motion)
@@ -389,12 +397,17 @@ fun CinematicLauncher(
                                 AppearanceSettings(prefs,motion,onAccent,onFontStyle,onTextSize,onWallpaperVisibility,onResetAppearance)
                                 Text("Layout",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 SettingsOptions { listOf("Cinematic","Minimalist").forEach { value -> FocusButton(value,motion,selected=prefs.theme==value) { onTheme(value) } } }
-                                Text("Motion",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                Text("Animation Intensity",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                SettingsOptions { focusAnimations.forEach { value -> FocusButton(value,motion,Modifier.semantics { contentDescription="Focus animation $value" },selected=prefs.focusAnimation==value) { onFocusAnimation(value) } } }
+                                if(prefs.reducedMotion) Text("Reduced Motion is on; focus effects are off.")
+                                Text("Interface motion",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 SettingsOptions { listOf("Minimal","Balanced","Cinematic").forEach { value -> FocusButton(value,motion,selected=prefs.motion==value) { onMotion(value) } } }
                                 FocusButton("Reduced motion: ${if(prefs.reducedMotion) "on" else "off"}",motion,onClick=onReducedMotion)
                             }
                             "connections" -> {
-                                FocusButton("Manage paired phones",motion,onClick=onCompanion)
+                                val status by network.state.collectAsState()
+                                Text(status.label,style=MaterialTheme.typography.titleMedium)
+                                if(status.kind in listOf(NetworkKind.WIFI,NetworkKind.ETHERNET,NetworkKind.OTHER)) Text(if(status.internet) "Internet available" else "Internet not confirmed")
                                 FocusButton("Internet Speed Test",motion) { utilityReturn="connections"; onSection("Speed Test") }
                             }
                             "apps" -> {
@@ -405,10 +418,10 @@ fun CinematicLauncher(
                                 }
                             }
                             "weather" -> WeatherSettings(weather,motion,{ weatherDetails=true })
-                            "system" -> {
-                                Text("RC TV ${za.co.rc.tv.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium,color=Ice)
-                                FocusButton("Easy setup",motion,onClick=onEasySetup)
-                                FocusButton("Android settings",motion,onClick=onAndroidSettings)
+                            "remote" -> {
+                                Text("Phone remote",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                FocusButton("Phone pairing & download",motion,onClick=onCompanion)
+                                FocusButton("Phone typing setup",motion,onClick=onPhoneTyping)
                                 FocusButton("Phone control permissions",motion,onClick=onSystemControl)
                                 Text("RC TV Keyboard",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text(keyboardStatus)
@@ -417,6 +430,11 @@ fun CinematicLauncher(
                                     FocusButton("Enable in Android…",motion,onClick=onKeyboardEnable)
                                     FocusButton("Choose keyboard…",motion,onClick=onKeyboardChoose)
                                 }
+                            }
+                            "system" -> {
+                                Text("RC TV ${za.co.rc.tv.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                FocusButton("Easy setup",motion,onClick=onEasySetup)
+                                FocusButton("Android settings",motion,onClick=onAndroidSettings)
                                 Text("Default Home & recovery",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text(homeStatus)
                                 ReadableNote("Choosing Home is optional. Keep the original launcher installed for recovery. Android asks you to choose; RC TV does not change it automatically.")
@@ -442,9 +460,9 @@ fun CinematicLauncher(
                                     true
                                 } else false
                             }, label = { Text("Search installed apps") }, singleLine = true)
-                        Row(Modifier.fillMaxWidth().vividContrast(vivid && contentSection == "Home"), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(if (contentSection == "Home" && prefs.favourites.isNotEmpty()) "Your favourites" else "Your applications", fontSize = 17.sp, color = Color.White)
-                            Text("${visible.size} APPS", fontSize = 12.sp, letterSpacing = 1.sp, color = Ice.copy(alpha = if(vivid) 1f else .7f))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(if (contentSection == "Home" && prefs.favourites.isNotEmpty()) "Your Favourites" else "Your applications", style=floatingTextStyle(), fontSize = 17.sp, color = Color.White)
+                            Text("${visible.size} Apps", style=floatingTextStyle(), fontSize = 12.sp, letterSpacing = 1.sp, color = Ice.copy(alpha = if(vivid) 1f else .7f))
                         }
                         discovery.error?.let { Text(it, color = MaterialTheme.colorScheme.error); FocusButton("Retry discovery", motion) { onRetry() } }
                         if (!discovery.loaded) Text("Discovering apps…", color = Ice)
@@ -459,8 +477,8 @@ fun CinematicLauncher(
                                     val position = order.indexOf(app.packageName)
                                     Box(Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
                                         placementSpec = if (motion == "Minimal") snap() else spring(dampingRatio = .9f, stiffness = 500f))) {
-                                        HomeAppCard(app, repository, iconGeneration, motion, {},
-                                            Modifier.focusProperties { canFocus = selected; down = saveFocus }
+                                        HomeAppCard(app, repository, iconGeneration, "Minimal", {},
+                                            Modifier.cinematicFocus(26.dp).focusProperties { canFocus = selected; down = saveFocus }
                                                 .then(if (selected) Modifier.focusRequester(movingFocus) else Modifier)
                                                 .onPreviewKeyEvent { event ->
                                                     val key = event.nativeKeyEvent
@@ -483,13 +501,13 @@ fun CinematicLauncher(
                                                 }, selected, position > 0, position < order.lastIndex)
                                     }
                                 } else AppActionHost(app, repository, prefs, discovery.apps, motion, true, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
-                                    HomeAppCard(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier.then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
+                                    HomeAppCard(app, repository, iconGeneration, "Minimal", { onLaunch(app) }, modifier.cinematicFocus(26.dp).then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
                                 }
                             }
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
                             items(visible, key = { it.packageName }) { app ->
                                 AppActionHost(app, repository, prefs, discovery.apps, motion, false, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
-                                    AppTile(app, repository, iconGeneration, motion, { onLaunch(app) }, modifier.then(if (contentSection == "Search" && app.packageName == visible.firstOrNull()?.packageName) Modifier.focusRequester(searchResultsFocus).focusProperties { up = searchFieldFocus } else Modifier))
+                                    AppTile(app, repository, iconGeneration, "Minimal", { onLaunch(app) }, modifier.cinematicFocus(22.dp).then(if (contentSection == "Search" && app.packageName == visible.firstOrNull()?.packageName) Modifier.focusRequester(searchResultsFocus).focusProperties { up = searchFieldFocus } else Modifier))
                                 }
                             }
                         }
@@ -506,7 +524,10 @@ fun CinematicLauncher(
                                 FocusButton(if (savingOrder) "Saving…" else "Save", motion, Modifier.focusRequester(saveFocus).focusProperties { up = movingFocus }, onClick = saveMove)
                                 FocusButton("Cancel", motion, Modifier.focusProperties { up = movingFocus }, onClick = cancelMove)
                             }
-                        } else if (textScale(prefs.textSize) <= 1.15f) Text("D-pad to explore    ·    Select to open    ·    Hold Select for options    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = if(vivid) .85f else .5f), modifier = Modifier.vividContrast(vivid))
+                        } else if (textScale(prefs.textSize) <= 1.15f) {
+                            // Reserve the former footer's line height so removing help never moves the cards.
+                            Spacer(Modifier.height(with(androidx.compose.ui.platform.LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toDp() }))
+                        }
                     }
                 }
             }
@@ -516,25 +537,32 @@ fun CinematicLauncher(
 
 /** Scrolls only enough to reveal the focused item; labels are never compressed to fit. */
 @Composable
-private fun CinematicNavigation(section: String, onSection: (String) -> Unit, motion: String) {
-    val state = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    Column(Modifier.fillMaxWidth()) {
-        LazyRow(Modifier.fillMaxWidth().focusGroup()
-            .clip(RoundedCornerShape(22.dp))
-            .background(Brush.verticalGradient(listOf(Color(0xCF263A45), Color(0xB30B131B), Color(0xD910202A))))
-            .border(1.dp, Color.White.copy(alpha = .20f), RoundedCornerShape(22.dp)),
-            state = state, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(8.dp)) {
-            items(listOf("Home" to "H", "Search" to "S", "Apps" to "A", "Remote" to "R", "Keyboard" to "K", "Cast" to "C", "Speed Test" to "T", "Settings" to "···"), key = { it.first }) { (name, symbol) ->
-                val bring = remember { BringIntoViewRequester() }
-                Box(Modifier.bringIntoViewRequester(bring).onFocusChanged { if (it.hasFocus) scope.launch { bring.bringIntoView() } }.semantics { contentDescription = name }) {
-                    FocusButton(name, motion, Modifier.widthIn(min = 108.dp), selected = section == name, quiet = true, icon = symbol) { onSection(name) }
+private fun CinematicNavigation(section: String, onSection: (String) -> Unit, motion: String, settingsFocus: FocusRequester, clockFocus: FocusRequester) {
+    val state=rememberLazyListState(); val scope=rememberCoroutineScope(); val last=remember { FocusRequester() }
+    val items=listOf("Home" to "H","Search" to "S","Apps" to "A","Cast" to "C","Speed Test" to "T")
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
+        LazyRow(Modifier.weight(1f).focusGroup().clip(RoundedCornerShape(22.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xCF263A45),Color(0xB30B131B),Color(0xD910202A))))
+            .border(1.dp,Color.White.copy(alpha=.20f),RoundedCornerShape(22.dp)),
+            state=state,horizontalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(8.dp)) {
+            items(items,key={ it.first }) { (name,symbol) ->
+                val bring=remember { BringIntoViewRequester() }
+                Box(Modifier.bringIntoViewRequester(bring).onFocusChanged { if(it.hasFocus) scope.launch { bring.bringIntoView() } }.semantics { contentDescription=name }) {
+                    FocusButton(name,motion,Modifier.widthIn(min=108.dp).then(if(name=="Speed Test") Modifier.focusRequester(last).focusProperties { right=settingsFocus; down=clockFocus } else Modifier),selected=section==name,quiet=true,icon=symbol) { onSection(name) }
                 }
             }
         }
-        if (state.canScrollBackward || state.canScrollForward) Text(
-            if (state.canScrollBackward && state.canScrollForward) "‹ More controls · Use Left / Right ›" else if (state.canScrollForward) "More controls · Use Right ›" else "‹ Use Left for more controls",
-            style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = .70f), modifier = Modifier.padding(start = 12.dp, top = 3.dp))
+        FocusButton("Settings",motion,Modifier.focusRequester(settingsFocus).focusProperties { down=clockFocus }
+            .onPreviewKeyEvent { event ->
+                val key=event.nativeKeyEvent
+                if(key.keyCode==android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
+                    if(key.action==android.view.KeyEvent.ACTION_DOWN) {
+                        val moved=runCatching { last.requestFocus(androidx.compose.ui.focus.FocusDirection.Left) }.getOrDefault(false)
+                        if(!moved) scope.launch { state.scrollToItem(items.lastIndex); withFrameNanos { }; withFrameNanos { }; runCatching { last.requestFocus(androidx.compose.ui.focus.FocusDirection.Left) } }
+                    }
+                    true
+                } else false
+            }.semantics { contentDescription="Settings" },selected=section=="Settings",quiet=true,icon="···",prominent=true) { onSection("Settings") }
     }
 }
 

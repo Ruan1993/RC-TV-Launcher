@@ -29,9 +29,10 @@ import za.co.rc.tv.core.SetupProgress
     var seenConnection by remember { mutableLongStateOf(connection.connectionEvent) }
     var phoneConnected by rememberSaveable { mutableStateOf(false) }
     var consent by remember { mutableStateOf(false) }
+    var pairingPage by remember { mutableIntStateOf(0) }
     var pairing by remember { mutableStateOf(false) }
     var download by remember { mutableStateOf(false) }
-    if (download) { RemoteDownload({ download=false; server.start(); pairing=true }, { download=false }); return }
+    if (download) { RemoteDownload({ download=false; pairingPage=0; server.start(); pairing=true }, { download=false }); return }
     var help by remember { mutableStateOf(false) }
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) home = HomeIntegration.inspect(context) }
@@ -47,7 +48,7 @@ import za.co.rc.tv.core.SetupProgress
         }
     }
     if (pairing) {
-        CompanionSettings(server) { pairing = false }
+        CompanionSettings(server,initialPage=pairingPage) { pairing = false }
         return
     }
     if (consent) {
@@ -93,13 +94,14 @@ import za.co.rc.tv.core.SetupProgress
                     3 -> {
                         FocusButton("Download RC TV Remote", "Minimal") { download=true }
                         Text("Install the RC TV Remote phone app supplied with RC TV. Open it on your Android phone. Connect both devices to the same Wi-Fi or local network.")
-                        FocusButton(if (connection.devices.isEmpty()) "Connect phone" else "Connect or add a phone", "Minimal") { server.start(); pairing = true }
+                        FocusButton(if (connection.devices.isEmpty()) "Connect phone" else "Connect or add a phone", "Minimal") { pairingPage=0; server.start(); pairing = true }
                         Text("Choose this TV on your phone, compare its security fingerprint, enter the TV code, then approve on this TV.")
                         if (connection.devices.isNotEmpty()) Text("A phone is already approved. Open RC TV Remote on it to reconnect, or continue without adding another.")
                     }
                     4 -> {
                         Text(if (phoneConnected) "Phone connected. You're ready to explore." else "You can start using RC TV now.")
-                        Text("Remote in the navigation bar connects phones. Keyboard explains phone typing. Settings > Easy setup lets you revisit any skipped step.")
+                        Text("Settings → Remote & Keyboard connects phones and explains typing. System & Updates → Easy setup lets you revisit skipped steps.")
+                        FocusButton("Set up keyboard", "Minimal") { pairingPage=2; pairing=true }
                         if (!access.optedIn || !access.connected) Text("Phone control in other apps is not enabled yet. You can finish that later.")
                         if (home.resolvedPackage != context.packageName) Text("Your original Home is unchanged. Open RC TV from Apps whenever you want.")
                     }

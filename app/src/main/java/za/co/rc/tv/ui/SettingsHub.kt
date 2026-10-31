@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 internal data class SettingsCategory(val key: String, val title: String, val icon: String)
 internal val settingsCategories = listOf(
     SettingsCategory("appearance","Appearance & Personalisation","E"),
+    SettingsCategory("remote","Remote & Keyboard","R"),
     SettingsCategory("connections","Connections & Devices","R"),
     SettingsCategory("apps","Apps & Media","A"),
     SettingsCategory("weather","Weather & Widgets","W"),

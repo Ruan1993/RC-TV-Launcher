@@ -58,26 +58,24 @@ object SettingsReviewCheck {
             fun focused(text: String) { repeat(30) { val item=actionable(text); val ok=item.isFocused; item.recycle(); if(ok) return; Thread.sleep(75) }; error("Category focus not restored: $text") }
             fun shot(name: String) { val image=ui.takeScreenshot() ?: error("No screenshot"); File(test.targetContext.getExternalFilesDir(null),name).outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }; image.recycle() }
             await("Home").recycle()
-            var speed=actionable("Speed Test"); speed.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.id); speed.recycle()
-            Thread.sleep(450)
-            speed=actionable("Speed Test")
-            if(!speed.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) {
-                speed.recycle(); key(KeyEvent.KEYCODE_DPAD_UP)
-                repeat(10) { key(KeyEvent.KEYCODE_DPAD_RIGHT) }
-            } else { speed.recycle(); key(KeyEvent.KEYCODE_DPAD_RIGHT) }
             click("Settings")
             await("Appearance & Personalisation").recycle(); shot("settings-categories.png")
             click("Appearance & Personalisation"); visible("Choose wallpaper"); click("Choose wallpaper")
             await("Choose a scene. Preview before applying.").recycle(); key(KeyEvent.KEYCODE_BACK)
-            visible("Choose wallpaper"); visible("Reset to Original"); visible("Reduced motion: off"); key(KeyEvent.KEYCODE_BACK)
+            visible("Choose wallpaper"); visible("Reset to Original"); visible("Focus animation Standard"); click("Focus animation Standard")
+            Thread.sleep(150); check(runBlocking { prefs.state.first() }.focusAnimation=="Standard")
+            visible("Reduced motion: off"); key(KeyEvent.KEYCODE_BACK)
             focused("Appearance & Personalisation")
-            click("Connections & Devices"); visible("Manage paired phones"); click("Internet Speed Test")
-            visible("Start Test"); key(KeyEvent.KEYCODE_BACK); visible("Manage paired phones"); key(KeyEvent.KEYCODE_BACK); focused("Connections & Devices")
+            click("Remote & Keyboard")
+            for(label in listOf("Phone pairing & download","Phone typing setup","Phone control permissions","Try keyboard","Enable in Android…","Choose keyboard…")) visible(label)
+            shot("settings-remote.png"); key(KeyEvent.KEYCODE_BACK); focused("Remote & Keyboard")
+            click("Connections & Devices"); click("Internet Speed Test")
+            visible("Start Test"); key(KeyEvent.KEYCODE_BACK); visible("Internet Speed Test"); key(KeyEvent.KEYCODE_BACK); focused("Connections & Devices")
             click("Apps & Media"); visible("Android app settings"); click("Browse installed apps"); key(KeyEvent.KEYCODE_BACK)
             visible("Android app settings"); key(KeyEvent.KEYCODE_BACK); focused("Apps & Media")
             click("Weather & Widgets"); visible("About weather & privacy"); shot("settings-weather.png"); key(KeyEvent.KEYCODE_BACK); focused("Weather & Widgets")
             click("System & Updates")
-            for(label in listOf("Easy setup","Android settings","Phone control permissions","Try keyboard","Enable in Android…","Choose keyboard…","Choose RC TV as Home…","Open Home settings / restore")) visible(label)
+            for(label in listOf("Easy setup","Android settings","Choose RC TV as Home…","Open Home settings / restore")) visible(label)
             shot("settings-system.png"); key(KeyEvent.KEYCODE_BACK); focused("System & Updates"); key(KeyEvent.KEYCODE_BACK)
             test.runOnMainSync { activity.finish() }
         } catch(failure: Exception) {
@@ -88,6 +86,6 @@ object SettingsReviewCheck {
                 walk(root); root.recycle(); File(test.targetContext.getExternalFilesDir(null),"settings-tree.txt").writeText(labels.toString())
             }
             throw failure
-        } finally { runBlocking { prefs.setTextSize(before.textSize); prefs.setFontStyle(before.fontStyle) } }
+        } finally { runBlocking { prefs.setTextSize(before.textSize); prefs.setFontStyle(before.fontStyle); prefs.setFocusAnimation(before.focusAnimation) } }
     }
 }

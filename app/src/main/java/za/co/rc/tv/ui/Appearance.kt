@@ -37,7 +37,7 @@ fun appearanceTokens(name: String): AppearanceTokens = when (name) {
         titleLarge = style(base.titleLarge), titleMedium = style(base.titleMedium), bodyLarge = style(base.bodyLarge),
         bodyMedium = style(base.bodyMedium), bodySmall = style(base.bodySmall), labelLarge = style(base.labelLarge),
         labelMedium = style(base.labelMedium), labelSmall = style(base.labelSmall))
-    CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * textScale(prefs.textSize)), LocalAppearance provides palette) {
+    CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * textScale(prefs.textSize)), LocalAppearance provides palette, LocalFocusAnimation provides activeFocusAnimation(prefs)) {
         MaterialTheme(typography = typography, colorScheme = darkColorScheme(primary = palette.primary, background = Color(0xFF09151F), surface = Color(0xFF182D39))) {
             CompositionLocalProvider(LocalContentColor provides Color.White, content = content)
         }
