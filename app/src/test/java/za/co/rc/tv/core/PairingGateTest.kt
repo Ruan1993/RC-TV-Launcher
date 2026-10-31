@@ -5,6 +5,19 @@ import org.junit.Test
 import za.co.rc.tv.companion.PairingGate
 
 class PairingGateTest {
+    @Test fun reopeningPairingRenewsExpiredCodeWithoutRevokingApprovedPhone() {
+        var now = 1000L; val gate = PairingGate { now }
+        val request = gate.request(gate.start(), "Existing phone")!!; gate.approve(request)
+        val token = gate.poll(request)!!.second!!
+        gate.suspendLeases(); assertEquals("", gate.currentCode())
+        gate.preparePairing(); assertTrue(gate.currentCode().matches(Regex("[0-9]{6}")))
+        val pending = gate.request(gate.currentCode(), "New phone")!!
+        gate.preparePairing(); assertNotNull(gate.poll(pending))
+        now += 120_001; assertEquals("", gate.currentCode())
+        gate.preparePairing(); assertTrue(gate.currentCode().matches(Regex("[0-9]{6}")))
+        assertTrue(gate.authenticated(token))
+        assertNotNull(gate.request(gate.currentCode(), "Retry phone"))
+    }
     @Test fun approvalReplayRevocationAndDisconnect() {
         var now = 1000L; val gate = PairingGate { now }; val code = gate.start()
         assertFalse(gate.authenticated("unauthorised"))

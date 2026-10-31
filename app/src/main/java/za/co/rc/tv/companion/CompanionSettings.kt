@@ -16,6 +16,12 @@ import za.co.rc.tv.ui.FocusButton
     val context = androidx.compose.ui.platform.LocalContext.current
     var systemWide by remember { mutableStateOf(RemoteRuntime.optedIn(context)) }
     var confirmSystem by remember { mutableStateOf(false) }
+    LaunchedEffect(server, state.running) {
+        if (state.running) {
+            server.preparePairing()
+            while (true) { kotlinx.coroutines.delay(1000); server.refreshPairingDisplay() }
+        }
+    }
     if (confirmSystem) AlertDialog(onDismissRequest = { confirmSystem = false }, title = { Text("Allow approved phones to control other apps?") },
         text = { Text("All currently approved phones can request Home, Back, app focus/click, media buttons and non-password text through RC TV Keyboard. The accessibility service can inspect the active window. No screen history is stored or sent. Android 11 navigation depends on each app; it cannot inject arbitrary D-pad keys. Only enable this on a trusted network. You must also enable RC TV Remote system control in Android Accessibility. Use the physical remote for that consent. Revoke any phone you no longer trust before enabling.") },
         confirmButton = { FocusButton("Allow system control", "Minimal") { RemoteRuntime.setOptIn(context, true); systemWide = true; confirmSystem = false } },
@@ -25,7 +31,10 @@ import za.co.rc.tv.ui.FocusButton
             Text("Phone companion")
             if (state.running) {
                 Text("Address: ${state.address}", style = MaterialTheme.typography.bodyMedium)
-                Text("Pairing code: ${state.code.ifEmpty { "expired or used" }}", style = MaterialTheme.typography.headlineSmall)
+                Text(if (state.code.isNotEmpty()) "Pairing code: ${state.code}" else if (state.pending != null) "Approve your phone on this TV"
+                    else if (state.devices.size >= 3) "Three phones approved. Revoke one to pair another."
+                    else "No active code. Choose New pairing code.", style = MaterialTheme.typography.headlineSmall)
+                FocusButton("New pairing code", "Minimal") { server.start() }
             }
         }
     }, text = {
@@ -34,7 +43,6 @@ import za.co.rc.tv.ui.FocusButton
             Text("Install RC TV Remote on your Android phone. Use the same trusted local network. Compare the security fingerprint, enter the code, then approve on this TV.")
             if (state.running) {
                 Text("Code expires after two minutes. Approved pairing lasts up to seven days. Outside RC TV, control requires both system-control opt-in and Android Accessibility consent.")
-                FocusButton("New pairing code", "Minimal") { server.start() }
                 Text("Security fingerprint\n${LinkWire.displayFingerprint(state.fingerprint)}", style = MaterialTheme.typography.bodySmall)
                 for (device in state.devices) FocusButton("Revoke ${device.name}", "Minimal") { server.revoke(device.id) }
                 FocusButton("Stop & disconnect all", "Minimal") { server.stop() }

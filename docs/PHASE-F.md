@@ -73,3 +73,11 @@ APKs: `releases/phase-f/RC-TV-Launcher-0.7.0-debug.apk` and `RC-TV-Remote-0.3.0-
 User reported the pairing code was clipped after the first Phase F update. Device screenshot confirmed focus-driven scrolling placed it partly above the scroll viewport. Address and pairing code now live in the fixed dialog title area; instructions and controls use a bounded 200 dp scroll region. No communication or consent behaviour changed.
 
 Targeted TV assembleDebug and lintDebug passed. Installed in place on the Xiaomi and visually verified the complete address/code both before and after scrolling the instructions. Phone remains 0.3.0. APK: `releases/phase-f/RC-TV-Launcher-0.7.1-debug.apk`; 0.7.0 and earlier rollback files preserved. Android accessibility consent and third-party control acceptance remain pending.
+
+## Pairing renewal fix — TV 0.7.2 (23)
+
+The no-active-code state after reconnect was ambiguously labelled expired/used, with renewal inside the scrolled content. Opening the companion dialog now prepares a fresh code if none is valid, no approval/poll is pending and capacity is available. New pairing code is pinned under the fixed header. A dialog-scoped one-second refresh removes expired codes from display without automatically rotating them or weakening the two-minute expiry/rate limits. Existing grants and pending approval exchanges are preserved.
+
+Targeted PairingGate tests (5) and TV build/lint pass, including renewal after expiry/reconnect with an existing approved credential and preservation of a pending pairing. TV APK `releases/phase-f/RC-TV-Launcher-0.7.2-debug.apk` installed in place.
+
+Xiaomi UI verification: reopening Phone companion displayed a fresh six-digit code and visible fixed-header New pairing code button. No pairing code or credential is recorded in this report.

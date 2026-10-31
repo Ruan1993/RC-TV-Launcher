@@ -19,6 +19,10 @@ class PairingGate(private val now: () -> Long = { System.currentTimeMillis() }) 
     private fun digest(value: String) = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
     @Synchronized fun start(): String { clear(); code = random.nextInt(1_000_000).toString().padStart(6, '0'); codeUntil = now() + 120_000; return code }
     @Synchronized fun pairingCode(): String { pending = null; code = random.nextInt(1_000_000).toString().padStart(6, '0'); codeUntil = now() + 120_000; return code }
+    @Synchronized fun preparePairing() {
+        prune()
+        if (currentCode().isEmpty() && pending == null && sessions.size < 3) pairingCode()
+    }
     @Synchronized fun suspendLeases() { pending = null; code = ""; sessions.values.forEach { it.lease = ""; it.sequence = 0 } }
     @Synchronized fun records(): List<Record> { prune(); return sessions.map { (hash, session) -> Record(hash, session.id, session.name, session.until) } }
     @Synchronized fun restore(records: List<Record>) { clear(); records.take(3).filter { it.hash.matches(Regex("[0-9a-f]{64}")) && it.until > now() }.forEach { sessions[it.hash] = Session(it.id.take(12), it.name.take(32), it.until) } }

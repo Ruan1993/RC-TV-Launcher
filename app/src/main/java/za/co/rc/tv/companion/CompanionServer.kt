@@ -44,6 +44,8 @@ class CompanionServer(context: Context, private val command: (String, String) ->
     private val nsd = context.getSystemService(NsdManager::class.java)
     private var networkWatch: ConnectivityManager.NetworkCallback? = null
     fun resume() { if (config.getBoolean("enabled", false)) start(false) }
+    fun preparePairing() { if (state.value.running) { gate.preparePairing(); refresh() } }
+    fun refreshPairingDisplay() { if (state.value.running) refresh() }
     @Synchronized fun start(newPairing: Boolean = true) {
         config.edit().putBoolean("enabled", true).apply()
         if (running) { if (newPairing) { gate.pairingCode(); refresh() }; return }
