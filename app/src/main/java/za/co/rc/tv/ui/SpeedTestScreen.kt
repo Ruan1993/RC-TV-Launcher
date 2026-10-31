@@ -39,7 +39,7 @@ import java.util.Locale
         if (state.running) LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
         Text(state.phase)
         FocusButton(if (state.running) "Cancel test" else "Start Test", motion) { if (state.running) test.cancel() else test.start() }
-        Text("Uses up to 125 MB of data and stops after about a minute. Cloudflare receives your network address under its privacy policy. No test runs automatically.", style = MaterialTheme.typography.bodySmall)
-        Text("Measures this TV's HTTP connection to Cloudflare, including request overhead. Latency is an HTTP round trip, not ICMP ping. Your ISP maximum and other destinations may differ. Results are not saved.", style = MaterialTheme.typography.bodySmall)
+        ReadableNote("Uses up to 125 MB of data and stops after about a minute. Cloudflare receives your network address under its privacy policy. No test runs automatically.")
+        ReadableNote("Measures this TV's HTTP connection to Cloudflare, including request overhead. Latency is an HTTP round trip, not ICMP ping. Your ISP maximum and other destinations may differ. Results are not saved.")
     }
 }

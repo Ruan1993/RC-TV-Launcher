@@ -1,6 +1,8 @@
 # Release readiness — 1.0 gates
 
-Current work is a **Phase E development preview**, not a feature-complete 1.0 release. The approved Home is preserved. See WALLPAPER-SELECTION-CHECKPOINT.md and PHASE-B-POLISH.md for evidence. Keep draft PR #2 unmerged, repository visibility unchanged and stock Home as default.
+Current work is the **Phase I private engineering release candidate**, awaiting user acceptance, not a public final 1.0 release. [Phase I evidence and remaining gates](PHASE-I.md) supersede historical completion notes below. Cards/favourites and stock Home are preserved; PR #2 is untouched and no public APK/source distribution occurred.
+
+The RC includes themes/fonts/visibility, matching adaptive icons, optional cached weather and an inactive download screen. Media metadata is unavailable to an ordinary Xiaomi install without intrusive/privileged access, so its card stays hidden. Actual casting, physical HONOR review, reboot/long-session/performance acceptance, production signing and public distribution approval remain. The older master-specification items below are historical/future scope and are not silently represented as complete by an RC version number.
 
 ## Core and device acceptance
 
@@ -27,8 +29,8 @@ Current work is a **Phase E development preview**, not a feature-complete 1.0 re
 - [x] Instant/Crossfade/Gentle Slide implemented; short local transitions, Minimal/reduced motion instant.
 - [ ] Final-release transition GPU/memory acceptance; prior Minimal regression reserved for dedicated optimisation.
 - [x] Existing Cinematic/Minimalist theme and motion controls remain functional.
-- [ ] Glass transparency, a small system/licensed font selection, live appearance previews.
-- [ ] Confirmed Reset to Defaults with clear scope; never unexpectedly erase favourites or imported content.
+- [x] Theme tokens, system font choices, live appearance previews and centralized wallpaper visibility; original card material preserved.
+- [x] Scoped Reset to Original for appearance; dedicated Balanced visibility reset. Favourites/imported content remain untouched.
 - [ ] Optional profiles/per-profile appearance are outside the 1.0 critical path.
 
 ## Performance, accessibility and distribution
