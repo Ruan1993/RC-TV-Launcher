@@ -69,7 +69,16 @@ object SettingsReviewCheck {
             click("Remote & Keyboard")
             for(label in listOf("Phone pairing & download","Phone typing setup","Phone control permissions","Try keyboard","Enable in Android…","Choose keyboard…")) visible(label)
             shot("settings-remote.png"); key(KeyEvent.KEYCODE_BACK); focused("Remote & Keyboard")
-            click("Connections & Devices"); click("Internet Speed Test")
+            click("Connections & Devices")
+            visible("Wi-Fi & Internet"); visible("Bluetooth Devices"); shot("settings-connections.png")
+            for(destination in listOf("Wi-Fi & Internet","Bluetooth Devices")) {
+                click(destination); Thread.sleep(700)
+                if(android.os.Build.VERSION.SDK_INT>=33) ui.clearCache()
+                val external=ui.rootInActiveWindow ?: error("No Android settings window")
+                check(external.packageName.toString().contains("settings")) { "Did not open Android settings for $destination" }; external.recycle()
+                key(KeyEvent.KEYCODE_BACK); await("Wi-Fi & Internet").recycle()
+            }
+            click("Internet Speed Test")
             visible("Start Test"); key(KeyEvent.KEYCODE_BACK); visible("Internet Speed Test"); key(KeyEvent.KEYCODE_BACK); focused("Connections & Devices")
             click("Apps & Media"); visible("Android app settings"); click("Browse installed apps"); key(KeyEvent.KEYCODE_BACK)
             visible("Android app settings"); key(KeyEvent.KEYCODE_BACK); focused("Apps & Media")

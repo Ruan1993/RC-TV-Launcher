@@ -194,6 +194,8 @@ class MainActivity : ComponentActivity() {
                     onSaveOrder = { order -> runCatching { preferences.reorderFavourites(order) }
                         .onFailure { message("Could not save order. Favourites may have changed; try again.") }.isSuccess },
                     onRetry = { refresh++ }, onChooseHome = { selectHome() }, onRestoreHome = { openSettings() },
+                    onWifiSettings = { za.co.rc.tv.core.openConnectionSettings(this@MainActivity,false) },
+                    onBluetoothSettings = { za.co.rc.tv.core.openConnectionSettings(this@MainActivity,true) },
                     onAndroidSettings = { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }.onFailure { message("Settings unavailable.") } },
                     onAccent = { value -> scope.launch { preferences.setAccent(value) } },
                     onFontStyle = { value -> scope.launch { preferences.setFontStyle(value) } },

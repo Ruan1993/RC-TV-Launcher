@@ -146,6 +146,14 @@ private fun NavigationMark(mark: String, tint: Color) {
                 for (radius in listOf(.20f,.37f)) drawArc(tint, -90f, 90f, false,
                     Offset(origin.x-w*radius, origin.y-h*radius), Size(w*radius*2,h*radius*2), style = Stroke(stroke))
             }
+            "N" -> {
+                drawCircle(tint,w*.055f,Offset(w*.5f,h*.83f))
+                for(radius in listOf(.23f,.4f)) drawArc(tint,225f,90f,false,Offset(w*(.5f-radius),h*(.83f-radius)),Size(w*radius*2,h*radius*2),style=Stroke(stroke))
+            }
+            "B" -> {
+                val path=Path().apply { moveTo(w*.43f,h*.08f); lineTo(w*.75f,h*.32f); lineTo(w*.23f,h*.73f); moveTo(w*.23f,h*.27f); lineTo(w*.75f,h*.68f); lineTo(w*.43f,h*.92f); lineTo(w*.43f,h*.08f) }
+                drawPath(path,tint,style=Stroke(stroke))
+            }
             "E" -> {
                 drawCircle(tint,w*.34f,Offset(w*.5f,h*.5f),style=Stroke(stroke))
                 drawCircle(tint,w*.08f,Offset(w*.38f,h*.35f)); drawCircle(tint,w*.06f,Offset(w*.65f,h*.45f))
@@ -228,6 +236,7 @@ fun CinematicLauncher(
     keyboardStatus: String, onKeyboardPreview: () -> Unit, onKeyboardEnable: () -> Unit, onKeyboardChoose: () -> Unit, onCompanion: () -> Unit, onSystemControl: () -> Unit, onPhoneTyping: () -> Unit, onEasySetup: () -> Unit,
     onLaunch: (LauncherApp) -> Unit, onPin: (LauncherApp) -> Unit, onRetry: () -> Unit,
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
+    onWifiSettings: () -> Unit, onBluetoothSettings: () -> Unit,
     wallpapers: List<WallpaperOption>, wallpaperBusy: Boolean, onImportWallpaper: () -> Unit,
     onRemoveWallpaper: suspend (String) -> Boolean, onRotation: (Boolean) -> Unit,
     onRotationInterval: (Int) -> Unit, onRotationPool: (String) -> Unit,
@@ -406,8 +415,11 @@ fun CinematicLauncher(
                             }
                             "connections" -> {
                                 val status by network.state.collectAsState()
+                                FocusButton("Wi-Fi & Internet",motion,icon="N",quiet=true,onClick=onWifiSettings)
                                 Text(status.label,style=MaterialTheme.typography.titleMedium)
                                 if(status.kind in listOf(NetworkKind.WIFI,NetworkKind.ETHERNET,NetworkKind.OTHER)) Text(if(status.internet) "Internet available" else "Internet not confirmed")
+                                FocusButton("Bluetooth Devices",motion,icon="B",quiet=true,onClick=onBluetoothSettings)
+                                Text("Manage networks and pair devices in Android Settings. If a direct page is unavailable, choose Network & Internet or Remotes & Accessories there.",style=MaterialTheme.typography.bodyMedium)
                                 FocusButton("Internet Speed Test",motion) { utilityReturn="connections"; onSection("Speed Test") }
                             }
                             "apps" -> {
