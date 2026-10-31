@@ -20,7 +20,8 @@ import za.co.rc.tv.ui.FocusButton
             if (state.running) {
                 Text("Address: ${state.address}")
                 Text("Pairing code: ${state.code.ifEmpty { "expired or used" }}", style = MaterialTheme.typography.headlineSmall)
-                Text("Code expires after two minutes. Stop/start to pair again. Paired sessions end when RC TV leaves the screen.")
+                Text("Code expires after two minutes. Approved pairing lasts up to seven days. Opening another app pauses control; phones reconnect when RC TV returns.")
+                FocusButton("New pairing code", "Minimal") { server.start() }
                 Text("Security fingerprint\n${LinkWire.displayFingerprint(state.fingerprint)}", style = MaterialTheme.typography.bodySmall)
                 for (device in state.devices) FocusButton("Revoke ${device.name}", "Minimal") { server.revoke(device.id) }
                 FocusButton("Stop & disconnect all", "Minimal") { server.stop() }
@@ -41,7 +42,7 @@ import za.co.rc.tv.ui.FocusButton
             decline.requestFocus()
         }
         AlertDialog(onDismissRequest = { server.reject(request.id) }, title = { Text("Allow ${request.name}?") },
-            text = { Text("Only approve the phone you are pairing. It will control navigation and app search within RC TV for this foreground session. You can revoke it in Phone companion settings.") },
+            text = { Text("Only approve the phone you are pairing. It can reconnect to RC TV navigation and app search for up to seven days. Revoke it at any time in Phone companion settings.") },
             confirmButton = { FocusButton("Approve phone", "Minimal") { server.approve(request.id) } },
             dismissButton = { FocusButton("Decline", "Minimal", Modifier.focusRequester(decline)) { server.reject(request.id) } })
     }

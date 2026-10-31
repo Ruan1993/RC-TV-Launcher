@@ -1,3 +1,11 @@
+# Current upgrade - TV 0.5.2 / Remote 0.2.0
+
+Install both new APKs and pair once. Approved credentials are now encrypted and retained for up to seven days. Opening YouCine pauses the listener; return to RC TV using the physical remote and the phone reconnects automatically. There is no YouCine/system-wide control or always-running service. The phone retries only while visible, up to every 15 seconds. Backgrounding the phone retains approval.
+
+Disconnect & forget TV, TV-side Revoke, expiry and Stop & disconnect all remove approval. New pairing code adds/retries pairing without forgetting other approved devices. Manual address fallback remains available; discovery/address updates require physical-phone/network acceptance.
+
+The Phase D description below is historical and superseded for credential/session lifetime by PHASE-E.md.
+
 # RC TV Remote — Android companion
 
 ## Connect

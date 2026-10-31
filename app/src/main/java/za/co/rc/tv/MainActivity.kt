@@ -27,7 +27,8 @@ class MainActivity : ComponentActivity() {
     private val companion by lazy { za.co.rc.tv.companion.CompanionServer(this) { key, text ->
         lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && window.decorView.hasWindowFocus() && remoteAction?.invoke(key, text) == true
     } }
-    override fun onStop() { companion.stop("RC TV left the screen. Start pairing again to reconnect."); super.onStop() }
+    override fun onStop() { companion.suspendConnection(); super.onStop() }
+    override fun onResume() { super.onResume(); companion.resume() }
     private fun traceBackKey(event: android.view.KeyEvent) {
         if (BuildConfig.PROFILE_DIAGNOSTICS && event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
             android.util.Log.i("RcNavigation", "Back keyCode=${event.keyCode} action=${event.action} repeat=${event.repeatCount}")
@@ -42,7 +43,7 @@ class MainActivity : ComponentActivity() {
         return super.onKeyUp(keyCode, event)
     }
     override fun onPause() {
-        companion.stop("RC TV is no longer active. Start pairing again to reconnect.")
+        companion.suspendConnection()
         RenderDiagnostics.snapshot()
         super.onPause()
     }

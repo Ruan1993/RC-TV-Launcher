@@ -36,6 +36,8 @@ class PhoneActivity : Activity() {
     @Volatile private var visible = false
     @Volatile private var generation = 0
     private var lastCommand = 0L
+    private val credentials by lazy { za.co.rc.tv.link.SecureRecord(this, "approved-tv") }
+    private var connected = false
     private val nsd by lazy { getSystemService(NsdManager::class.java) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,13 +55,22 @@ class PhoneActivity : Activity() {
             else connect(parts[0], parts[1].toInt())
         }
         controls = column(); content.addView(controls)
-        text("Controls work inside RC TV only. Leaving RC TV stops the TV connection. Your physical remote remains available. Pairing lasts for this foreground session only.", 14)
+        text("Controls work inside RC TV only. Opening YouCine pauses control; return to RC TV with the physical remote and this phone reconnects. Approved pairing is stored securely for up to seven days.", 14)
     }
-    override fun onStart() { super.onStart(); visible = true; discover() }
+    override fun onStart() {
+        super.onStart(); visible = true; discover()
+        val current = generation
+        background {
+            val saved = credentials.read()
+            main.post { if (visible && current == generation && saved != null) runCatching {
+                val restored = LinkClient(saved.getString("host"), saved.getInt("port"), saved.getString("pin")).apply { token = saved.getString("token") }
+                client = restored; reconnect(restored, current, 0)
+            }.onFailure { credentials.clear(); message("Disconnected. Pair with your TV again.") } }
+        }
+    }
     override fun onStop() {
         visible = false; generation++; main.removeCallbacksAndMessages(null); stopDiscovery()
-        val old = client; client = null; controls.removeAllViews()
-        if (old != null) background { old.disconnect() }
+        client = null; connected = false; controls.removeAllViews()
         super.onStop()
     }
     override fun onDestroy() { io.shutdown(); super.onDestroy() }
@@ -104,8 +115,15 @@ class PhoneActivity : Activity() {
                 resolving = false
                 if (visible && scan == generation) {
                     val host = info.host?.hostAddress
-                    if (host != null && ':' !in host && found.add("$host:${info.port}")) button("${info.serviceName} · $host", devices) { connect(host, info.port) }
-                    message("Select your TV. Compare its security fingerprint before pairing.")
+                    if (host != null && ':' !in host && found.add("$host:${info.port}")) {
+                        button("${info.serviceName} · $host", devices) { connect(host, info.port) }
+                        val old = client
+                        if (!connected && old?.token != null && (old.host != host || old.port != info.port)) {
+                            val replacement = LinkClient(host, info.port, old.fingerprint).apply { token = old.token }
+                            generation++; client = replacement; reconnect(replacement, generation, 0)
+                        }
+                    }
+                    if (client == null) message("Select your TV. Compare its security fingerprint before pairing.")
                 }
                 if (visible) resolveNext(generation)
             } }
@@ -113,9 +131,9 @@ class PhoneActivity : Activity() {
     }
     private fun connect(host: String, port: Int) {
         stopDiscovery()
-        generation++; val current = generation; val old = client; client = null; controls.removeAllViews()
+        generation++; val current = generation; val old = client; client = null; connected = false; controls.removeAllViews()
         background {
-            old?.disconnect()
+            old?.disconnect(); credentials.clear()
             val candidate = LinkClient(host, port)
             try {
                 val fingerprint = candidate.probe()
@@ -147,7 +165,7 @@ class PhoneActivity : Activity() {
                 val response = candidate.request(JSONObject().put("op", "poll").put("request", request))
                 main.post {
                     if (visible && current == generation) {
-                        if (response.optBoolean("approved")) { candidate.token = response.getString("token"); client = candidate; remote(); heartbeat(candidate, current) }
+                        if (response.optBoolean("approved")) { candidate.token = response.getString("token"); client = candidate; reconnect(candidate, current, 0) }
                         else poll(candidate, request, current, count + 1)
                     }
                 }
@@ -157,7 +175,7 @@ class PhoneActivity : Activity() {
     private fun remote() {
         controls.background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(0xF5283D49.toInt(), 0xFA11232D.toInt())).apply { cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0x557DA99F) }
         controls.setPadding(dp(16), dp(12), dp(16), dp(12))
-        controls.removeAllViews(); message("Connected · encrypted local control")
+        connected = true; controls.removeAllViews(); message("Connected · encrypted local control")
         button("↑", controls) { send("UP") }
         val row = LinearLayout(this); controls.addView(row)
         for ((label, key) in listOf("←" to "LEFT", "OK" to "OK", "→" to "RIGHT")) {
@@ -166,21 +184,45 @@ class PhoneActivity : Activity() {
         button("↓", controls) { send("DOWN") }; button("Back", controls) { send("BACK") }; button("RC TV Home", controls) { send("HOME") }
         val search = editor("App name · never enter passwords", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS); controls.addView(search)
         button("Search apps on TV", controls) { val value = search.text.toString().take(160); search.text.clear(); send("SEARCH_TEXT", value) }
-        button("Disconnect", controls) {
-            generation++; val old = client; client = null; controls.removeAllViews(); background { old?.disconnect() }; message("Disconnected. Start pairing again on the TV to reconnect.")
+        button("Disconnect & forget TV", controls) {
+            generation++; val old = client; client = null; connected = false; controls.removeAllViews(); background { credentials.clear(); old?.disconnect() }; message("Disconnected. Pair again on the TV to reconnect.")
         }
     }
     private fun send(key: String, text: String = "") {
         if (SystemClock.uptimeMillis() - lastCommand < 80) return
+        if (!connected) return
         lastCommand = SystemClock.uptimeMillis(); val connection = client ?: return; val current = generation
         background { if (!visible || current != generation) return@background
             try { connection.command(key, text); main.post { message("Connected · encrypted local control") } }
-            catch (_: Exception) { main.post { message("Connection ended or command unavailable. Check the TV; use the physical remote if another app opened.") } } }
+            catch (failure: LinkRejected) { main.post { if (current == generation) {
+                if (failure.reason in listOf("resume", "revoked")) { generation++; reconnect(connection, generation, 0) }
+                else message(failure.message ?: "Close TV dialogs with the physical remote.")
+            } } }
+            catch (_: Exception) { main.post { if (current == generation) { generation++; reconnect(connection, generation, 0) } } } }
     }
     private fun heartbeat(connection: LinkClient, current: Int) {
         main.postDelayed({ if (visible && current == generation) background {
-            try { connection.request(JSONObject().put("op", "status").put("token", connection.token)); main.post { if (current == generation) heartbeat(connection, current) } }
-            catch (_: Exception) { main.post { if (current == generation) { client = null; controls.removeAllViews(); message("Disconnected or revoked. Start pairing again on the TV.") } } }
+            try { connection.status(); main.post { if (current == generation) heartbeat(connection, current) } }
+            catch (_: Exception) { main.post { if (current == generation) { generation++; reconnect(connection, generation, 0) } } }
         } }, 5000)
+    }
+    private fun reconnect(connection: LinkClient, current: Int, attempt: Int) {
+        if (!visible || current != generation) return
+        connected = false; client = connection; controls.removeAllViews(); message("Reconnecting · return to RC TV using the physical remote")
+        main.postDelayed({ if (visible && current == generation) background {
+            try {
+                connection.resume()
+                credentials.write(JSONObject().put("host", connection.host).put("port", connection.port).put("pin", connection.fingerprint).put("token", connection.token))
+                main.post { if (visible && current == generation) { remote(); heartbeat(connection, current) } }
+            } catch (failure: LinkRejected) { main.post { if (current == generation) {
+                client = null; connected = false; credentials.clear(); controls.removeAllViews(); message("Disconnected · pairing expired or revoked. Pair again.")
+            } } }
+            catch (failure: javax.net.ssl.SSLException) { main.post {
+                val identityFailure = generateSequence<Throwable>(failure) { it.cause }.any { it is java.security.cert.CertificateException }
+                if (current == generation && identityFailure) { client = null; message("Disconnected · secure identity check failed. Verify the TV and pair again.") }
+                else reconnect(connection, current, attempt + 1)
+            } }
+            catch (_: Exception) { main.post { reconnect(connection, current, attempt + 1) } }
+        } }, if (attempt == 0) 0 else (1000L shl attempt.coerceAtMost(4)).coerceAtMost(15000))
     }
 }

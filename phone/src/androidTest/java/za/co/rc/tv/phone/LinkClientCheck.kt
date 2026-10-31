@@ -23,6 +23,7 @@ class LinkClientCheck : Instrumentation() {
                 }
             }
             check(client.token != null)
+            client.resume()
             var ready = false
             repeat(15) { if (!ready) { Thread.sleep(1000); ready = runCatching { client.command("HOME"); true }.getOrDefault(false) } }
             check(ready)

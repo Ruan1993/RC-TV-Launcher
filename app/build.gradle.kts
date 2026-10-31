@@ -11,8 +11,8 @@ android {
         testInstrumentationRunner = "za.co.rc.tv.WallpaperImportCheck"
         minSdk = 30
         targetSdk = 36
-        versionCode = 18
-        versionName = "0.5.1-local-companion"
+        versionCode = 19
+        versionName = "0.5.2-companion-reconnect"
     }
     buildFeatures { compose = true; buildConfig = true }
     sourceSets.getByName("main").java.srcDir(rootProject.file("shared/src"))
