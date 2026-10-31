@@ -1,3 +1,5 @@
+> Phase G: TV 0.8.0 / Remote 0.5.0 adds Easy setup and the redesigned phone remote. Existing unexpired approvals are retained. Use [the current setup and verification guide](PHASE-G.md); historical instructions below describe earlier layouts.
+
 > Phase F update: use TV 0.7.3 and Remote 0.4.0. The foreground-only limits below describe the earlier checkpoint. See [Phase F setup and current restrictions](PHASE-F.md) for the opt-in system-control path. Existing 0.2 approved pairing records are retained; no compulsory re-pairing.
 
 # Current upgrade - TV 0.5.2 / Remote 0.2.0

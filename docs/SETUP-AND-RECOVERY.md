@@ -1,3 +1,5 @@
+> Phase G adds an optional Easy setup wizard. New installations see it automatically; existing users can open RC TV Settings → Easy setup. Home choice and Android permission remain optional and require the user's own confirmation. See [the simple setup guide and current device limits](PHASE-G.md).
+
 # Installation and recovery
 
 1. Keep the original launcher installed and enabled. Confirm you can open Android Settings before changing Home.
