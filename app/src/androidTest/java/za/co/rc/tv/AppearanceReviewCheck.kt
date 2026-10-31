@@ -17,6 +17,7 @@ object AppearanceReviewCheck {
         val before = runBlocking { prefs.state.first() }
         try {
             runBlocking {
+                prefs.setWallpaperVisibility(wallpaperVisibilities[args.getString("visibility", "1").toInt()])
                 prefs.setAccent(accentThemes[args.getString("accent", "0").toInt()])
                 prefs.setFontStyle(fontStyles[args.getString("font", "0").toInt()])
                 prefs.setTextSize(textSizes[args.getString("size", "0").toInt()])
@@ -40,10 +41,11 @@ object AppearanceReviewCheck {
             val bitmap = ui.takeScreenshot() ?: error("No screenshot")
             File(test.targetContext.getExternalFilesDir(null), "appearance-review.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle()
             val saved = runBlocking { prefs.state.first() }
+            check(saved.wallpaperVisibility == wallpaperVisibilities[args.getString("visibility", "1").toInt()])
             check(saved.accent == accentThemes[args.getString("accent", "0").toInt()])
             test.runOnMainSync { activity.finish() }
         } finally {
-            runBlocking { prefs.setAccent(before.accent); prefs.setFontStyle(before.fontStyle); prefs.setTextSize(before.textSize) }
+            runBlocking { prefs.setAccent(before.accent); prefs.setFontStyle(before.fontStyle); prefs.setTextSize(before.textSize); prefs.setWallpaperVisibility(before.wallpaperVisibility) }
         }
     }
 }

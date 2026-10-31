@@ -20,13 +20,15 @@ import java.io.File
 
 /** Targeted platform-decoder check; lives only in the separate test APK. */
 class WallpaperImportCheck : Instrumentation() {
+    private var icons = false
     private var overdue = false
     private var keyboard = false
     private var appearance: Bundle? = null
-    override fun onCreate(arguments: Bundle?) { overdue = arguments?.getString("mode") == "overdue"; keyboard = arguments?.getString("mode") == "keyboard"; appearance = arguments?.takeIf { it.getString("mode") == "appearance" }; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { icons = arguments?.getString("mode") == "icons"; overdue = arguments?.getString("mode") == "overdue"; keyboard = arguments?.getString("mode") == "keyboard"; appearance = arguments?.takeIf { it.getString("mode") == "appearance" }; super.onCreate(arguments); start() }
     override fun onStart() {
         val result = Bundle()
         try {
+            if (icons) { IconReviewCheck.run(this); result.putString("verification", "Both adaptive and monochrome icons rendered"); finish(Activity.RESULT_OK, result); return }
             appearance?.let { AppearanceReviewCheck.run(this, it); result.putString("verification", "Saved appearance and unchanged, visible 216 x 190 dp card passed"); finish(Activity.RESULT_OK, result); return }
             if (keyboard) {
                 KeyboardEditingCheck.run(this)

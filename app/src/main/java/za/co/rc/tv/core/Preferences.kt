@@ -19,7 +19,7 @@ data class LauncherPreferences(val favourites: Set<String> = emptySet(), val red
     val rotationEnabled: Boolean = false, val rotationMinutes: Int = 15,
     val rotationPool: Set<String> = setOf("mountain", "coast", "desert"),
     val wallpaperTransition: String = "Instant", val rotationAt: Long = 0L,
-    val accent: String = "Original (Default)", val fontStyle: String = "Modern", val textSize: String = "Standard")
+    val accent: String = "Original (Default)", val fontStyle: String = "Modern", val textSize: String = "Standard", val wallpaperVisibility: String = "Balanced")
 class Preferences(context: Context) {
     private val store = context.applicationContext.store
     private val favourites = stringSetPreferencesKey("favourites")
@@ -35,12 +35,13 @@ class Preferences(context: Context) {
     private val accent = stringPreferencesKey("accent_theme")
     private val fontStyle = stringPreferencesKey("font_style")
     private val textSize = stringPreferencesKey("text_size")
+    private val visibility = stringPreferencesKey("wallpaper_visibility")
     private val intensity = stringPreferencesKey("animation_intensity")
     val state = store.data.catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { LauncherPreferences(it[favourites].orEmpty(), it[motion] ?: false, validTheme(it[theme]), validMotion(it[intensity]), it[order]?.split("\n")?.filter(String::isNotBlank).orEmpty(), validWallpaper(it[wallpaper]),
             it[rotate] ?: false, validRotationInterval(it[interval] ?: 15),
             it[pool]?.filter { id -> validWallpaper(id) == id }?.toSet() ?: setOf("mountain", "coast", "desert"),
-            validWallpaperTransition(it[transition]), it[rotatedAt] ?: 0L, validAccent(it[accent]), validFontStyle(it[fontStyle]), validTextSize(it[textSize])) }
+            validWallpaperTransition(it[transition]), it[rotatedAt] ?: 0L, validAccent(it[accent]), validFontStyle(it[fontStyle]), validTextSize(it[textSize]), validWallpaperVisibility(it[visibility])) }
     suspend fun toggleFavourite(packageName: String) { store.edit { p ->
         val current = p[favourites].orEmpty(); p[favourites] = if (packageName in current) current - packageName else current + packageName
     } }
@@ -77,7 +78,8 @@ class Preferences(context: Context) {
     suspend fun setAccent(value: String) { require(value in accentThemes); store.edit { it[accent] = value } }
     suspend fun setFontStyle(value: String) { require(value in fontStyles); store.edit { it[fontStyle] = value } }
     suspend fun setTextSize(value: String) { require(value in textSizes); store.edit { it[textSize] = value } }
-    suspend fun resetAppearance() { store.edit { it.remove(accent); it.remove(fontStyle); it.remove(textSize) } }
+    suspend fun setWallpaperVisibility(value: String) { require(value in wallpaperVisibilities); store.edit { it[visibility] = value } }
+    suspend fun resetAppearance() { store.edit { it.remove(accent); it.remove(fontStyle); it.remove(textSize); it.remove(visibility) } }
     suspend fun setTheme(value: String) { store.edit { it[theme] = validTheme(value) } }
     suspend fun setMotion(value: String) { store.edit { it[intensity] = validMotion(value) } }
     suspend fun setReducedMotion(enabled: Boolean) { store.edit { it[motion] = enabled } }
@@ -93,3 +95,7 @@ fun validAccent(value: String?) = value?.takeIf { it in accentThemes } ?: accent
 fun validFontStyle(value: String?) = value?.takeIf { it in fontStyles } ?: fontStyles.first()
 fun validTextSize(value: String?) = value?.takeIf { it in textSizes } ?: textSizes.first()
 fun textScale(value: String) = when (value) { "Comfortable" -> 1.15f; "Large" -> 1.3f; "Extra Large" -> 1.5f; else -> 1f }
+
+val wallpaperVisibilities = listOf("Subtle", "Balanced", "Vivid")
+fun validWallpaperVisibility(value: String?) = value?.takeIf { it in wallpaperVisibilities } ?: "Balanced"
+fun wallpaperScrimAlpha(base: Float, visibility: String): Float = (base * when (visibility) { "Subtle" -> 1.12f; "Vivid" -> .78f; else -> 1f }).coerceIn(0f, .99f)

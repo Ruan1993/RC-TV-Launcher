@@ -73,12 +73,12 @@ private val GlassShape = RoundedCornerShape(22.dp)
 
 /** No backdrop blur or continuously running effects: safe for API 30 TV GPUs. */
 @Composable
-private fun Wallpaper(minimal: Boolean, id: String, transition: String, motion: String) {
+private fun Wallpaper(minimal: Boolean, id: String, transition: String, motion: String, visibility: String) {
     SideEffect { RenderDiagnostics.wallpaperComposed() }
     val context = LocalContext.current.applicationContext
-    val wallpaper by produceState<android.graphics.Bitmap?>(null, minimal, id) {
+    val wallpaper by produceState<android.graphics.Bitmap?>(null, minimal, id, visibility) {
         value = if (minimal) null else withContext(Dispatchers.IO) {
-            WallpaperCache.load(context, id)
+            WallpaperCache.load(context, id, visibility)
         }
     }
     Box(Modifier.fillMaxSize().background(Ink)) {
@@ -136,9 +136,16 @@ private fun NavigationMark(mark: String, tint: Color) {
             "A" -> for (x in listOf(.12f,.58f)) for (y in listOf(.12f,.58f)) drawRect(tint, Offset(w*x,h*y), Size(w*.3f,h*.3f), style = Stroke(stroke))
             "L" -> { for (x in listOf(.18f,.4f,.7f)) drawLine(tint, Offset(w*x,h*.15f), Offset(w*(x+.05f),h*.88f), stroke) }
             "C" -> {
-                drawRect(tint, Offset(w*.3f,h*.15f), Size(w*.6f,h*.6f), style = Stroke(stroke))
-                drawCircle(tint, w*.055f, Offset(w*.12f,h*.88f))
-                drawArc(tint, -90f, 90f, false, Offset(-w*.07f,h*.5f), Size(w*.38f,h*.38f), style = Stroke(stroke))
+                // Open lower-left corner with two broadcast arcs, matching the navbar stroke.
+                val screen = Path().apply {
+                    moveTo(w*.12f,h*.43f); lineTo(w*.12f,h*.16f); lineTo(w*.9f,h*.16f)
+                    lineTo(w*.9f,h*.78f); lineTo(w*.57f,h*.78f)
+                }
+                drawPath(screen, tint, style = Stroke(stroke))
+                val origin = Offset(w*.12f,h*.84f)
+                drawCircle(tint, w*.045f, origin)
+                for (radius in listOf(.20f,.37f)) drawArc(tint, -90f, 90f, false,
+                    Offset(origin.x-w*radius, origin.y-h*radius), Size(w*radius*2,h*radius*2), style = Stroke(stroke))
             }
             "T" -> {
                 drawArc(tint, 180f, 180f, false, Offset(w*.08f,h*.12f), Size(w*.84f,h*.84f), style = Stroke(stroke))
@@ -220,7 +227,7 @@ fun CinematicLauncher(
     onTransition: (String) -> Unit, onRotateWallpaper: suspend () -> Unit,
     onApplyWallpaper: suspend (String) -> Boolean,
     onSaveOrder: suspend (List<String>) -> Boolean,
-    onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onResetAppearance: () -> Unit,
+    onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onResetAppearance: () -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
     val Ice = LocalAppearance.current.accent
@@ -328,7 +335,7 @@ fun CinematicLauncher(
             } else filtered
         } }
     Box(Modifier.fillMaxSize()) {
-        Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion)
+        Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion, prefs.wallpaperVisibility)
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> onSection(next) } } }, motion)
             Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -358,7 +365,7 @@ fun CinematicLauncher(
                             FocusButton("Choose wallpaper", motion) { wallpaperSettingsOpen = true }
                         }
                         GlassPanel(Modifier.fillMaxWidth()) {
-                                                AppearanceSettings(prefs, motion, onAccent, onFontStyle, onTextSize, onResetAppearance)
+                                                AppearanceSettings(prefs, motion, onAccent, onFontStyle, onTextSize, onWallpaperVisibility, onResetAppearance)
                         Text("Layout", style = MaterialTheme.typography.titleLarge, color = Ice)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             listOf("Cinematic", "Minimalist").forEach { theme -> FocusButton(theme, motion, selected = prefs.theme == theme) { onTheme(theme) } }

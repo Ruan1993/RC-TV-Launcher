@@ -46,7 +46,7 @@ fun appearanceTokens(name: String): AppearanceTokens = when (name) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun AppearanceSettings(prefs: LauncherPreferences, motion: String, accent: (String) -> Unit,
-    font: (String) -> Unit, size: (String) -> Unit, reset: () -> Unit) {
+    font: (String) -> Unit, size: (String) -> Unit, visibility: (String) -> Unit, reset: () -> Unit) {
     Text("Appearance & Themes", style = MaterialTheme.typography.titleLarge, color = LocalAppearance.current.accent)
     Text("Preview changes immediately. Wallpapers and card sizes stay the same.")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -56,5 +56,11 @@ fun appearanceTokens(name: String): AppearanceTokens = when (name) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { fontStyles.forEach { FocusButton(it, motion, selected = prefs.fontStyle == it) { font(it) } } }
     Text("Text size", style = MaterialTheme.typography.titleMedium)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { textSizes.forEach { FocusButton(it, motion, selected = prefs.textSize == it) { size(it) } } }
+    Text("Wallpaper visibility", style = MaterialTheme.typography.titleMedium)
+    Text("Subtle darkens the wallpaper. Balanced keeps the original look. Vivid reveals more detail.")
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        wallpaperVisibilities.forEach { FocusButton(it, motion, selected = prefs.wallpaperVisibility == it) { visibility(it) } }
+    }
+    FocusButton("Reset visibility to Balanced", motion) { visibility("Balanced") }
     FocusButton("Reset to Original", motion, onClick = reset)
 }

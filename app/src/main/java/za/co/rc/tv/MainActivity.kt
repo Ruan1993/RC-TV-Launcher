@@ -197,6 +197,7 @@ class MainActivity : ComponentActivity() {
                     onAccent = { value -> scope.launch { preferences.setAccent(value) } },
                     onFontStyle = { value -> scope.launch { preferences.setFontStyle(value) } },
                     onTextSize = { value -> scope.launch { preferences.setTextSize(value) } },
+                    onWallpaperVisibility = { value -> scope.launch { preferences.setWallpaperVisibility(value) } },
                     onResetAppearance = { scope.launch { preferences.resetAppearance() } },
                     onTheme = { value -> scope.launch { runCatching { preferences.setTheme(value) }.onFailure { message("Could not save theme.") } } },
                     onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
