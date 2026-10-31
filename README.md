@@ -4,7 +4,7 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase B wallpaper personalisation; not version 1.0.** Approved Home cards, icons, mountain default, navigation and gallery styling are preserved. Wallpaper supports private JPEG/PNG/WebP imports, confirmed removal, persistent rotation participants/intervals and Instant/Crossfade/Gentle Slide. Minimal/reduced motion switch instantly; rotation only runs on active Home, without a service. This Xiaomi firmware has only a document-picker stub: a compatible picker/provider is needed for actual local/USB selection. The import/decoder pipeline is separately device-tested. See [sprint verification and limitations](docs/SPRINT-WALLPAPERS.md).
+**Phase C development preview (0.4.2), not version 1.0.** Approved Home, favourites and wallpaper styling are preserved. Supported Home selection explains Xiaomi's role/routing mismatch without changing the default. Optional offline RC TV Keyboard includes an isolated preview and user-controlled Android setup. Native image browsing now bypasses Xiaomi's broken document picker for indexed JPEG/PNG/WebP images and reuses private wallpaper imports. USB depends on Android indexing or a working document provider. See [Phase C verification and limitations](docs/PHASE-C.md) and the [complete roadmap](docs/FEATURE-ROADMAP.md).
 
 Physical app context menu, direct-shelf favourites rearranging, Search, saved theme/motion and eight favourites remain preserved. No RC Assist or optional profile implementation. [Release blockers](docs/RELEASE-READINESS.md) remain explicit; the old Minimal regression is reserved for a dedicated optimisation checkpoint.
 

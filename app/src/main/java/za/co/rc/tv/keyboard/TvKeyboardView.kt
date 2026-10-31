@@ -30,6 +30,7 @@ class TvKeyboardView(context: Context, private val onKey: (TvKey) -> Unit) : Lin
         cursor = if (number) KeyPosition(0, 0) else KeyPosition(1, 4); rebuild()
     }
     private fun rebuild() {
+        val restoreFocus = hasFocus()
         removeAllViews(); buttons.clear(); rows = KeyboardModel.rows(mode, shift, enter)
         addView(TextView(context).apply { text = if (password) "RC TV Keyboard · Password field" else "RC TV Keyboard"; setTextColor(0xFFC7E9E2.toInt()); textSize = 13f; setPadding(dp(4), 0, 0, dp(4)) })
         rows.forEachIndexed { rowIndex, keys ->
@@ -44,14 +45,14 @@ class TvKeyboardView(context: Context, private val onKey: (TvKey) -> Unit) : Lin
                     setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()), intArrayOf(0xFF0B2025.toInt(), Color.WHITE)))
                     minimumWidth = 0; minWidth = 0; minimumHeight = 0; minHeight = 0; setPadding(dp(3), 0, dp(3), 0)
                     setOnFocusChangeListener { _, focused -> if (focused) select(KeyPosition(rowIndex, columnIndex), false) }
-                    setOnClickListener { select(KeyPosition(rowIndex, columnIndex), false); activate() }
+                    setOnClickListener { requestFocusFromTouch(); select(KeyPosition(rowIndex, columnIndex), false); activate() }
                     row.addView(this, LayoutParams(0, dp(42), key.weight).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) })
                 }
             }
             buttons += controls; addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         }
         cursor = KeyPosition(cursor.row.coerceIn(0, rows.lastIndex), cursor.column.coerceIn(0, rows[cursor.row.coerceIn(0, rows.lastIndex)].lastIndex))
-        select(cursor, false)
+        select(cursor, restoreFocus)
     }
     private fun select(position: KeyPosition, focus: Boolean = true) {
         buttons.getOrNull(cursor.row)?.getOrNull(cursor.column)?.isSelected = false

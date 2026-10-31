@@ -21,7 +21,11 @@ class RcInputMethodService : InputMethodService() {
         keyboard?.configure(KeyboardInput.isNumber(info), KeyboardInput.enterLabel(info), KeyboardInput.isPassword(info))
     }
     override fun onEvaluateFullscreenMode() = false
-    override fun onEvaluateInputViewShown() = true
+    override fun onEvaluateInputViewShown(): Boolean {
+        super.onEvaluateInputViewShown()
+        // A TV remote counts as hardware input; still offer the optional on-screen keys.
+        return true
+    }
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
         (isInputViewShown && keyboard?.remoteDown(keyCode) == true) || super.onKeyDown(keyCode, event)
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =

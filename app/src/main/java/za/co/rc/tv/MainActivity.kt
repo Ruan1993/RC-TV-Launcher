@@ -79,14 +79,17 @@ class MainActivity : ComponentActivity() {
                 }
                 var wallpapers by remember { mutableStateOf(bundledWallpapers) }
                 var wallpaperBusy by remember { mutableStateOf(false) }
-                val picker = androidx.activity.compose.rememberLauncherForActivityResult(
-                    androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+                val importImage: (android.net.Uri?) -> Unit = { uri ->
                     if (uri != null) scope.launch {
                         wallpaperBusy = true
                         try { wallpaperStore.import(uri); wallpapers = wallpaperStore.list(); message("Wallpaper imported. Select it in the gallery.") }
                         catch (failure: Exception) { message(failure.message ?: "Could not import this image.") }
                         finally { wallpaperBusy = false }
                     }
+                }
+                val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+                    if (result.resultCode == RESULT_OK) importImage(result.data?.data)
                 }
                 val lifecycle = LocalLifecycleOwner.current.lifecycle
                 LaunchedEffect(lifecycle, refresh) {
@@ -121,10 +124,8 @@ class MainActivity : ComponentActivity() {
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
                     wallpapers = wallpapers, wallpaperBusy = wallpaperBusy,
                     onImportWallpaper = {
-                        val handler = packageManager.resolveActivity(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
-                        if (handler == null || handler.activityInfo.packageName == "com.google.android.tv.frameworkpackagestubs")
-                            message("This TV has no working document picker. A compatible Android document picker is needed for local or USB imports.")
-                        else runCatching { picker.launch(arrayOf("image/jpeg", "image/png", "image/webp")) }.onFailure { message("No document picker is available on this TV.") }
+                        runCatching { picker.launch(Intent(this@MainActivity, za.co.rc.tv.ui.MediaImageBrowserActivity::class.java)) }
+                            .onFailure { message("Image browser could not be opened.") }
                     },
                     onRemoveWallpaper = { id ->
                         runCatching { preferences.removeWallpaper(id); wallpaperStore.remove(id); wallpapers = wallpaperStore.list() }

@@ -1,6 +1,6 @@
 # Release readiness — 1.0 gates
 
-Current work is a **Phase B development preview**, not a feature-complete 1.0 release. The approved Home is preserved. See WALLPAPER-SELECTION-CHECKPOINT.md and PHASE-B-POLISH.md for evidence. Keep draft PR #2 unmerged, repository visibility unchanged and stock Home as default.
+Current work is a **Phase C development preview**, not a feature-complete 1.0 release. The approved Home is preserved. See WALLPAPER-SELECTION-CHECKPOINT.md and PHASE-B-POLISH.md for evidence. Keep draft PR #2 unmerged, repository visibility unchanged and stock Home as default.
 
 ## Core and device acceptance
 
@@ -51,3 +51,10 @@ Do not silently label these complete or remove them from 1.0 scope: app hiding/c
 Prioritise the 1.0 critical path: reliable everyday launch/return, remote focus, wallpaper/appearance persistence, error recovery, targeted performance optimisation, production signing and installation. Optional user profiles and RC Assist are outside that path. Scope other broader capabilities separately before declaring 1.0 feature-complete. No fake integrations, protected-service scraping, device account assumptions or unauthenticated companion server.
 
 **RC Assist stays future and optional:** permission-based actions and a secure Gemini Flash backend, no APK credentials and no implementation here.
+
+## Phase C follow-up gates
+- [x] Pending Back fix verified/pushed; supported Home-selection screen verified without changing defaults.
+- [x] Optional offline keyboard core/preview and native image browser implemented; see PHASE-C.md.
+- [ ] User-enabled system IME cross-app, password/numeric/editor actions and switch-back acceptance. Preview verification is not full IME acceptance.
+- [ ] Xiaomi Home role/resolution mismatch: actual Home selection/reboot requires explicit user approval and firmware acceptance.
+- [ ] Android 13/14 image permissions/selected access, USB providers, revoked permissions, large libraries and second-device acceptance.
