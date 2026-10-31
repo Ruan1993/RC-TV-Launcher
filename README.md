@@ -4,7 +4,7 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase F development preview (TV 0.7.3 / Remote 0.4.0), not version 1.0.** RC Assist is postponed and removed from the active app. Optional, explicitly consented accessibility control extends the encrypted companion beyond RC TV. Android 11 uses app-exposed focus/click actions, not arbitrary D-pad injection. Home/Back use system global actions; media requests and optional RC TV Keyboard text have app-specific limits. User reports YouCine control works after enabling Android Accessibility. Text-entry follow-up is in device acceptance; see the Phase F report. See [Phase F research, setup and verification](docs/PHASE-F.md).
+**Phase F development preview (TV 0.7.3 / Remote 0.4.0), not version 1.0.** RC Assist is postponed and removed from the active app. Optional, explicitly consented accessibility control extends the encrypted companion beyond RC TV. Android 11 uses app-exposed focus/click actions, not arbitrary D-pad injection. Home/Back use system global actions; media requests and optional RC TV Keyboard text have app-specific limits. User reports YouCine control works after enabling Android Accessibility. User also confirms phone typing in YouCine search when RC TV Keyboard appears; see the Phase F report for the tested scope. See [Phase F research, setup and verification](docs/PHASE-F.md).
 
 Physical app context menu, direct-shelf favourites rearranging, Search, saved theme/motion and eight favourites remain preserved. RC Assist remains available in Git history at `e8e20c4`. [Release blockers](docs/RELEASE-READINESS.md) remain explicit; the old Minimal regression is reserved for a dedicated optimisation checkpoint.
 

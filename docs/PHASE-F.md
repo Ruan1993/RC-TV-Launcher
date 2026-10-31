@@ -97,3 +97,7 @@ Build verification: both APKs, 29 unit tests and both lint checks pass. New CLOS
 A separate on-device instrumentation attempt was inconclusive: instrumentation restarted RC TV, Android marked its accessibility service unbound/crashed, and the test exited before sending any text. No application fatal exception appeared in the inspected AndroidRuntime logs. The temporary invasive test was removed; no test-only endpoint or runtime control bypass is shipped. User was asked to toggle the service Off/On once and retry from the real paired phone. No permission setting was toggled by automation. Actual YouCine text insertion is awaiting that physical check.
 
 APKs are preserved under `releases/phase-f/RC-TV-Launcher-0.7.3-debug.apk` and `RC-TV-Remote-0.4.0-debug.apk`; all earlier rollback APKs remain. No changes to wallpaper/favourites persistence, default Home, physical-key handlers, encryption, grant expiry or foreground-service policy.
+
+## Physical acceptance follow-up — YouCine typing
+
+User confirmed on the Xiaomi: phone text works after opening YouCine search and RC TV Keyboard appearing. This verifies that specific user-tested search/keyboard flow with TV 0.7.3. It does not establish hidden-keyboard insertion, every YouCine editor, YouTube typing or universal third-party compatibility. The earlier pending text-acceptance note is resolved for this visible-keyboard YouCine search flow only.
