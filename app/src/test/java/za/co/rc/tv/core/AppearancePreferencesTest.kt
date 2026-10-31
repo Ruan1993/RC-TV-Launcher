@@ -13,5 +13,13 @@ class AppearancePreferencesTest {
     @Test fun supportedPreferencesSurviveValidation() {
         listOf("Cinematic", "Minimalist").forEach { assertEquals(it, validTheme(it)) }
         listOf("Minimal", "Balanced", "Cinematic").forEach { assertEquals(it, validMotion(it)) }
+        accentThemes.forEach { assertEquals(it, validAccent(it)) }
+        fontStyles.forEach { assertEquals(it, validFontStyle(it)) }
+        textSizes.forEach { assertEquals(it, validTextSize(it)) }
+        assertEquals("Original (Default)", validAccent("invalid"))
+        assertEquals("Modern", validFontStyle(null))
+        assertEquals("Standard", validTextSize("invalid"))
+        assertEquals(1f, textScale("Standard"))
+        assertEquals(1.5f, textScale("Extra Large"))
     }
 }

@@ -74,9 +74,8 @@ class MainActivity : ComponentActivity() {
         val suggestSetup = SetupProgress.offerOnFirstOpen(getSharedPreferences("easy-setup", MODE_PRIVATE).getBoolean("seen", false),
             java.io.File(filesDir, "datastore/launcher.preferences_pb").exists())
         setContent {
-            MaterialTheme(typography = za.co.rc.tv.ui.LauncherTypography, colorScheme = darkColorScheme(primary = Color(0xFF9FE9D5), background = Color(0xFF09151F), surface = Color(0xFF182D39))) {
-                CompositionLocalProvider(LocalContentColor provides Color.White) {
-                val prefs by preferences.state.collectAsStateWithLifecycle(LauncherPreferences())
+            val prefs by preferences.state.collectAsStateWithLifecycle(LauncherPreferences())
+            za.co.rc.tv.ui.LauncherAppearance(prefs) {
                 var discovery by remember { mutableStateOf(AppDiscoveryState()) }
                 var section by rememberSaveable { mutableStateOf("Home") }
                 var query by rememberSaveable { mutableStateOf("") }
@@ -195,6 +194,10 @@ class MainActivity : ComponentActivity() {
                         .onFailure { message("Could not save order. Favourites may have changed; try again.") }.isSuccess },
                     onRetry = { refresh++ }, onChooseHome = { selectHome() }, onRestoreHome = { openSettings() },
                     onAndroidSettings = { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }.onFailure { message("Settings unavailable.") } },
+                    onAccent = { value -> scope.launch { preferences.setAccent(value) } },
+                    onFontStyle = { value -> scope.launch { preferences.setFontStyle(value) } },
+                    onTextSize = { value -> scope.launch { preferences.setTextSize(value) } },
+                    onResetAppearance = { scope.launch { preferences.resetAppearance() } },
                     onTheme = { value -> scope.launch { runCatching { preferences.setTheme(value) }.onFailure { message("Could not save theme.") } } },
                     onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
                     onReducedMotion = { scope.launch { runCatching { preferences.setReducedMotion(!prefs.reducedMotion) }.onFailure { message("Could not save preference.") } } }
@@ -208,8 +211,6 @@ class MainActivity : ComponentActivity() {
                     confirmButton = { za.co.rc.tv.ui.FocusButton("Set up other apps", "Minimal") { offerOtherApps = false; companionPage = 1; companionOpen = true } },
                     dismissButton = { za.co.rc.tv.ui.FocusButton("Later", "Minimal") { offerOtherApps = false } })
                 za.co.rc.tv.companion.CompanionApproval(companion)
-
-                }
             }
         }
         // Android 11's Window getter can throw before the decor view exists.

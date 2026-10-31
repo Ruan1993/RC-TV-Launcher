@@ -96,13 +96,15 @@ private fun Wallpaper(minimal: Boolean, id: String, transition: String, motion: 
 
 @Composable
 private fun GlassPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.clip(GlassShape).background(Ink.copy(alpha = .64f))
-        .border(1.dp, Color.White.copy(alpha = .12f), GlassShape).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    val palette = LocalAppearance.current
+    Column(modifier.clip(GlassShape).background(palette.glass)
+        .border(1.dp, palette.border, GlassShape).padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
 }
 
 @Composable
 internal fun FocusButton(label: String, motion: String, modifier: Modifier = Modifier,
     selected: Boolean = false, quiet: Boolean = false, icon: String? = null, onClick: () -> Unit) {
+    val Ice = LocalAppearance.current.accent
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused && motion != "Minimal") 1.025f else 1f,
         if (motion == "Minimal") snap() else spring(dampingRatio = if (motion == "Cinematic") .78f else .9f, stiffness = 550f), label = "buttonFocus")
@@ -174,6 +176,7 @@ private fun NavigationMark(mark: String, tint: Color) {
 private fun AppTile(app: LauncherApp, repository: AppRepository, generation: Int,
     motion: String, onLaunch: () -> Unit, modifier: Modifier = Modifier) {
     SideEffect { RenderDiagnostics.tileComposed() }
+    val Ice = LocalAppearance.current.accent
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused && motion != "Minimal") if (motion == "Cinematic") 1.055f else 1.035f else 1f,
         if (motion == "Minimal") snap() else spring(dampingRatio = .82f, stiffness = 500f), label = "tileFocus")
@@ -217,8 +220,10 @@ fun CinematicLauncher(
     onTransition: (String) -> Unit, onRotateWallpaper: suspend () -> Unit,
     onApplyWallpaper: suspend (String) -> Boolean,
     onSaveOrder: suspend (List<String>) -> Boolean,
+    onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onResetAppearance: () -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
+    val Ice = LocalAppearance.current.accent
     SideEffect { RenderDiagnostics.shellComposed() }
     var wallpaperSettingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var wallpaperChoice by remember { mutableStateOf<String?>(null) }
@@ -335,7 +340,8 @@ fun CinematicLauncher(
                     Text(clock, fontSize = 28.sp, fontWeight = FontWeight.Normal, color = Color.White)
                 }
                 when (contentSection) {
-                    "Cast", "Speed Test" -> GlassPanel(Modifier.fillMaxWidth()) {
+                    "Speed Test" -> SpeedTestScreen(motion)
+                    "Cast" -> GlassPanel(Modifier.fillMaxWidth()) {
                         Text(contentSection, style = MaterialTheme.typography.headlineLarge)
                         Text("This utility is not configured yet. No test or casting session has started.")
                     }
@@ -355,7 +361,8 @@ fun CinematicLauncher(
                             FocusButton("Choose wallpaper", motion) { wallpaperSettingsOpen = true }
                         }
                         GlassPanel(Modifier.fillMaxWidth()) {
-                                                Text("Appearance", style = MaterialTheme.typography.titleLarge, color = Ice)
+                                                AppearanceSettings(prefs, motion, onAccent, onFontStyle, onTextSize, onResetAppearance)
+                        Text("Layout", style = MaterialTheme.typography.titleLarge, color = Ice)
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             listOf("Cinematic", "Minimalist").forEach { theme -> FocusButton(theme, motion, selected = prefs.theme == theme) { onTheme(theme) } }
                         }
@@ -471,7 +478,7 @@ fun CinematicLauncher(
                                 FocusButton(if (savingOrder) "Saving…" else "Save", motion, Modifier.focusRequester(saveFocus).focusProperties { up = movingFocus }, onClick = saveMove)
                                 FocusButton("Cancel", motion, Modifier.focusProperties { up = movingFocus }, onClick = cancelMove)
                             }
-                        } else Text("D-pad to explore    ·    Select to open    ·    Hold Select for options    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = .5f))
+                        } else if (textScale(prefs.textSize) <= 1.15f) Text("D-pad to explore    ·    Select to open    ·    Hold Select for options    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = .5f))
                     }
                 }
             }

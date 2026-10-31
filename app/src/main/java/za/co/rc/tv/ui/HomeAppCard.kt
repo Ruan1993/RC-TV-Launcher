@@ -36,6 +36,7 @@ import za.co.rc.tv.core.RenderDiagnostics
 @Composable
 internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation: Int,
     motion: String, onLaunch: () -> Unit, modifier: Modifier = Modifier, rearranging: Boolean = false, canMoveLeft: Boolean = true, canMoveRight: Boolean = true) {
+    val palette = LocalAppearance.current
     SideEffect { RenderDiagnostics.tileComposed() }
     var focused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -59,7 +60,7 @@ internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation
                 val edge = Brush.linearGradient(listOf(Color.White.copy(alpha = .50f),
                     Color.White.copy(alpha = .08f), Color(0xFFBDDCD9).copy(alpha = .27f)))
                 val reflection = Brush.verticalGradient(listOf(Color.White.copy(alpha = .10f), Color.Transparent))
-                val halo = Brush.radialGradient(listOf(Color(0xFFBDE8DE).copy(alpha = .20f), Color.Transparent))
+                val halo = Brush.radialGradient(listOf(palette.halo.copy(alpha = .20f), Color.Transparent))
                 onDrawBehind {
                     if (focused && motion != "Minimal") drawRoundRect(halo, Offset(-7.dp.toPx(), -7.dp.toPx()),
                         Size(size.width + 14.dp.toPx(), size.height + 14.dp.toPx()), corners)
@@ -67,7 +68,7 @@ internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation
                     drawRoundRect(reflection, Offset(7.dp.toPx(), 7.dp.toPx()),
                         Size(size.width - 14.dp.toPx(), size.height * .42f), CornerRadius(20.dp.toPx()))
                     drawRoundRect(edge, cornerRadius = corners, style = Stroke(1.dp.toPx()))
-                    if (focused || rearranging) drawRoundRect(Color(0xFFD5F5EB), cornerRadius = corners, style = Stroke(2.dp.toPx()))
+                    if (focused || rearranging) drawRoundRect(palette.focus, cornerRadius = corners, style = Stroke(2.dp.toPx()))
                 }
             }, shape = shape, colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
             contentPadding = PaddingValues(20.dp)) {
@@ -76,13 +77,13 @@ internal fun HomeAppCard(app: LauncherApp, repository: AppRepository, generation
                 if (icon != null) Image(icon!!.asImageBitmap(), null, Modifier.size(80.dp))
                 else Image(painterResource(R.drawable.rc_icon), null, Modifier.size(80.dp))
                 Spacer(Modifier.height(22.dp))
-                Text(app.label, fontSize = 19.sp, fontWeight = FontWeight.Medium,
+                Text(app.label, fontSize = 19.sp, fontWeight = if (palette.highReadability) FontWeight.Bold else FontWeight.Medium,
                     color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (rearranging) Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("‹", fontSize = 28.sp, color = if (canMoveLeft) Color(0xFFD5F5EB) else Color.White.copy(alpha = .2f))
-            Text("›", fontSize = 28.sp, color = if (canMoveRight) Color(0xFFD5F5EB) else Color.White.copy(alpha = .2f))
+            Text("‹", fontSize = 28.sp, color = if (canMoveLeft) palette.focus else Color.White.copy(alpha = .2f))
+            Text("›", fontSize = 28.sp, color = if (canMoveRight) palette.focus else Color.White.copy(alpha = .2f))
         }
     }
 }

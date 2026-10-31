@@ -22,10 +22,12 @@ import java.io.File
 class WallpaperImportCheck : Instrumentation() {
     private var overdue = false
     private var keyboard = false
-    override fun onCreate(arguments: Bundle?) { overdue = arguments?.getString("mode") == "overdue"; keyboard = arguments?.getString("mode") == "keyboard"; super.onCreate(arguments); start() }
+    private var appearance: Bundle? = null
+    override fun onCreate(arguments: Bundle?) { overdue = arguments?.getString("mode") == "overdue"; keyboard = arguments?.getString("mode") == "keyboard"; appearance = arguments?.takeIf { it.getString("mode") == "appearance" }; super.onCreate(arguments); start() }
     override fun onStart() {
         val result = Bundle()
         try {
+            appearance?.let { AppearanceReviewCheck.run(this, it); result.putString("verification", "Saved appearance and unchanged, visible 216 x 190 dp card passed"); finish(Activity.RESULT_OK, result); return }
             if (keyboard) {
                 KeyboardEditingCheck.run(this)
                 result.putString("verification", "Native editor: cursor movement, middle insertion, selection deletion, Unicode, empty fields and repeat passed")
