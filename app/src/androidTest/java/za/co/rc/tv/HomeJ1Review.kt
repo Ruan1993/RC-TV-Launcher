@@ -63,6 +63,15 @@ object HomeJ1Review {
             query { it.contentDescription?.toString()?.contains("Open Connections & Devices")==true }.let { check(focusedBelow(it)); it.recycle() }
             key(KeyEvent.KEYCODE_DPAD_UP)
             query { it.contentDescription?.toString()=="Settings" }.let { check(focusedBelow(it)); it.recycle() }
+            // D-pad focus must produce a real transform, not just save a choice.
+            key(KeyEvent.KEYCODE_DPAD_DOWN)
+            key(KeyEvent.KEYCODE_DPAD_DOWN)
+            query { it.isFocused }.let {
+                val b=Rect(); it.getBoundsInScreen(b); it.recycle()
+                val moving=args.getString("reduced")!="true" && args.getString("intensity","Standard")!="Off"
+                check(if(moving) b.width()>440 && b.height()>385 else b.width()==432 && b.height()==380) { "Focus transform did not match motion policy: $b" }
+            }
+            ui.takeScreenshot()?.let { image -> File(test.targetContext.getExternalFilesDir(null),"j1-focus.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }; image.recycle() }
             val bytes=test.targetContext.filesDir.resolve("datastore/launcher.preferences_pb").readBytes().toString(Charsets.ISO_8859_1)
             check(bytes.contains("focus_animation") && bytes.contains(args.getString("intensity","Standard"))) { "Focus choice not persisted" }
             test.runOnMainSync { activity.finish() }
