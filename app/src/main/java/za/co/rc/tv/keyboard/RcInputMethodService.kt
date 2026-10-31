@@ -10,15 +10,18 @@ import android.view.inputmethod.InputMethodManager
 class RcInputMethodService : InputMethodService() {
     companion object {
         private var active: RcInputMethodService? = null
-        fun remoteText(text: String, expectedPackage: String): za.co.rc.tv.companion.CommandResult {
+        fun remoteText(text: String, expectedPackage: String): za.co.rc.tv.companion.CommandResult = remoteInput(text, expectedPackage, false)
+        fun remoteDelete(expectedPackage: String): za.co.rc.tv.companion.CommandResult = remoteInput("", expectedPackage, true)
+        private fun remoteInput(text: String, expectedPackage: String, delete: Boolean): za.co.rc.tv.companion.CommandResult {
             val service = active ?: return za.co.rc.tv.companion.CommandResult(false, "Choose RC TV Keyboard and focus a text field first.")
             val info = service.currentInputEditorInfo
             val connection = service.currentInputConnection
             if (info == null || info.packageName != expectedPackage || connection == null ||
-                info.inputType == 0 || KeyboardInput.isPassword(info) || text.isEmpty() || text.length > 160) {
+                info.inputType == 0 || KeyboardInput.isPassword(info) || (!delete && text.isEmpty()) || text.length > 160) {
                 return za.co.rc.tv.companion.CommandResult(false, "Select a normal TV text field and choose RC TV Keyboard. Password fields are not supported.")
             }
-            return za.co.rc.tv.companion.CommandResult(connection.commitText(text, 1), "The app did not accept text. Use its keyboard or physical remote.")
+            val accepted = if (delete) KeyboardInput.deleteForRemote(connection, service.selectionStart, service.selectionEnd) else connection.commitText(text, 1)
+            return za.co.rc.tv.companion.CommandResult(accepted, "This TV field did not accept the edit. Use its keyboard or physical remote.")
         }
     }
     private var keyboard: TvKeyboardView? = null
@@ -27,6 +30,7 @@ class RcInputMethodService : InputMethodService() {
     override fun onStartInput(info: EditorInfo, restarting: Boolean) {
         super.onStartInput(info, restarting)
         active = this
+        selectionStart = info.initialSelStart; selectionEnd = info.initialSelEnd
     }
     override fun onCreateInputView(): View = TvKeyboardView(this) { key ->
         when (key.action) {

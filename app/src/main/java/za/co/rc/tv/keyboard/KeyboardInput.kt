@@ -6,6 +6,11 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 
 object KeyboardInput {
+    /** Explicit remote editing, with no surrounding-text reads or UTF-16 truncation fallback. */
+    fun deleteForRemote(connection: InputConnection, start: Int, end: Int): Boolean {
+        if (start < 0 || end < 0) return false
+        return if (start != end) connection.commitText("", 1) else connection.deleteSurroundingTextInCodePoints(1, 0)
+    }
     fun isNumber(info: EditorInfo) = (info.inputType and InputType.TYPE_MASK_CLASS) in listOf(InputType.TYPE_CLASS_NUMBER, InputType.TYPE_CLASS_PHONE, InputType.TYPE_CLASS_DATETIME)
     fun isPassword(info: EditorInfo): Boolean {
         val type = info.inputType and InputType.TYPE_MASK_CLASS

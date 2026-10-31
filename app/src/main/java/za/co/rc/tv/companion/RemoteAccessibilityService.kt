@@ -22,19 +22,20 @@ class RemoteAccessibilityService : AccessibilityService() {
             val action = if (key == "HOME") GLOBAL_ACTION_HOME else GLOBAL_ACTION_BACK
             return CommandResult(performGlobalAction(action), "Android could not perform $key. Use the physical remote.")
         }
-        val root = rootInActiveWindow ?: return CommandResult(false, "No accessible TV window. Use the physical remote.")
+        val root = rootInActiveWindow ?: return CommandResult(false, "This screen cannot be controlled from your phone. Use the TV remote.")
         try {
             val pkg = root.packageName?.toString().orEmpty()
             // Permission/approval interfaces remain under local user control.
             if (RemotePolicy.localOnly(pkg, packageName)) {
                 return CommandResult(false, "Use the physical remote for TV settings, permissions and RC TV dialogs.")
             }
-            if (key == "INPUT_TEXT") {
+            if (key == "INPUT_TEXT" || key == "INPUT_DELETE") {
                 val editor = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                     ?: return CommandResult(false, "Select the TV search or text field first.")
                 return try {
                     if (!editor.isEditable || !editor.isEnabled || editor.isPassword || editor.packageName?.toString() != pkg)
                         CommandResult(false, "Select a normal non-password text field. This app may use an unsupported custom keyboard.")
+                    else if (key == "INPUT_DELETE") za.co.rc.tv.keyboard.RcInputMethodService.remoteDelete(pkg)
                     else za.co.rc.tv.keyboard.RcInputMethodService.remoteText(text, pkg)
                 } finally { editor.recycle() }
             }
@@ -53,17 +54,17 @@ class RemoteAccessibilityService : AccessibilityService() {
                 if (action != null) return CommandResult(performGlobalAction(action), "Android could not perform $key in this window.")
             }
             val focus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                ?: return CommandResult(false, "This app exposes no input focus. Android 11 cannot inject D-pad keys. Use the physical remote.")
+                ?: return CommandResult(false, "This app does not support phone navigation on this screen. Use the TV remote.")
             try {
                 if (key == "OK") return CommandResult(focus.performAction(AccessibilityNodeInfo.ACTION_CLICK),
-                    "The focused control does not support accessibility click. Use the physical remote.")
+                    "This item cannot be selected from your phone. Use the TV remote.")
                 val direction = mapOf("UP" to View.FOCUS_UP, "DOWN" to View.FOCUS_DOWN,
                     "LEFT" to View.FOCUS_LEFT, "RIGHT" to View.FOCUS_RIGHT)[key]
                     ?: return CommandResult(false, "Unsupported system control.")
                 val next = focus.focusSearch(direction)
-                    ?: return CommandResult(false, "No accessible focus target in that direction. Use the physical remote.")
+                    ?: return CommandResult(false, "Can't move further in that direction. Try the TV remote.")
                 return try { CommandResult(next.performAction(AccessibilityNodeInfo.ACTION_FOCUS),
-                    "The app refused focus movement. Use the physical remote.") } finally { next.recycle() }
+                    "This app could not move to that item. Use the TV remote.") } finally { next.recycle() }
             } finally { focus.recycle() }
         } catch (_: Exception) {
             return CommandResult(false, "This control is unavailable in the current app. Use the physical remote.")

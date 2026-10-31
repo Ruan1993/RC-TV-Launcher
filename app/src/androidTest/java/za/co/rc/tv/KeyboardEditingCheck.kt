@@ -22,6 +22,15 @@ object KeyboardEditingCheck {
         }
         fun checkText(value: String) { var actual = ""; test.runOnMainSync { actual = field.text.toString() }; check(actual == value) { "Synthetic editor result mismatch" } }
         try {
+            test.runOnMainSync {
+                field.setText("ab😀"); field.setSelection(field.length())
+                val connection = field.onCreateInputConnection(EditorInfo())!!
+                check(KeyboardInput.deleteForRemote(connection, field.selectionStart, field.selectionEnd))
+                check(field.text.toString() == "ab")
+                field.setSelection(0, 2)
+                check(KeyboardInput.deleteForRemote(connection, 0, 2)); check(field.text.isEmpty())
+                check(!KeyboardInput.deleteForRemote(connection, -1, -1))
+            }
             test.runOnMainSync { field.setText("ab😀cd"); field.setSelection(field.length()) }
             send(KeyAction.CURSOR_LEFT); send(KeyAction.TEXT, "X"); checkText("ab😀cXd")
             send(KeyAction.DELETE); checkText("ab😀cd")

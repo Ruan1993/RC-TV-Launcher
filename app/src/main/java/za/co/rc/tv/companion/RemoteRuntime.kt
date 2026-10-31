@@ -44,8 +44,8 @@ object RemoteRuntime {
     private fun dispatch(key: String, text: String): CommandResult {
         val service = accessibility?.takeIf { optedIn(it) }
         if (key == "HOME" && service != null) return service.command(key, text)
-        if (key in setOf("MEDIA_PLAY_PAUSE", "MEDIA_NEXT", "MEDIA_PREVIOUS", "INPUT_TEXT")) {
-            return service?.command(key, text) ?: CommandResult(false, "Enable system control in RC TV Phone companion settings first.")
+        if (key in setOf("MEDIA_PLAY_PAUSE", "MEDIA_NEXT", "MEDIA_PREVIOUS", "INPUT_TEXT", "INPUT_DELETE")) {
+            return service?.command(key, text) ?: CommandResult(false, "On your TV, open Remote > Other apps to finish phone control setup.")
         }
         foreground?.let { return CommandResult(it(key, text), "Close RC TV dialogs with the physical remote before navigating.") }
         return service?.command(key, text) ?: CommandResult(false, "Return to RC TV or enable system control on the TV.")

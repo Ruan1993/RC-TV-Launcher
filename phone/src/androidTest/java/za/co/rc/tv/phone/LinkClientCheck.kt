@@ -10,6 +10,7 @@ class LinkClientCheck : Instrumentation() {
     private lateinit var args: Bundle
     override fun onCreate(arguments: Bundle?) { args = arguments!!; super.onCreate(arguments); start() }
     override fun onStart() {
+        if (args.getString("mode") == "ui-review") { UiReviewCheck.run(this, args); return }
         val result = Bundle()
         val client = LinkClient(args.getString("host")!!, args.getString("port")!!.toInt())
         try {
