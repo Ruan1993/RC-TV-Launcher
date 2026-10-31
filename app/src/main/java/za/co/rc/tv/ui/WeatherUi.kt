@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -53,7 +54,9 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
                 Text(reading?.let { WeatherPolicy.condition(it.code) } ?: "Weather unavailable",fontSize=12.sp,lineHeight=16.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
             }
         }
-        Text("${updated(state,reading)} · Details ›",fontSize=11.sp,lineHeight=14.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+        Text("${updated(state,reading)} · Details ›",Modifier.fillMaxWidth().padding(end=2.dp,top=2.dp),
+            color=Color(0xFFB8C0C5),fontSize=10.sp,lineHeight=12.sp,textAlign=TextAlign.End,
+            maxLines=1,overflow=TextOverflow.Ellipsis)
     }
 }
 
