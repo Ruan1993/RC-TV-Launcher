@@ -55,6 +55,6 @@ Prioritise the 1.0 critical path: reliable everyday launch/return, remote focus,
 ## Phase C follow-up gates
 - [x] Pending Back fix verified/pushed; supported Home-selection screen verified without changing defaults.
 - [x] Optional offline keyboard core/preview and native image browser implemented; see PHASE-C.md.
-- [ ] User-enabled system IME cross-app, password/numeric/editor actions and switch-back acceptance. Preview verification is not full IME acceptance.
+- [ ] Real IME Search entry/Backspace/Back and exact Gboard restoration now verified with user approval; cross-app/password/numeric/editor-action and physical-remote acceptance remain.
 - [ ] Xiaomi Home role/resolution mismatch: actual Home selection/reboot requires explicit user approval and firmware acceptance.
 - [ ] Android 13/14 image permissions/selected access, USB providers, revoked permissions, large libraries and second-device acceptance.
