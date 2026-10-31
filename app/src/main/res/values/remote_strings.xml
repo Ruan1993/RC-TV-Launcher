@@ -1,0 +1,4 @@
+<resources>
+    <string name="remote_accessibility_name">RC TV Remote system control</string>
+    <string name="remote_accessibility_description">Optional control by your approved RC TV phones on the trusted local network. Can inspect the active window and move focus or click controls exposed by apps, and request Back and Home. Android 11 navigation is limited by each app. No screen history is stored or sent. Use your physical remote for permission dialogs. Enable system control separately in RC TV Phone companion settings. Turn it off there or disable this service to stop system control.</string>
+</resources>

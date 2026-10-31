@@ -25,8 +25,8 @@ data class CompanionState(val running: Boolean = false, val message: String = "O
     val address: String = "", val code: String = "", val fingerprint: String = "",
     val pending: PairingGate.Pending? = null, val devices: List<PairingGate.Session> = emptyList())
 
-/** Explicit foreground-only listener bound to one private LAN address, never INADDR_ANY. */
-class CompanionServer(context: Context, private val command: (String, String) -> Boolean) {
+/** Explicit opt-in listener bound to one private LAN address, never INADDR_ANY. */
+class CompanionServer(context: Context, private val command: (String, String) -> CommandResult) {
     private val context = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     private val gate = PairingGate()
@@ -73,7 +73,7 @@ class CompanionServer(context: Context, private val command: (String, String) ->
                     config.edit().putInt("port", listener.localPort).apply()
                     workers = ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS, ArrayBlockingQueue(4))
                     val code = if (newPairing || gate.records().isEmpty()) gate.pairingCode() else ""
-                    mutable.value = CompanionState(true, "Ready. Approved phones reconnect when RC TV is active. Pairing expires after seven days.",
+                    mutable.value = CompanionState(true, "Ready. System control requires separate TV opt-in and accessibility consent. Pairing expires after seven days.",
                         "${link.address.hostAddress}:${listener.localPort}", code, identity.fingerprint, devices = gate.sessions())
                     networkWatch = object : ConnectivityManager.NetworkCallback() { override fun onLost(lost: android.net.Network) { if (lost == active) suspendConnection("Network changed. Return to RC TV or retry to reconnect.") } }
                     network.registerDefaultNetworkCallback(networkWatch!!)
@@ -146,10 +146,13 @@ class CompanionServer(context: Context, private val command: (String, String) ->
                 val text = request.optString("text")
                 if (!gate.authenticated(token)) errorReply("Pairing expired or revoked.", "revoked")
                 else if (!gate.validLease(token, request.optString("lease"))) errorReply("Resume this connection.", "resume")
-                else if (key !in LinkWire.COMMANDS || text.length > 160 || (key != "SEARCH_TEXT" && text.isNotEmpty()) || !gate.authorize(token, request.optLong("sequence", -1), request.optString("lease"))) errorReply("Command rejected")
+                else if (!RemotePolicy.validPayload(key, text) || !gate.authorize(token, request.optLong("sequence", -1), request.optString("lease"))) errorReply("Command rejected")
                 else {
-                    val task = FutureTask { running && command(key, text) }; main.post(task)
-                    if (runCatching { task.get(2, TimeUnit.SECONDS) }.getOrDefault(false)) JSONObject().put("ok", true) else { task.cancel(false); errorReply("Use the physical remote to close dialogs, or return to RC TV.") }
+                    val task = FutureTask { if (running) command(key, text) else CommandResult(false, "Remote stopped.") }; main.post(task)
+                    val outcome = runCatching { task.get(2, TimeUnit.SECONDS) }.getOrNull()
+                    if (outcome == null) { task.cancel(false); errorReply("TV busy. Use the physical remote; this request was not confirmed.") }
+                    else if (outcome.accepted) JSONObject().put("ok", true).put("message", if (key.startsWith("MEDIA_")) outcome.message else "Command accepted by Android or RC TV; app behaviour may vary.")
+                    else errorReply(outcome.message)
                 }
             }
             else -> errorReply("Unsupported operation")

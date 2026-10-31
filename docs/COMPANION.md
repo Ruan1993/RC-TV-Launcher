@@ -1,3 +1,5 @@
+> Phase F update: use TV 0.7.0 and Remote 0.3.0. The foreground-only limits below describe the earlier checkpoint. See [Phase F setup and current restrictions](PHASE-F.md) for the opt-in system-control path. Existing 0.2 approved pairing records are retained; no compulsory re-pairing.
+
 # Current upgrade - TV 0.5.2 / Remote 0.2.0
 
 Install both new APKs and pair once. Approved credentials are now encrypted and retained for up to seven days. Opening YouCine pauses the listener; return to RC TV using the physical remote and the phone reconnects automatically. There is no YouCine/system-wide control or always-running service. The phone retries only while visible, up to every 15 seconds. Backgrounding the phone retains approval.

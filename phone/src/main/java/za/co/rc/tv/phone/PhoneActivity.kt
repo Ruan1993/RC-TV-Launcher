@@ -55,7 +55,7 @@ class PhoneActivity : Activity() {
             else connect(parts[0], parts[1].toInt())
         }
         controls = column(); content.addView(controls)
-        text("Controls work inside RC TV only. Opening YouCine pauses control; return to RC TV with the physical remote and this phone reconnects. Approved pairing is stored securely for up to seven days.", 14)
+        text("For other apps: on TV open RC TV Settings > Phone companion > Set up system control, then enable RC TV Remote system control in Android Accessibility using the physical remote. Android 11 navigation depends on each app exposing focus/click controls. Home uses your selected Android Home. Media requests do not confirm playback. For text, choose RC TV Keyboard and focus a non-password field. Protected screens and custom keyboards may need the physical remote. Pairing stays encrypted for up to seven days.", 14)
     }
     override fun onStart() {
         super.onStart(); visible = true; discover()
@@ -181,7 +181,12 @@ class PhoneActivity : Activity() {
         for ((label, key) in listOf("←" to "LEFT", "OK" to "OK", "→" to "RIGHT")) {
             val holder = column(); row.addView(holder, LinearLayout.LayoutParams(0, -2, 1f)); button(label, holder) { send(key) }
         }
-        button("↓", controls) { send("DOWN") }; button("Back", controls) { send("BACK") }; button("RC TV Home", controls) { send("HOME") }
+        button("↓", controls) { send("DOWN") }; button("Back", controls) { send("BACK") }; button("Home", controls) { send("HOME") }
+        button("Play / Pause", controls) { send("MEDIA_PLAY_PAUSE") }
+        button("Previous media", controls) { send("MEDIA_PREVIOUS") }
+        button("Next media", controls) { send("MEDIA_NEXT") }
+        val input = editor("Text for active TV field - no passwords", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS); controls.addView(input)
+        button("Send text - RC TV Keyboard", controls) { val value = input.text.toString().take(160); input.text.clear(); send("INPUT_TEXT", value) }
         val search = editor("App name · never enter passwords", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS); controls.addView(search)
         button("Search apps on TV", controls) { val value = search.text.toString().take(160); search.text.clear(); send("SEARCH_TEXT", value) }
         button("Disconnect & forget TV", controls) {
@@ -193,7 +198,7 @@ class PhoneActivity : Activity() {
         if (!connected) return
         lastCommand = SystemClock.uptimeMillis(); val connection = client ?: return; val current = generation
         background { if (!visible || current != generation) return@background
-            try { connection.command(key, text); main.post { message("Connected · encrypted local control") } }
+            try { val response = connection.command(key, text); main.post { if (current == generation) message(response.optString("message", "Command accepted")) } }
             catch (failure: LinkRejected) { main.post { if (current == generation) {
                 if (failure.reason in listOf("resume", "revoked")) { generation++; reconnect(connection, generation, 0) }
                 else message(failure.message ?: "Close TV dialogs with the physical remote.")
@@ -208,7 +213,7 @@ class PhoneActivity : Activity() {
     }
     private fun reconnect(connection: LinkClient, current: Int, attempt: Int) {
         if (!visible || current != generation) return
-        connected = false; client = connection; controls.removeAllViews(); message("Reconnecting · return to RC TV using the physical remote")
+        connected = false; client = connection; controls.removeAllViews(); message("Reconnecting · check TV network and system control, or return to RC TV")
         main.postDelayed({ if (visible && current == generation) background {
             try {
                 connection.resume()

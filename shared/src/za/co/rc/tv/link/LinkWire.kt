@@ -23,5 +23,5 @@ object LinkWire {
     }
     fun fingerprint(cert: X509Certificate): String = MessageDigest.getInstance("SHA-256").digest(cert.encoded).joinToString("") { "%02X".format(it) }
     fun displayFingerprint(value: String) = value.chunked(8).joinToString(" ")
-    val COMMANDS = setOf("UP", "DOWN", "LEFT", "RIGHT", "OK", "BACK", "HOME", "SEARCH_TEXT")
+    val COMMANDS = setOf("UP", "DOWN", "LEFT", "RIGHT", "OK", "BACK", "HOME", "SEARCH_TEXT", "INPUT_TEXT", "MEDIA_PLAY_PAUSE", "MEDIA_NEXT", "MEDIA_PREVIOUS")
 }

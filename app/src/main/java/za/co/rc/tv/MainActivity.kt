@@ -24,11 +24,14 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     private var remoteAction: ((String, String) -> Boolean)? = null
-    private val companion by lazy { za.co.rc.tv.companion.CompanionServer(this) { key, text ->
-        lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && window.decorView.hasWindowFocus() && remoteAction?.invoke(key, text) == true
-    } }
-    override fun onStop() { companion.suspendConnection(); super.onStop() }
-    override fun onResume() { super.onResume(); companion.resume() }
+    private val companion by lazy { za.co.rc.tv.companion.RemoteRuntime.server(this) }
+    override fun onResume() {
+        super.onResume()
+        za.co.rc.tv.companion.RemoteRuntime.foreground = { key, text ->
+            lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && window.decorView.hasWindowFocus() && remoteAction?.invoke(key, text) == true
+        }
+        companion.resume()
+    }
     private fun traceBackKey(event: android.view.KeyEvent) {
         if (BuildConfig.PROFILE_DIAGNOSTICS && event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
             android.util.Log.i("RcNavigation", "Back keyCode=${event.keyCode} action=${event.action} repeat=${event.repeatCount}")
@@ -43,7 +46,7 @@ class MainActivity : ComponentActivity() {
         return super.onKeyUp(keyCode, event)
     }
     override fun onPause() {
-        companion.suspendConnection()
+        za.co.rc.tv.companion.RemoteRuntime.pause(this)
         RenderDiagnostics.snapshot()
         super.onPause()
     }
@@ -76,8 +79,6 @@ class MainActivity : ComponentActivity() {
                 var section by rememberSaveable { mutableStateOf("Home") }
                 var query by rememberSaveable { mutableStateOf("") }
                 var companionOpen by remember { mutableStateOf(false) }
-                var assistOpen by remember { mutableStateOf(false) }
-                val assistConversation = remember { za.co.rc.tv.assist.AssistConversation() }
                 val remoteInputMode = androidx.compose.ui.platform.LocalInputModeManager.current
                 SideEffect {
                     remoteAction = { key, text ->
@@ -149,7 +150,6 @@ class MainActivity : ComponentActivity() {
                     onKeyboardEnable = { runCatching { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }.onFailure { message("Keyboard settings unavailable.") } },
                     onKeyboardChoose = { getSystemService(android.view.inputmethod.InputMethodManager::class.java).showInputMethodPicker() },
                     onCompanion = { companionOpen = true },
-                    onAssist = { assistOpen = true },
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
                     onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
                     wallpapers = wallpapers, wallpaperBusy = wallpaperBusy,
@@ -178,24 +178,7 @@ class MainActivity : ComponentActivity() {
                 )
                 if (companionOpen) za.co.rc.tv.companion.CompanionSettings(companion) { companionOpen = false }
                 za.co.rc.tv.companion.CompanionApproval(companion)
-                if (assistOpen) {
-                    val snapshot = za.co.rc.tv.assist.AssistSnapshot(discovery.apps.map { za.co.rc.tv.assist.AssistApp(it.packageName, it.label) },
-                        za.co.rc.tv.ui.orderedFavouritePackages(prefs, discovery.apps), prefs.wallpaper, prefs.rotationEnabled)
-                    val network = getSystemService(android.net.ConnectivityManager::class.java)
-                    val offline = network.getNetworkCapabilities(network.activeNetwork)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) != true
-                    za.co.rc.tv.assist.AssistPanel(snapshot, assistConversation, offline, execute = { action ->
-                        check(action.valid(snapshot)) { "Stale or unsupported action" }
-                        when (action.kind) {
-                            za.co.rc.tv.assist.AssistKind.NAVIGATE -> { section = action.value; assistOpen = false; "Opened RC TV ${action.value}." }
-                            za.co.rc.tv.assist.AssistKind.LAUNCH -> {
-                                val app = discovery.apps.firstOrNull { it.packageName == action.value }
-                                if (app != null && repository.launch(app)) { assistOpen = false; "Launch request sent for ${app.label}." } else "This installed app could not be launched."
-                            }
-                            za.co.rc.tv.assist.AssistKind.WALLPAPER -> { preferences.setWallpaperIfCurrent(action.value, action.expected); "Wallpaper saved. Your favourites and rotation setting are unchanged." }
-                            za.co.rc.tv.assist.AssistKind.ROTATION -> { preferences.setRotationIfCurrent(action.value.toBooleanStrict(), action.expected.toBooleanStrict()); "Wallpaper rotation is now ${if (action.value == "true") "on" else "off"}." }
-                        }
-                    }, close = { assistOpen = false })
-                }
+
                 }
             }
         }

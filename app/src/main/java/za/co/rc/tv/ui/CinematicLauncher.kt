@@ -187,7 +187,7 @@ fun CinematicLauncher(
     discovery: AppDiscoveryState, repository: AppRepository, iconGeneration: Int,
     prefs: LauncherPreferences, section: String, onSection: (String) -> Unit,
     query: String, onQuery: (String) -> Unit, clock: String, homeStatus: String,
-    keyboardStatus: String, onKeyboardPreview: () -> Unit, onKeyboardEnable: () -> Unit, onKeyboardChoose: () -> Unit, onCompanion: () -> Unit, onAssist: () -> Unit,
+    keyboardStatus: String, onKeyboardPreview: () -> Unit, onKeyboardEnable: () -> Unit, onKeyboardChoose: () -> Unit, onCompanion: () -> Unit,
     onLaunch: (LauncherApp) -> Unit, onPin: (LauncherApp) -> Unit, onRetry: () -> Unit,
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
     wallpapers: List<WallpaperOption>, wallpaperBusy: Boolean, onImportWallpaper: () -> Unit,
@@ -324,9 +324,6 @@ fun CinematicLauncher(
                     } else Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                         Text("Settings", style = MaterialTheme.typography.headlineLarge)
                         GlassPanel(Modifier.fillMaxWidth()) {
-                        Text("RC Assist", style = MaterialTheme.typography.titleLarge, color = Ice)
-                        Text("Local app and settings help. Online AI is not connected.", style = MaterialTheme.typography.bodyMedium, color = Ice)
-                        FocusButton("Open RC Assist", motion, onClick = onAssist)
                         Text("Wallpaper", style = MaterialTheme.typography.titleLarge, color = Ice)
                             Text(wallpapers.firstOrNull { it.id == prefs.wallpaper }?.title ?: "Mountain horizon", style = MaterialTheme.typography.bodyMedium)
                             FocusButton("Choose wallpaper", motion) { wallpaperSettingsOpen = true }

@@ -8,6 +8,19 @@ import android.view.inputmethod.InputMethodManager
 
 /** Optional system-bound IME. Only Android can bind it; no typed content leaves the connection. */
 class RcInputMethodService : InputMethodService() {
+    companion object {
+        private var active: RcInputMethodService? = null
+        fun remoteText(text: String, expectedPackage: String): za.co.rc.tv.companion.CommandResult {
+            val service = active ?: return za.co.rc.tv.companion.CommandResult(false, "Choose RC TV Keyboard and focus a text field first.")
+            val info = service.currentInputEditorInfo
+            val connection = service.currentInputConnection
+            if (!service.isInputViewShown || info == null || info.packageName != expectedPackage || connection == null ||
+                info.inputType == 0 || KeyboardInput.isPassword(info) || text.isEmpty() || text.length > 160) {
+                return za.co.rc.tv.companion.CommandResult(false, "Text needs a visible RC TV Keyboard in an active non-password field. Custom keyboards may be unsupported.")
+            }
+            return za.co.rc.tv.companion.CommandResult(connection.commitText(text, 1), "The app did not accept text. Use its keyboard or physical remote.")
+        }
+    }
     private var keyboard: TvKeyboardView? = null
     private var selectionStart = -1
     private var selectionEnd = -1
@@ -20,6 +33,7 @@ class RcInputMethodService : InputMethodService() {
     }.also { keyboard = it }
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        active = this
         selectionStart = info.initialSelStart; selectionEnd = info.initialSelEnd
         keyboard?.configure(KeyboardInput.isNumber(info), KeyboardInput.enterLabel(info), KeyboardInput.isPassword(info))
     }
@@ -34,6 +48,7 @@ class RcInputMethodService : InputMethodService() {
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
         (isInputViewShown && keyboard?.remoteUp(keyCode, event.isCanceled) == true) || super.onKeyUp(keyCode, event)
     override fun onFinishInput() {
+        if (active === this) active = null
         selectionStart = -1; selectionEnd = -1
         keyboard?.configure(false, "Enter", false)
         super.onFinishInput()
@@ -42,5 +57,5 @@ class RcInputMethodService : InputMethodService() {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         selectionStart = newSelStart; selectionEnd = newSelEnd
     }
-    override fun onDestroy() { keyboard = null; super.onDestroy() }
+    override fun onDestroy() { if (active === this) active = null; keyboard = null; super.onDestroy() }
 }
