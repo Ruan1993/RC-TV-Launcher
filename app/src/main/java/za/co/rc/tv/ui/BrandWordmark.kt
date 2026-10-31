@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 @Composable internal fun BrandWordmark() {
     val palette=LocalAppearance.current
     val density=LocalDensity.current
-    Box(Modifier.size(with(density) { 80.sp.toDp() },with(density) { 25.sp.toDp() })
+    Box(Modifier.size(with(density) { 84.sp.toDp() },with(density) { 25.sp.toDp() })
         .semantics { contentDescription="RC TV" }
         .drawWithCache {
             val lettering=Path().apply {
@@ -30,10 +30,10 @@ import androidx.compose.ui.unit.sp
                 moveTo(44f,0f); lineTo(65f,0f); lineTo(72f,7f); lineTo(66f,13f); lineTo(61f,8f)
                 lineTo(49f,8f); lineTo(45f,12f); lineTo(45f,28f); lineTo(49f,32f); lineTo(61f,32f)
                 lineTo(66f,27f); lineTo(72f,33f); lineTo(65f,40f); lineTo(44f,40f); lineTo(36f,32f); lineTo(36f,8f); close()
-                moveTo(82f,0f); lineTo(114f,0f); lineTo(114f,8f); lineTo(102f,8f); lineTo(102f,40f)
-                lineTo(94f,40f); lineTo(94f,8f); lineTo(82f,8f); close()
-                moveTo(119f,0f); lineTo(128f,0f); lineTo(138f,28f); lineTo(148f,0f); lineTo(157f,0f)
-                lineTo(142f,40f); lineTo(134f,40f); close()
+                moveTo(90f,0f); lineTo(122f,0f); lineTo(122f,8f); lineTo(110f,8f); lineTo(110f,40f)
+                lineTo(102f,40f); lineTo(102f,8f); lineTo(90f,8f); close()
+                moveTo(127f,0f); lineTo(136f,0f); lineTo(146f,28f); lineTo(156f,0f); lineTo(165f,0f)
+                lineTo(150f,40f); lineTo(142f,40f); close()
             }
             val metal=Brush.verticalGradient(listOf(Color.White,palette.accent,Color.White,palette.halo),startY=0f,endY=40f)
             onDrawBehind {
