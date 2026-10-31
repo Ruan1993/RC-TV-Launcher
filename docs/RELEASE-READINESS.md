@@ -1,6 +1,6 @@
 # Release readiness — 1.0 gates
 
-Current work is the **Phase I private engineering release candidate**, awaiting user acceptance, not a public final 1.0 release. [Phase I evidence and remaining gates](PHASE-I.md) supersede historical completion notes below. Cards/favourites and stock Home are preserved; PR #2 is untouched and no public APK/source distribution occurred.
+Current work is the **RC1 visual/Settings refinement (TV 1.0.0-rc1.1)**, awaiting user acceptance, not a public final 1.0 release. [Refinement evidence](RC1-REFINEMENT.md) and [Phase I remaining gates](PHASE-I.md) supersede historical completion notes below. Cards/favourites and stock Home are preserved; PR #2 is untouched and no public APK/source distribution occurred.
 
 The RC includes themes/fonts/visibility, matching adaptive icons, optional cached weather and an inactive download screen. Media metadata is unavailable to an ordinary Xiaomi install without intrusive/privileged access, so its card stays hidden. Actual casting, physical HONOR review, reboot/long-session/performance acceptance, production signing and public distribution approval remain. The older master-specification items below are historical/future scope and are not silently represented as complete by an RC version number.
 

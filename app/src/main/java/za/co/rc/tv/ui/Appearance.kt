@@ -47,8 +47,8 @@ fun appearanceTokens(name: String): AppearanceTokens = when (name) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun AppearanceSettings(prefs: LauncherPreferences, motion: String, accent: (String) -> Unit,
     font: (String) -> Unit, size: (String) -> Unit, visibility: (String) -> Unit, reset: () -> Unit) {
-    Text("Appearance & Themes", style = MaterialTheme.typography.titleLarge, color = LocalAppearance.current.accent)
-    Text("Preview changes immediately. Wallpapers and card sizes stay the same.")
+    Text("Accent theme", style = MaterialTheme.typography.titleLarge, color = LocalAppearance.current.accent)
+    Text("Changes save automatically.")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         accentThemes.forEach { FocusButton(it, motion, selected = prefs.accent == it) { accent(it) } }
     }

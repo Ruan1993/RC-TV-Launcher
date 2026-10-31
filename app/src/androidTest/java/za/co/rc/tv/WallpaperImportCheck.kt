@@ -20,6 +20,7 @@ import java.io.File
 
 /** Targeted platform-decoder check; lives only in the separate test APK. */
 class WallpaperImportCheck : Instrumentation() {
+    private var refinementMode = ""
     private var weatherLarge = false
     private var weatherLive = false
     private var weather = false
@@ -27,10 +28,12 @@ class WallpaperImportCheck : Instrumentation() {
     private var overdue = false
     private var keyboard = false
     private var appearance: Bundle? = null
-    override fun onCreate(arguments: Bundle?) { weatherLarge = arguments?.getString("large") == "true"; weatherLive = arguments?.getString("mode") == "weatherlive"; weather = arguments?.getString("mode") == "weather"; icons = arguments?.getString("mode") == "icons"; overdue = arguments?.getString("mode") == "overdue"; keyboard = arguments?.getString("mode") == "keyboard"; appearance = arguments?.takeIf { it.getString("mode") == "appearance" }; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { refinementMode=arguments?.getString("mode").orEmpty(); weatherLarge = arguments?.getString("large") == "true"; weatherLive = arguments?.getString("mode") == "weatherlive"; weather = arguments?.getString("mode") == "weather"; icons = arguments?.getString("mode") == "icons"; overdue = arguments?.getString("mode") == "overdue"; keyboard = arguments?.getString("mode") == "keyboard"; appearance = arguments?.takeIf { it.getString("mode") == "appearance" }; super.onCreate(arguments); start() }
     override fun onStart() {
         val result = Bundle()
         try {
+            if(refinementMode=="backdrops") { BackdropReview.run(this); result.putString("verification","Rendered all three modes of the same mountain wallpaper"); finish(Activity.RESULT_OK,result); return }
+            if(refinementMode=="settings") { SettingsReviewCheck.run(this,weatherLarge); result.putString("verification","All Settings categories, existing control access, wallpaper/utility Back and category focus restoration passed"); finish(Activity.RESULT_OK,result); return }
             if (weatherLive) { WeatherLiveReview.run(this,weatherLarge); result.putString("verification", "Real Open-Meteo search and conditions rendered for Pretoria on isolated emulator; original weather restored"); finish(Activity.RESULT_OK, result); return }
             if (weather) { WeatherReviewCheck.run(this); result.putString("verification", "Weather off, cache, process-style reload, hourly throttle, offline fallback, stale cutoff and removal passed"); finish(Activity.RESULT_OK, result); return }
             if (icons) { IconReviewCheck.run(this); result.putString("verification", "Both adaptive and monochrome icons rendered"); finish(Activity.RESULT_OK, result); return }

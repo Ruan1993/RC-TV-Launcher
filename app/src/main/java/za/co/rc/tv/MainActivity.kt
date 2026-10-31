@@ -170,6 +170,7 @@ class MainActivity : ComponentActivity() {
                     onKeyboardEnable = { runCatching { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }.onFailure { message("Keyboard settings unavailable.") } },
                     onKeyboardChoose = { getSystemService(android.view.inputmethod.InputMethodManager::class.java).showInputMethodPicker() },
                     onCompanion = { companionPage = 0; companionOpen = true },
+                    onSystemControl = { companionPage = 1; companionOpen = true },
                     onPhoneTyping = { companionPage = 2; companionOpen = true },
                     onEasySetup = { setupOpen = true },
                     onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },

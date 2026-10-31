@@ -69,7 +69,7 @@ internal fun renderCinematicBackdrop(context: Context, id: String = "mountain", 
         val canvas = Canvas(result)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         canvas.drawBitmap(source, 0f, 0f, paint)
-        val ink = Color(0xFF0B131B)
+        val ink = if(visibility == "Subtle") Color(0xFF03080D) else Color(0xFF0B131B)
         paint.shader = LinearGradient(0f, 0f, result.width.toFloat(), 0f,
             intArrayOf(ink.copy(alpha = wallpaperScrimAlpha(.9f, visibility)).toArgb(), ink.copy(alpha = wallpaperScrimAlpha(.15f, visibility)).toArgb()), null, Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, result.width.toFloat(), result.height.toFloat(), paint)

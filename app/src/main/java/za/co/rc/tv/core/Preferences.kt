@@ -98,4 +98,4 @@ fun textScale(value: String) = when (value) { "Comfortable" -> 1.15f; "Large" ->
 
 val wallpaperVisibilities = listOf("Subtle", "Balanced", "Vivid")
 fun validWallpaperVisibility(value: String?) = value?.takeIf { it in wallpaperVisibilities } ?: "Balanced"
-fun wallpaperScrimAlpha(base: Float, visibility: String): Float = (base * when (visibility) { "Subtle" -> 1.12f; "Vivid" -> .78f; else -> 1f }).coerceIn(0f, .99f)
+fun wallpaperScrimAlpha(base: Float, visibility: String): Float = (base * when (visibility) { "Subtle" -> 1.12f; "Vivid" -> .18f; else -> 1f }).coerceIn(0f, .99f)

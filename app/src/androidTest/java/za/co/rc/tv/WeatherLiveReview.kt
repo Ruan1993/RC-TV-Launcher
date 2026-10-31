@@ -40,6 +40,14 @@ object WeatherLiveReview {
             root?.let { visit(it); it.recycle() }; check(cards>0) { "Weather pushed full-size cards out of view" }
             val screenshot = ui.takeScreenshot() ?: error("No screenshot")
             File(context.getExternalFilesDir(null),"weather-live-review.png").outputStream().use { screenshot.compress(Bitmap.CompressFormat.PNG,100,it) }; screenshot.recycle()
+            val time=android.os.SystemClock.uptimeMillis()
+            for(action in listOf(android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_UP)) {
+                val event=android.view.MotionEvent.obtain(time,time+20,action,1000f,280f,0)
+                event.source=android.view.InputDevice.SOURCE_TOUCHSCREEN; ui.injectInputEvent(event,true); event.recycle()
+            }
+            Thread.sleep(350)
+            val details=ui.takeScreenshot() ?: error("No details screenshot")
+            File(context.getExternalFilesDir(null),"weather-details-review.png").outputStream().use { details.compress(Bitmap.CompressFormat.PNG,100,it) }; details.recycle()
             test.runOnMainSync { activity.finish() }
         } finally {
             val edit = actual.edit(); if(original == null) edit.remove("record") else edit.putString("record",original); edit.commit()

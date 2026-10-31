@@ -11,8 +11,8 @@ android {
         testInstrumentationRunner = "za.co.rc.tv.WallpaperImportCheck"
         minSdk = 30
         targetSdk = 36
-        versionCode = 29
-        versionName = "1.0.0-rc1"
+        versionCode = 30
+        versionName = "1.0.0-rc1.1"
     }
     buildFeatures { compose = true; buildConfig = true }
     sourceSets.getByName("main").java.srcDir(rootProject.file("shared/src"))

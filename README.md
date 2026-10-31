@@ -4,7 +4,7 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase I private release candidate (TV 1.0.0-rc1 / Remote 0.5.1-rc1), awaiting user acceptance.** Corrected Cast icon, persistent wallpaper visibility, matching adaptive icons, an honest inactive Remote download flow and optional manually configured cached weather. The existing phone UI and full-size favourite cards are preserved. Cross-app Now Playing is hidden without privileged session access. See [Phase I packages, screenshots, verification and release gates](docs/PHASE-I.md). Nothing is publicly released or merged.
+**RC1 refinement (TV 1.0.0-rc1.1 / Remote 0.5.1-rc1), awaiting full acceptance.** Clearly brighter Vivid wallpaper visibility, category-based Settings and a clearer compact weather card/details view. Balanced backdrop pixels and the original favourite-card component remain unchanged. The user approved Vivid brightness/readability on Xiaomi. See [refinement screenshots, verification and APK](docs/RC1-REFINEMENT.md) and [the prior RC1 report](docs/PHASE-I.md). Nothing is publicly released or merged.
 
 Physical app context menu, direct-shelf favourites rearranging, Search, saved theme/motion and eight favourites remain preserved. RC Assist remains available in Git history at `e8e20c4`. [Release blockers](docs/RELEASE-READINESS.md) remain explicit; the old Minimal regression is reserved for a dedicated optimisation checkpoint.
 
@@ -16,7 +16,7 @@ On Windows: ` .\gradlew.bat assembleDebug testDebugUnitTest lintDebug`
 
 On macOS/Linux: `sh gradlew assembleDebug testDebugUnitTest lintDebug`
 
-The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (1.0.0-rc1). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
+The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (1.0.0-rc1.1). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
 
 ## Install and recover
 

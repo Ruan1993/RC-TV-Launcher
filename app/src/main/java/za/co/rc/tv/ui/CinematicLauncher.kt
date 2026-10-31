@@ -147,6 +147,14 @@ private fun NavigationMark(mark: String, tint: Color) {
                 for (radius in listOf(.20f,.37f)) drawArc(tint, -90f, 90f, false,
                     Offset(origin.x-w*radius, origin.y-h*radius), Size(w*radius*2,h*radius*2), style = Stroke(stroke))
             }
+            "E" -> {
+                drawCircle(tint,w*.34f,Offset(w*.5f,h*.5f),style=Stroke(stroke))
+                drawCircle(tint,w*.08f,Offset(w*.38f,h*.35f)); drawCircle(tint,w*.06f,Offset(w*.65f,h*.45f))
+            }
+            "W" -> {
+                drawCircle(tint,w*.19f,Offset(w*.5f,h*.5f),style=Stroke(stroke))
+                for(i in 0..7) { val a=i*Math.PI/4; drawLine(tint,Offset(w*(.5f+.29f*kotlin.math.cos(a).toFloat()),h*(.5f+.29f*kotlin.math.sin(a).toFloat())),Offset(w*(.5f+.41f*kotlin.math.cos(a).toFloat()),h*(.5f+.41f*kotlin.math.sin(a).toFloat())),stroke) }
+            }
             "T" -> {
                 drawArc(tint, 180f, 180f, false, Offset(w*.08f,h*.12f), Size(w*.84f,h*.84f), style = Stroke(stroke))
                 drawLine(tint, Offset(w*.5f,h*.54f), Offset(w*.75f,h*.28f), stroke)
@@ -218,7 +226,7 @@ fun CinematicLauncher(
     discovery: AppDiscoveryState, repository: AppRepository, iconGeneration: Int,
     prefs: LauncherPreferences, section: String, onSection: (String) -> Unit,
     query: String, onQuery: (String) -> Unit, clock: String, homeStatus: String,
-    keyboardStatus: String, onKeyboardPreview: () -> Unit, onKeyboardEnable: () -> Unit, onKeyboardChoose: () -> Unit, onCompanion: () -> Unit, onPhoneTyping: () -> Unit, onEasySetup: () -> Unit,
+    keyboardStatus: String, onKeyboardPreview: () -> Unit, onKeyboardEnable: () -> Unit, onKeyboardChoose: () -> Unit, onCompanion: () -> Unit, onSystemControl: () -> Unit, onPhoneTyping: () -> Unit, onEasySetup: () -> Unit,
     onLaunch: (LauncherApp) -> Unit, onPin: (LauncherApp) -> Unit, onRetry: () -> Unit,
     onChooseHome: () -> Unit, onRestoreHome: () -> Unit, onAndroidSettings: () -> Unit,
     wallpapers: List<WallpaperOption>, wallpaperBusy: Boolean, onImportWallpaper: () -> Unit,
@@ -234,6 +242,10 @@ fun CinematicLauncher(
     val weather = remember(weatherContext) { WeatherRepository(weatherContext) }
     val Ice = LocalAppearance.current.accent
     SideEffect { RenderDiagnostics.shellComposed() }
+    var settingsPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
+    var lastSettingsCategory by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("appearance") }
+    var utilityReturn by remember { mutableStateOf<String?>(null) }
+    var weatherDetails by remember { mutableStateOf(false) }
     var wallpaperSettingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var wallpaperChoice by remember { mutableStateOf<String?>(null) }
     var previewWallpaper by remember { mutableStateOf<String?>(null) }
@@ -261,9 +273,12 @@ fun CinematicLauncher(
     val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null } }
     // Root Back always stays in RC TV; later modal/preview/move handlers retain priority.
     BackHandler {
-        if (section != "Home") {
-            closeWallpapers()
-            onSection("Home")
+        if (section == "Settings" && wallpaperSettingsOpen) closeWallpapers()
+        else if (section == "Settings" && settingsPage != null) settingsPage=null
+        else if (utilityReturn != null && section in listOf("Speed Test","Apps")) {
+            settingsPage=utilityReturn; utilityReturn=null; onSection("Settings")
+        } else if (section != "Home") {
+            closeWallpapers(); onSection("Home")
         } else {
             returnFocusPackage = orderedFavouritePackages(prefs, discovery.apps)
                 .firstOrNull { pkg -> discovery.apps.any { it.packageName == pkg } }
@@ -336,18 +351,20 @@ fun CinematicLauncher(
                 filtered.sortedBy { order.indexOf(it.packageName).let { rank -> if (rank < 0) Int.MAX_VALUE else rank } }
             } else filtered
         } }
+    if(weatherDetails) WeatherDetails(weather, motion, { weatherDetails=false })
+    val vivid = prefs.wallpaperVisibility == "Vivid"
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion, prefs.wallpaperVisibility)
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> onSection(next) } } }, motion)
-            Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> { utilityReturn=null; settingsPage=null; onSection(next) } } } }, motion)
+            Column(Modifier.weight(1f).fillMaxWidth().vividContrast(vivid && contentSection != "Home"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth().vividContrast(vivid && contentSection == "Home"), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("RC TV", fontSize = 20.sp, fontWeight = FontWeight.Normal, letterSpacing = 3.sp, color = Color.White)
                         Text("Your world. In focus.", fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
                     }
                     if (contentSection == "Home") {
-                        WeatherGlance(weather, Modifier.weight(1f).padding(horizontal=16.dp), now = System.currentTimeMillis())
+                        WeatherGlance(weather, Modifier.weight(1f).padding(horizontal=16.dp), now = System.currentTimeMillis(), details = { weatherDetails=true })
                         NowPlayingGlance(Modifier.weight(1f).padding(horizontal=8.dp))
                     }
                     Text(clock, fontSize = 28.sp, fontWeight = FontWeight.Normal, color = Color.White)
@@ -362,54 +379,52 @@ fun CinematicLauncher(
                             prefs.theme == "Minimalist", { wallpaperChoice = it },
                             { previewWallpaper = wallpaperChoice ?: prefs.wallpaper },
                             { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers)
-                    } else Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                        Text("Settings", style = MaterialTheme.typography.headlineLarge)
-                        FocusButton("Easy setup", motion, onClick = onEasySetup)
-                        GlassPanel(Modifier.fillMaxWidth()) {
-                        Text("Wallpaper", style = MaterialTheme.typography.titleLarge, color = Ice)
-                            Text(wallpapers.firstOrNull { it.id == prefs.wallpaper }?.title ?: "Mountain horizon", style = MaterialTheme.typography.bodyMedium)
-                            FocusButton("Choose wallpaper", motion) { wallpaperSettingsOpen = true }
+                    } else if(settingsPage == null) SettingsCategories(lastSettingsCategory,motion) { key -> lastSettingsCategory=key; settingsPage=key }
+                    else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,{ settingsPage=null }) {
+                        when(settingsPage) {
+                            "appearance" -> {
+                                Text("Wallpaper",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                Text(wallpapers.firstOrNull { it.id==prefs.wallpaper }?.title ?: "Mountain horizon")
+                                FocusButton("Choose wallpaper",motion) { wallpaperSettingsOpen=true }
+                                AppearanceSettings(prefs,motion,onAccent,onFontStyle,onTextSize,onWallpaperVisibility,onResetAppearance)
+                                Text("Layout",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                SettingsOptions { listOf("Cinematic","Minimalist").forEach { value -> FocusButton(value,motion,selected=prefs.theme==value) { onTheme(value) } } }
+                                Text("Motion",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                SettingsOptions { listOf("Minimal","Balanced","Cinematic").forEach { value -> FocusButton(value,motion,selected=prefs.motion==value) { onMotion(value) } } }
+                                FocusButton("Reduced motion: ${if(prefs.reducedMotion) "on" else "off"}",motion,onClick=onReducedMotion)
+                            }
+                            "connections" -> {
+                                FocusButton("Manage paired phones",motion,onClick=onCompanion)
+                                FocusButton("Internet Speed Test",motion) { utilityReturn="connections"; onSection("Speed Test") }
+                            }
+                            "apps" -> {
+                                FocusButton("Browse installed apps",motion) { utilityReturn="apps"; onSection("Apps") }
+                                FocusButton("Android app settings",motion) {
+                                    runCatching { weatherContext.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                                        .onFailure { android.widget.Toast.makeText(weatherContext,"Open Android Settings → Apps.",android.widget.Toast.LENGTH_LONG).show() }
+                                }
+                            }
+                            "weather" -> WeatherSettings(weather,motion,{ weatherDetails=true })
+                            "system" -> {
+                                Text("RC TV ${za.co.rc.tv.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                FocusButton("Easy setup",motion,onClick=onEasySetup)
+                                FocusButton("Android settings",motion,onClick=onAndroidSettings)
+                                FocusButton("Phone control permissions",motion,onClick=onSystemControl)
+                                Text("RC TV Keyboard",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                Text(keyboardStatus)
+                                SettingsOptions {
+                                    FocusButton("Try keyboard",motion,onClick=onKeyboardPreview)
+                                    FocusButton("Enable in Android…",motion,onClick=onKeyboardEnable)
+                                    FocusButton("Choose keyboard…",motion,onClick=onKeyboardChoose)
+                                }
+                                Text("Default Home & recovery",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                Text(homeStatus)
+                                ReadableNote("Choosing Home is optional. Keep the original launcher installed for recovery. Android asks you to choose; RC TV does not change it automatically.")
+                                FocusButton("Choose RC TV as Home…",motion,onClick=onChooseHome)
+                                FocusButton("Open Home settings / restore",motion,onClick=onRestoreHome)
+                            }
                         }
-                        GlassPanel(Modifier.fillMaxWidth()) {
-                                                AppearanceSettings(prefs, motion, onAccent, onFontStyle, onTextSize, onWallpaperVisibility, onResetAppearance)
-                        Text("Layout", style = MaterialTheme.typography.titleLarge, color = Ice)
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            listOf("Cinematic", "Minimalist").forEach { theme -> FocusButton(theme, motion, selected = prefs.theme == theme) { onTheme(theme) } }
-                        }
-                        }
-                        GlassPanel(Modifier.fillMaxWidth()) {
-                        WeatherSettings(weather, motion)
-                        }
-                        GlassPanel(Modifier.fillMaxWidth()) {
-                        Text("Motion", style = MaterialTheme.typography.titleLarge, color = Ice)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("Minimal", "Balanced", "Cinematic").forEach { value -> FocusButton(value, motion, selected = prefs.motion == value) { onMotion(value) } }
-                        }
-                        FocusButton("Reduced motion: ${if (prefs.reducedMotion) "on" else "off"}", motion) { onReducedMotion() }
-                        Text("Choose how much movement feels right. Reduced motion takes priority over the selected intensity.", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .78f))
-                        }
-                        GlassPanel(Modifier.fillMaxWidth()) {
-                        Text("Connected experience", style = MaterialTheme.typography.titleLarge, color = Ice)
-                        FocusButton("Phone companion…", motion, onClick = onCompanion)
-                        Text("RC TV Keyboard", style = MaterialTheme.typography.titleLarge, color = Ice)
-                        Text(keyboardStatus, style = MaterialTheme.typography.bodyMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            FocusButton("Try keyboard", motion, onClick = onKeyboardPreview)
-                            FocusButton("Enable in Android…", motion, onClick = onKeyboardEnable)
-                            FocusButton("Choose keyboard…", motion, onClick = onKeyboardChoose)
-                        }
-                        Text("Offline, no text logging or storage. Keep your existing keyboard enabled as fallback.", style = MaterialTheme.typography.bodySmall)
-                        }
-                        GlassPanel(Modifier.fillMaxWidth()) {
-                        Text("Default launcher & recovery", style = MaterialTheme.typography.titleLarge, color = Ice)
-                        Text(homeStatus, style = MaterialTheme.typography.bodyMedium)
-                        FocusButton("Android settings", motion) { onAndroidSettings() }
-                        Text("Choosing Home is optional. Android asks you to select; keep Xiaomi’s launcher available for recovery.", style = MaterialTheme.typography.bodySmall)
-                        FocusButton("Choose RC TV as Home…", motion) { onChooseHome() }
-                        FocusButton("Open Home settings / restore", motion) { onRestoreHome() }
-                        Text("Keep Xiaomi's original launcher installed and enabled. Restore it in Android Settings → Apps → Default apps → Home.", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    }
+                    } }
                     "Library" -> GlassPanel(Modifier.fillMaxWidth()) {
                         Text("A place for your stories", fontSize = 28.sp, fontWeight = FontWeight.Normal)
                         Text("Local media and watchlists are planned. Your installed apps are ready now.", modifier = Modifier.padding(vertical = 16.dp))
@@ -427,9 +442,9 @@ fun CinematicLauncher(
                                     true
                                 } else false
                             }, label = { Text("Search installed apps") }, singleLine = true)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Row(Modifier.fillMaxWidth().vividContrast(vivid && contentSection == "Home"), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(if (contentSection == "Home" && prefs.favourites.isNotEmpty()) "Your favourites" else "Your applications", fontSize = 17.sp, color = Color.White)
-                            Text("${visible.size} APPS", fontSize = 12.sp, letterSpacing = 1.sp, color = Ice.copy(alpha = .7f))
+                            Text("${visible.size} APPS", fontSize = 12.sp, letterSpacing = 1.sp, color = Ice.copy(alpha = if(vivid) 1f else .7f))
                         }
                         discovery.error?.let { Text(it, color = MaterialTheme.colorScheme.error); FocusButton("Retry discovery", motion) { onRetry() } }
                         if (!discovery.loaded) Text("Discovering apps…", color = Ice)
@@ -491,7 +506,7 @@ fun CinematicLauncher(
                                 FocusButton(if (savingOrder) "Saving…" else "Save", motion, Modifier.focusRequester(saveFocus).focusProperties { up = movingFocus }, onClick = saveMove)
                                 FocusButton("Cancel", motion, Modifier.focusProperties { up = movingFocus }, onClick = cancelMove)
                             }
-                        } else if (textScale(prefs.textSize) <= 1.15f) Text("D-pad to explore    ·    Select to open    ·    Hold Select for options    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = .5f))
+                        } else if (textScale(prefs.textSize) <= 1.15f) Text("D-pad to explore    ·    Select to open    ·    Hold Select for options    ·    Back to Home", fontSize = 12.sp, color = Color.White.copy(alpha = if(vivid) .85f else .5f), modifier = Modifier.vividContrast(vivid))
                     }
                 }
             }
@@ -525,3 +540,5 @@ private fun CinematicNavigation(section: String, onSection: (String) -> Unit, mo
 
 private fun visibleFavouriteIndex(prefs: LauncherPreferences, apps: List<LauncherApp>, pkg: String): Int =
     orderedFavouritePackages(prefs, apps).filter { p -> apps.any { it.packageName == p } }.indexOf(pkg).coerceAtLeast(0)
+
+private fun Modifier.vividContrast(enabled: Boolean) = if(enabled) background(Ink.copy(alpha=.78f),RoundedCornerShape(12.dp)) else this
