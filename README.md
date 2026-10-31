@@ -4,9 +4,9 @@ A native, offline-first Android TV Home launcher, written in Kotlin and Jetpack 
 
 ## Status
 
-**Phase A foundation; not version 1.0.** This repository begins implementation of [the master specification](docs/MASTER-SPECIFICATION.md). It discovers installed TV and conventional launcher apps, opens them through Android intents, prioritises YouCine / YouTube Music / YouTube / F1 TV when present, stores pinned favourites in DataStore, searches apps, and provides five navigation sections and safe Home setup. Library explicitly explains its unavailable features.
+**Phase E development preview (TV 0.6.0 / Remote 0.2.0), not version 1.0.** Approved Home and favourites are preserved. Companion pairing is encrypted and reconnects when RC TV returns after another app; no background or YouCine control service. Update both APKs and pair once. RC Assist opens in Settings, supports local app lookup/navigation and confirmed wallpaper/rotation/app-launch actions. Gemini is **not connected**; no backend was deployed. See [Phase E evidence and limits](docs/PHASE-E.md) and [companion upgrade instructions](docs/COMPANION.md).
 
-The dark glass-inspired interface is native Compose. It currently uses a procedural gradient, installed application icons with fallback artwork, and static focus borders. Subtle RC TV branding carries the tagline “Your world. In focus.” Landscape artwork, collapsible sidebar, focus restoration, profiles, advanced customisation, media/file management, diagnostics, backup, weather, ambient mode and companion support remain future work. No unavailable integration is presented as working.
+Physical app context menu, direct-shelf favourites rearranging, Search, saved theme/motion and eight favourites remain preserved. No RC Assist or optional profile implementation. [Release blockers](docs/RELEASE-READINESS.md) remain explicit; the old Minimal regression is reserved for a dedicated optimisation checkpoint.
 
 ## Build
 
@@ -16,14 +16,14 @@ On Windows: ` .\gradlew.bat assembleDebug testDebugUnitTest lintDebug`
 
 On macOS/Linux: `sh gradlew assembleDebug testDebugUnitTest lintDebug`
 
-The APK is `app/build/outputs/apk/debug/app-debug.apk`. It supports Android 11 (API 30) and later, targets API 36, and is a development build signed with the local debug key. Do not use the debug key for public releases.
+The debug APK is `app/build/outputs/apk/debug/app-debug.apk` (0.3.0-wallpaper-personalisation). `assembleProfile` produces a same-signed, non-debuggable, shell-profileable development APK for practical TV review. Both support Android 11 (API 30) and later and target API 36. Do not use the debug key for public releases. Prior working APKs remain under local `releases/rollback/`; see the Home review report before downgrading from the profile build.
 
 ## Install and recover
 
-**Device-test update:** the Xiaomi MiTV-AFKR0 / Android 11 startup crash was traced through ADB to accessing the insets controller before the decor view existed. Insets setup now runs after content creation. The updated APK opens on the real box; broader acceptance testing remains outstanding and Phase B is on hold. See [startup investigation and Windows ADB log capture](docs/STARTUP-DIAGNOSTICS.md).
+**Device-test update:** the Android 11 startup crash is fixed and Phase A functional acceptance passed. Phase B is now authorised and underway. The default Home remains Xiaomi's stock launcher. See [startup investigation and Windows ADB log capture](docs/STARTUP-DIAGNOSTICS.md) for the historical diagnosis.
 
 See [setup and recovery](docs/SETUP-AND-RECOVERY.md). Do not replace the default Home until you have confirmed that Android Settings and the original launcher remain accessible. Test both Xiaomi boxes with [the checklist](docs/DEVICE-TESTS.md).
 
 ## Architecture and rights
 
-See [architecture, dependency inventory and privacy](docs/ARCHITECTURE.md), and [remaining work](docs/RELEASE-READINESS.md). Project code and original vector artwork are MIT licensed. Dependencies retain their own licences. No streaming logos, wallpapers or third-party fonts are bundled.
+See [architecture, dependency inventory and privacy](docs/ARCHITECTURE.md), and [remaining work](docs/RELEASE-READINESS.md). Project code and original vector artwork are MIT licensed. Dependencies retain their own licences. No third-party streaming logos or fonts are bundled. Original bundled wallpaper provenance and prompts are recorded in [the asset inventory](docs/WALLPAPER-ASSETS.md).

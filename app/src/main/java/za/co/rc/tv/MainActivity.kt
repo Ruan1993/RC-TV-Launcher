@@ -8,24 +8,10 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -37,103 +23,179 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    private var remoteAction: ((String, String) -> Boolean)? = null
+    private val companion by lazy { za.co.rc.tv.companion.CompanionServer(this) { key, text ->
+        lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && window.decorView.hasWindowFocus() && remoteAction?.invoke(key, text) == true
+    } }
+    override fun onStop() { companion.suspendConnection(); super.onStop() }
+    override fun onResume() { super.onResume(); companion.resume() }
+    private fun traceBackKey(event: android.view.KeyEvent) {
+        if (BuildConfig.PROFILE_DIAGNOSTICS && event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            android.util.Log.i("RcNavigation", "Back keyCode=${event.keyCode} action=${event.action} repeat=${event.repeatCount}")
+        }
+    }
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        traceBackKey(event)
+        return super.onKeyDown(keyCode, event)
+    }
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        traceBackKey(event)
+        return super.onKeyUp(keyCode, event)
+    }
+    override fun onPause() {
+        companion.suspendConnection()
+        RenderDiagnostics.snapshot()
+        super.onPause()
+    }
     private val repository by lazy { AppRepository(this) }
+    private val wallpaperStore by lazy { WallpaperStore(this) }
     private val preferences by lazy { Preferences(this) }
     private fun message(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
     private fun openSettings() {
         runCatching { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
             .onFailure { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }.onFailure { message("Open Android Settings from your original launcher.") } }
     }
+    private val homeSelection = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) {
+        message(HomeIntegration.inspect(this).description(packageName))
+    }
     private fun selectHome() {
+        val state = HomeIntegration.inspect(this)
         val roles = getSystemService(RoleManager::class.java)
-        if (roles.isRoleAvailable(RoleManager.ROLE_HOME) && !roles.isRoleHeld(RoleManager.ROLE_HOME)) {
-            runCatching { startActivity(roles.createRequestRoleIntent(RoleManager.ROLE_HOME)) }.onFailure { openSettings() }
-        } else openSettings()
+        val intent = if (state.roleAvailable && !state.roleHeld) roles.createRequestRoleIntent(RoleManager.ROLE_HOME)
+            else HomeIntegration.homeSettings(this)
+        if (intent == null) message("This firmware does not expose supported Home selection. Continue launching RC TV as an app; Xiaomi Home is unchanged.")
+        else runCatching { homeSelection.launch(intent) }.onFailure { message("Home selection is unavailable on this firmware. Xiaomi's launcher remains installed.") }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme(primary = Color(0xFF9FE9D5), background = Color(0xFF09151F), surface = Color(0xFF182D39))) {
+            MaterialTheme(typography = za.co.rc.tv.ui.LauncherTypography, colorScheme = darkColorScheme(primary = Color(0xFF9FE9D5), background = Color(0xFF09151F), surface = Color(0xFF182D39))) {
+                CompositionLocalProvider(LocalContentColor provides Color.White) {
                 val prefs by preferences.state.collectAsStateWithLifecycle(LauncherPreferences())
                 var discovery by remember { mutableStateOf(AppDiscoveryState()) }
-                val apps = discovery.apps
                 var section by rememberSaveable { mutableStateOf("Home") }
                 var query by rememberSaveable { mutableStateOf("") }
+                var companionOpen by remember { mutableStateOf(false) }
+                var assistOpen by remember { mutableStateOf(false) }
+                val assistConversation = remember { za.co.rc.tv.assist.AssistConversation() }
+                val remoteInputMode = androidx.compose.ui.platform.LocalInputModeManager.current
+                SideEffect {
+                    remoteAction = { key, text ->
+                        remoteInputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
+                        when (key) {
+                            "HOME" -> { section = "Home"; true }
+                            "SEARCH_TEXT" -> { section = "Search"; query = text; true }
+                            "BACK" -> { onBackPressedDispatcher.onBackPressed(); true }
+                            else -> {
+                                val code = mapOf("UP" to 19, "DOWN" to 20, "LEFT" to 21, "RIGHT" to 22, "OK" to 23, "BACK" to 4)[key]
+                                if (code == null) false else {
+                                    window.decorView.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code))
+                                    window.decorView.dispatchKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code)); true
+                                }
+                            }
+                        }
+                    }
+                }
+                var keyboardStatus by remember { mutableStateOf("") }
                 var homeStatus by remember { mutableStateOf("") }
                 var refresh by remember { mutableIntStateOf(0) }
                 var iconGeneration by remember { mutableIntStateOf(0) }
                 var clock by remember { mutableStateOf("") }
                 val scope = rememberCoroutineScope()
+                val saveWallpaperSetting: (suspend () -> Unit) -> Unit = { action ->
+                    scope.launch { runCatching { action() }.onFailure { message("Could not save wallpaper settings.") } }; Unit
+                }
+                var wallpapers by remember { mutableStateOf(bundledWallpapers) }
+                var wallpaperBusy by remember { mutableStateOf(false) }
+                val importImage: (android.net.Uri?) -> Unit = { uri ->
+                    if (uri != null) scope.launch {
+                        wallpaperBusy = true
+                        try { wallpaperStore.import(uri); wallpapers = wallpaperStore.list(); message("Wallpaper imported. Select it in the gallery.") }
+                        catch (failure: Exception) { message(failure.message ?: "Could not import this image.") }
+                        finally { wallpaperBusy = false }
+                    }
+                }
+                val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+                    if (result.resultCode == RESULT_OK) importImage(result.data?.data)
+                }
                 val lifecycle = LocalLifecycleOwner.current.lifecycle
                 LaunchedEffect(lifecycle, refresh) {
                     lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        wallpapers = runCatching { wallpaperStore.list() }.getOrElse { message("Wallpaper library unavailable."); bundledWallpapers }
                         discovery = refreshDiscovery(discovery, { repository.discover() }) {
                             android.util.Log.e("RcDiscovery", "Installed app discovery failed", it)
                         }
                         repository.invalidateIcons()
                         iconGeneration++
                         android.util.Log.d("RcDiscovery", "Refresh complete: ${discovery.apps.size} apps, error=${discovery.error != null}")
-                        val current = packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
-                        homeStatus = if (current?.activityInfo?.packageName == packageName) "RC TV Launcher is your default Home." else "Current Home: ${current?.loadLabel(packageManager) ?: "System chooser / unavailable"}"
+                        val input = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                        val ownKeyboard = android.content.ComponentName(this@MainActivity, za.co.rc.tv.keyboard.RcInputMethodService::class.java)
+                        val enabled = input.enabledInputMethodList.any { android.content.ComponentName(it.packageName, it.serviceName) == ownKeyboard }
+                        val selected = android.content.ComponentName.unflattenFromString(Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD).orEmpty()) == ownKeyboard
+                        keyboardStatus = if (selected) "RC TV Keyboard is selected." else if (enabled) "Enabled; choose it in Android when you want to use it." else "Optional keyboard is disabled. Your existing keyboard is unchanged."
+                        homeStatus = HomeIntegration.inspect(this@MainActivity).description(packageName)
                     }
                 }
                 LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { while (true) { clock = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()); kotlinx.coroutines.delay(30_000) } } }
-                BackHandler(section != "Home") { section = "Home" }
-                Row(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF09151F), Color(0xFF193E49), Color(0xFF101925)))).padding(28.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                    Column(Modifier.width(150.dp).fillMaxHeight().background(Color.Black.copy(alpha = .22f), RoundedCornerShape(24.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("RC TV", fontSize = 24.sp, color = Color(0xFF9FE9D5), modifier = Modifier.padding(8.dp, 20.dp))
-                        listOf("Home", "Search", "Apps", "Library", "Settings").forEach { item -> GlassButton(item, Modifier.fillMaxWidth(), selected = section == item) { section = item } }
-                        Spacer(Modifier.weight(1f))
-                        Text("FOUNDATION\n0.1.0", fontSize = 12.sp, color = Color.White.copy(alpha = .5f), modifier = Modifier.padding(8.dp))
-                    }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text("RC TV", fontSize = 24.sp, color = Color(0xFF9FE9D5))
-                                Text("Your world. In focus.", fontSize = 12.sp, color = Color.White.copy(alpha = .65f))
-                                if (section != "Home") Text(section, fontSize = 24.sp)
+                // Home is the navigation root, not an exit to the previous Android task.
+                // Keep this active at Home as well as in launcher sections.
+                BackHandler { section = "Home" }
+                za.co.rc.tv.ui.CinematicLauncher(
+                    discovery = discovery, repository = repository, iconGeneration = iconGeneration,
+                    prefs = prefs, section = section, onSection = { section = it },
+                    query = query, onQuery = { query = it }, clock = clock, homeStatus = homeStatus, keyboardStatus = keyboardStatus,
+                    onKeyboardPreview = { startActivity(Intent(this@MainActivity, za.co.rc.tv.keyboard.KeyboardPreviewActivity::class.java)) },
+                    onKeyboardEnable = { runCatching { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }.onFailure { message("Keyboard settings unavailable.") } },
+                    onKeyboardChoose = { getSystemService(android.view.inputmethod.InputMethodManager::class.java).showInputMethodPicker() },
+                    onCompanion = { companionOpen = true },
+                    onAssist = { assistOpen = true },
+                    onLaunch = { if (!repository.launch(it)) message("This app cannot currently be opened.") },
+                    onPin = { app -> scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } },
+                    wallpapers = wallpapers, wallpaperBusy = wallpaperBusy,
+                    onImportWallpaper = {
+                        runCatching { picker.launch(Intent(this@MainActivity, za.co.rc.tv.ui.MediaImageBrowserActivity::class.java)) }
+                            .onFailure { message("Image browser could not be opened.") }
+                    },
+                    onRemoveWallpaper = { id ->
+                        runCatching { preferences.removeWallpaper(id); wallpaperStore.remove(id); wallpapers = wallpaperStore.list() }
+                            .onFailure { message("Could not remove wallpaper.") }.isSuccess
+                    },
+                    onRotation = { value -> saveWallpaperSetting { preferences.setRotation(value) } },
+                    onRotationInterval = { value -> saveWallpaperSetting { preferences.setRotationMinutes(value) } },
+                    onRotationPool = { id -> saveWallpaperSetting { preferences.toggleRotationWallpaper(id) } },
+                    onTransition = { value -> saveWallpaperSetting { preferences.setWallpaperTransition(value) } },
+                    onRotateWallpaper = { runCatching { preferences.advanceWallpaper(wallpapers.map { it.id }) }.onFailure { message("Could not rotate wallpaper.") }; Unit },
+                    onApplyWallpaper = { id -> runCatching { preferences.setWallpaper(id) }
+                        .onFailure { message("Could not apply wallpaper. Please try again.") }.isSuccess },
+                    onSaveOrder = { order -> runCatching { preferences.reorderFavourites(order) }
+                        .onFailure { message("Could not save order. Favourites may have changed; try again.") }.isSuccess },
+                    onRetry = { refresh++ }, onChooseHome = { selectHome() }, onRestoreHome = { openSettings() },
+                    onAndroidSettings = { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }.onFailure { message("Settings unavailable.") } },
+                    onTheme = { value -> scope.launch { runCatching { preferences.setTheme(value) }.onFailure { message("Could not save theme.") } } },
+                    onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
+                    onReducedMotion = { scope.launch { runCatching { preferences.setReducedMotion(!prefs.reducedMotion) }.onFailure { message("Could not save preference.") } } }
+                )
+                if (companionOpen) za.co.rc.tv.companion.CompanionSettings(companion) { companionOpen = false }
+                za.co.rc.tv.companion.CompanionApproval(companion)
+                if (assistOpen) {
+                    val snapshot = za.co.rc.tv.assist.AssistSnapshot(discovery.apps.map { za.co.rc.tv.assist.AssistApp(it.packageName, it.label) },
+                        za.co.rc.tv.ui.orderedFavouritePackages(prefs, discovery.apps), prefs.wallpaper, prefs.rotationEnabled)
+                    val network = getSystemService(android.net.ConnectivityManager::class.java)
+                    val offline = network.getNetworkCapabilities(network.activeNetwork)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) != true
+                    za.co.rc.tv.assist.AssistPanel(snapshot, assistConversation, offline, execute = { action ->
+                        check(action.valid(snapshot)) { "Stale or unsupported action" }
+                        when (action.kind) {
+                            za.co.rc.tv.assist.AssistKind.NAVIGATE -> { section = action.value; assistOpen = false; "Opened RC TV ${action.value}." }
+                            za.co.rc.tv.assist.AssistKind.LAUNCH -> {
+                                val app = discovery.apps.firstOrNull { it.packageName == action.value }
+                                if (app != null && repository.launch(app)) { assistOpen = false; "Launch request sent for ${app.label}." } else "This installed app could not be launched."
                             }
-                            Text(clock, fontSize = 36.sp)
+                            za.co.rc.tv.assist.AssistKind.WALLPAPER -> { preferences.setWallpaperIfCurrent(action.value, action.expected); "Wallpaper saved. Your favourites and rotation setting are unchanged." }
+                            za.co.rc.tv.assist.AssistKind.ROTATION -> { preferences.setRotationIfCurrent(action.value.toBooleanStrict(), action.expected.toBooleanStrict()); "Wallpaper rotation is now ${if (action.value == "true") "on" else "off"}." }
                         }
-                        when (section) {
-                            "Settings" -> {
-                                Text("Launcher setup", fontSize = 24.sp)
-                                Text(homeStatus)
-                                GlassButton("Choose default Home") { selectHome() }
-                                GlassButton("Android settings") { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }.onFailure { message("Settings are unavailable on this firmware.") } }
-                                Text("Restore original launcher", fontSize = 24.sp)
-                                Text("Open Android Settings → Apps → Default apps → Home app. Select the original Xiaomi / Google TV launcher. Menu names vary by firmware. RC TV never disables or modifies it.", fontSize = 16.sp)
-                                GlassButton("Open Home settings / restore") { openSettings() }
-                                GlassButton("Reduced motion: ${if (prefs.reducedMotion) "on" else "off"}") { scope.launch { runCatching { preferences.setReducedMotion(!prefs.reducedMotion) }.onFailure { message("Could not save preference.") } } }
-                                Text("This foundation uses no blur or animated transitions. Manufacturer Home-button overrides and reboot behaviour require physical-device testing.", fontSize = 14.sp)
-                            }
-                            "Library" -> {
-                                Text("Your library starts in the next milestone.", fontSize = 24.sp)
-                                Text("Local media, USB document access and the watchlist are not implemented in this foundation build. Installed apps are available from Home and Apps.")
-                                GlassButton("Browse installed apps") { section = "Apps" }
-                            }
-                            else -> {
-                                if (section == "Search") OutlinedTextField(query, { query = it }, label = { Text("Search installed apps") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                                val visible = apps.filter { (section != "Search" || it.label.contains(query, true)) && (section != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) }
-                                Text(if (section == "Home" && prefs.favourites.isNotEmpty()) "Favourites" else "Installed applications", fontSize = 20.sp)
-                                discovery.error?.let { error ->
-                                    Text(error, color = MaterialTheme.colorScheme.error)
-                                    GlassButton("Retry discovery") { refresh++ }
-                                }
-                                if (!discovery.loaded) Text("Discovering apps…")
-                                else if (visible.isEmpty()) Text("No matching applications. Try Apps or change your search.")
-                                LazyVerticalGrid(columns = GridCells.Adaptive(190.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.weight(1f)) {
-                                    items(visible, key = { it.packageName }) { app ->
-                                        Column(Modifier.background(Color.Black.copy(alpha = .22f), RoundedCornerShape(18.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassButton(app.label, Modifier.fillMaxWidth().heightIn(min = 112.dp), icon = { AppIcon(app.packageName, repository, iconGeneration) }) { if (!repository.launch(app)) message("This app cannot currently be opened. It may have been removed or restricted.") }
-                                            GlassButton(if (app.packageName in prefs.favourites) "★ Unpin" else "☆ Pin") { scope.launch { runCatching { preferences.toggleFavourite(app.packageName) }.onFailure { message("Could not save favourite.") } } }
-                                        }
-                                    }
-                                }
-                                Text("Use your remote to move • Select to open • Pin your favourites", fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
-                            }
-                        }
-                    }
+                    }, close = { assistOpen = false })
+                }
                 }
             }
         }
@@ -146,26 +208,4 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-@Composable
-private fun GlassButton(label: String, modifier: Modifier = Modifier, selected: Boolean = false, icon: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
-    var focused by remember { mutableStateOf(false) }
-    Button(onClick, modifier.onFocusChanged { focused = it.isFocused }.border(if (focused) 3.dp else 1.dp, if (focused) Color(0xFF9FE9D5) else Color.White.copy(alpha = .12f), RoundedCornerShape(14.dp)), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = if (selected || focused) Color(0xFF315560) else Color(0xFF1A303C), contentColor = Color.White), contentPadding = PaddingValues(14.dp)) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            icon?.invoke()
-            Text(label, fontSize = 16.sp, maxLines = 2)
-        }
-    }
-}
-
-
-@Composable
-private fun AppIcon(packageName: String, repository: AppRepository, generation: Int) {
-    val bitmap by produceState<android.graphics.Bitmap?>(null, packageName, generation) {
-        value = null
-        value = repository.icon(packageName)
-    }
-    if (bitmap != null) Image(bitmap!!.asImageBitmap(), contentDescription = null, modifier = Modifier.size(48.dp))
-    else Image(painterResource(R.drawable.rc_icon), contentDescription = null, modifier = Modifier.size(48.dp))
 }

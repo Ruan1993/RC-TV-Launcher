@@ -33,3 +33,5 @@ output-metadata.json
 misc.xml
 deploymentTargetDropDown.xml
 render.experimental.xml
+__pycache__/
+*.py[cod]

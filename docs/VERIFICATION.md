@@ -1,5 +1,7 @@
 # Foundation verification — 30 October 2026
 
+This file records the Phase A checkpoint. For the current Phase B preview, seven-test results, actual TV screenshots, measured performance limits and rollback instructions, see [Cinematic Glass first increment](PHASE-B-CINEMATIC-GLASS.md).
+
 **Real-device update:** ADB confirmed the Xiaomi MiTV-AFKR0 / Android 11 startup crash in PhoneWindow.getInsetsController, called before the decor view existed. Insets setup now runs after content creation. The repaired APK was installed over the existing app and opens on the box. D-pad Search/Back, discovered app tiles, YouTube launching, return to RC TV and the Settings page were checked. See [startup diagnostics](STARTUP-DIAGNOSTICS.md). The fix passed a fresh 53-task build/test/lint run, 2 unit tests, and 0 lint errors / 7 warnings. Broader hardware acceptance is still outstanding; Phase B remains on hold.
 
 Executed on the Windows development machine with JDK 21, Android SDK 36 and Gradle 8.13.
