@@ -9,7 +9,7 @@ class FocusAnimationTest {
     }
     @Test fun effectsAreBoundedAndReducedMotionWins() {
         assertEquals(1f,focusScale("Off")); assertEquals(1.025f,focusScale("Subtle"))
-        assertEquals(1.05f,focusScale("Standard")); assertEquals(1.065f,focusScale("Enhanced"))
+        assertEquals(1.05f,focusScale("Standard")); assertEquals(1.10f,focusScale("Enhanced"))
         focusAnimations.forEach { assertEquals(1f,focusScale(activeFocusAnimation(LauncherPreferences(reducedMotion=true,focusAnimation=it)))) }
     }
 }

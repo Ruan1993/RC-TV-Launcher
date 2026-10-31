@@ -31,14 +31,14 @@ internal fun Modifier.cinematicFocus(radius: Dp = 14.dp): Modifier = composed {
     // Animate one shared lift value so scale, elevation and edge arrive together.
     // A short, bounded spring makes the change of selection visible on a distant TV.
     val lift by animateFloatAsState(if(focused && enabled) 1f else 0f,
-        if(enabled) spring(dampingRatio=.72f, stiffness=650f) else snap(),label="cinematicFocus")
-    val strength=when(intensity) { "Enhanced" -> 1.5f; "Subtle" -> .65f; else -> 1f }
+        if(enabled) spring(dampingRatio=if(intensity=="Enhanced") .65f else .72f, stiffness=650f) else snap(),label="cinematicFocus")
+    val strength=when(intensity) { "Enhanced" -> 2f; "Subtle" -> .65f; else -> 1f }
     this.onFocusChanged { focused=it.isFocused }
         .zIndex(if(focused) 1f else 0f)
         .graphicsLayer {
             val scale=1f+(focusScale(intensity)-1f)*lift
             scaleX=scale; scaleY=scale; clip=false; shape=RoundedCornerShape(radius)
-            translationY=-2.dp.toPx()*strength*lift
+            translationY=-(if(intensity=="Enhanced") 6.dp else 2.dp*strength).toPx()*lift
             shadowElevation=10.dp.toPx()*strength*lift.coerceAtLeast(0f)
             ambientShadowColor=palette.halo.copy(alpha=.5f); spotShadowColor=palette.halo.copy(alpha=.5f)
         }.drawWithCache {
