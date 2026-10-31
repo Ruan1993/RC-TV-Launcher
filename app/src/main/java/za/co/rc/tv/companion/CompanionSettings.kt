@@ -20,13 +20,19 @@ import za.co.rc.tv.ui.FocusButton
         text = { Text("All currently approved phones can request Home, Back, app focus/click, media buttons and non-password text through RC TV Keyboard. The accessibility service can inspect the active window. No screen history is stored or sent. Android 11 navigation depends on each app; it cannot inject arbitrary D-pad keys. Only enable this on a trusted network. You must also enable RC TV Remote system control in Android Accessibility. Use the physical remote for that consent. Revoke any phone you no longer trust before enabling.") },
         confirmButton = { FocusButton("Allow system control", "Minimal") { RemoteRuntime.setOptIn(context, true); systemWide = true; confirmSystem = false } },
         dismissButton = { FocusButton("Cancel", "Minimal") { confirmSystem = false } })
-    AlertDialog(onDismissRequest = close, title = { Text("Phone companion") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    AlertDialog(onDismissRequest = close, title = {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Phone companion")
+            if (state.running) {
+                Text("Address: ${state.address}", style = MaterialTheme.typography.bodyMedium)
+                Text("Pairing code: ${state.code.ifEmpty { "expired or used" }}", style = MaterialTheme.typography.headlineSmall)
+            }
+        }
+    }, text = {
+        Column(Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(state.message)
             Text("Install RC TV Remote on your Android phone. Use the same trusted local network. Compare the security fingerprint, enter the code, then approve on this TV.")
             if (state.running) {
-                Text("Address: ${state.address}")
-                Text("Pairing code: ${state.code.ifEmpty { "expired or used" }}", style = MaterialTheme.typography.headlineSmall)
                 Text("Code expires after two minutes. Approved pairing lasts up to seven days. Outside RC TV, control requires both system-control opt-in and Android Accessibility consent.")
                 FocusButton("New pairing code", "Minimal") { server.start() }
                 Text("Security fingerprint\n${LinkWire.displayFingerprint(state.fingerprint)}", style = MaterialTheme.typography.bodySmall)
