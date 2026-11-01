@@ -23,6 +23,16 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    private var experimentHomeRequest by mutableIntStateOf(0)
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == HomeKeyExperimentService.ACTION_HOME) {
+            screensaverVisible = false
+            lastInteraction = android.os.SystemClock.elapsedRealtime()
+            experimentHomeRequest++
+        }
+    }
     private var lastInteraction by mutableLongStateOf(android.os.SystemClock.elapsedRealtime())
     private var activityResumed by mutableStateOf(false)
     private var activityFocused by mutableStateOf(false)
@@ -93,6 +103,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent.action == HomeKeyExperimentService.ACTION_HOME) experimentHomeRequest++
         val suggestSetup = SetupProgress.offerOnFirstOpen(getSharedPreferences("easy-setup", MODE_PRIVATE).getBoolean("seen", false),
             java.io.File(filesDir, "datastore/launcher.preferences_pb").exists())
         setContent {
@@ -107,6 +118,11 @@ class MainActivity : ComponentActivity() {
                 var companionOpen by remember { mutableStateOf(false) }
                 var companionPage by remember { mutableIntStateOf(0) }
                 var offerOtherApps by remember { mutableStateOf(false) }
+                LaunchedEffect(experimentHomeRequest) {
+                    if (experimentHomeRequest > 0) {
+                        section = "Home"; setupOpen = false; companionOpen = false; offerOtherApps = false
+                    }
+                }
                 val companionState by companion.state.collectAsStateWithLifecycle()
                 var seenConnection by remember { mutableLongStateOf(companionState.connectionEvent) }
                 LaunchedEffect(companionState.connectionEvent) {
