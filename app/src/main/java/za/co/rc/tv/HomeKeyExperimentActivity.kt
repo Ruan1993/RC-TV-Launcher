@@ -16,9 +16,12 @@ class HomeKeyExperimentActivity : Activity() {
         val status = TextView(this).apply { text = "Temporary Home experiment. Default Home and system packages are unchanged.\nLong Home may be intercepted. Disable this service in Android Accessibility to undo." }
         layout.addView(status)
         fun button(label: String, action: () -> Unit) { layout.addView(Button(this).apply { text = label; setOnClickListener { action() } }) }
-        fun mode(value: String) { getSharedPreferences("home-key-experiment", MODE_PRIVATE).edit().putString("mode", value).commit(); status.text = "Experiment mode: $value" }
+        fun mode(value: String) {
+            runCatching { startService(Intent(this, HomeKeyExperimentService::class.java).putExtra("mode", value)) }
+                .onSuccess { status.text = "Requested mode: $value" }
+                .onFailure { status.text = "Could not change mode. Use Android Accessibility to turn the service off." }
+        }
         button("1. Home-key filter only") { mode("keys") }
-        button("2. Home-key filter + Google TV HomeActivity fallback") { mode("fallback") }
         button("Stop experiment (pass through all events)") { mode("off") }
         button("Android Accessibility: enable / disable RC TV Home experiment") { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         button("Android Settings") { startActivity(Intent(Settings.ACTION_SETTINGS)) }

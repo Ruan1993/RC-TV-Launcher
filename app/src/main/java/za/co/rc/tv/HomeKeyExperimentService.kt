@@ -11,6 +11,18 @@ class HomeKeyExperimentService : AccessibilityService() {
     private var homeDownTime: Long? = null
     private val mode get() = getSharedPreferences("home-key-experiment", MODE_PRIVATE).getString("mode", "keys")
     override fun onServiceConnected() { Log.i("RcHomeExperiment", "connected mode=$mode") }
+    // The service process owns this preference. Foreground test controls send explicit commands,
+    // rather than relying on unsupported cross-process SharedPreferences cache invalidation.
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val requested = intent?.getStringExtra("mode")
+        if (requested == "keys" || requested == "off") {
+            val saved = getSharedPreferences("home-key-experiment", MODE_PRIVATE).edit().putString("mode", requested).commit()
+            if (saved) homeDownTime = null
+            Log.i("RcHomeExperiment", "control mode=$requested saved=$saved")
+        }
+        stopSelf(startId) // Accessibility binding keeps the service alive; no started background service.
+        return START_NOT_STICKY
+    }
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (mode == "off" || event.keyCode != KeyEvent.KEYCODE_HOME) return false
         Log.i("RcHomeExperiment", "HOME action=${event.action} repeat=${event.repeatCount}")
@@ -28,9 +40,7 @@ class HomeKeyExperimentService : AccessibilityService() {
         return true
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (mode != "fallback" || event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        if (event.packageName?.toString() == "com.google.android.apps.tv.launcherx" &&
-            event.className?.toString() == "com.google.android.apps.tv.launcherx.home.HomeActivity") openHome("stock-home-window")
+        // Window-based redirection stays disabled. Home handling uses key events only.
     }
     private fun openHome(reason: String, settings: Boolean = false) {
         runCatching {
