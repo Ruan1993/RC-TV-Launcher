@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <application>
+        <activity android:name="za.co.rc.tv.WatchNextCompatibilityActivity" android:label="RC TV Watch Next compatibility check" android:exported="true" />
         <activity android:name="za.co.rc.tv.AppearanceFixture" android:label="Appearance review fixture" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
