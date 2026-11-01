@@ -1,5 +1,7 @@
 # Primary Home & startup acceptance — J3C NOT ACCEPTED
 
+Read-only follow-up: [device-specific Home routing diagnostics and recovery assessment](HOME-ROUTING-DIAGNOSTICS.md). The physical Home trace confirms Google TV routing; setup recovery also outranks RC TV, so a Google-TV-only takeover is not a viable verified fix.
+
 Latest TV candidate: 1.0.0-rc1.15 (44), from 4ba8375 / rc1.14. Physical target: Xiaomi MiTV-AFKR0, Android 11. This mandatory gate takes precedence over additional Settings work. The requested seamless primary-launcher behaviour is **not achieved on this tested firmware**. No forced-launch workaround is included.
 
 ## Acceptance results (1 November 2026)
