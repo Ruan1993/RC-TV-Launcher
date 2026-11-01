@@ -19,7 +19,8 @@ data class LauncherPreferences(val favourites: Set<String> = emptySet(), val red
     val rotationEnabled: Boolean = false, val rotationMinutes: Int = 15,
     val rotationPool: Set<String> = setOf("mountain", "coast", "desert"),
     val wallpaperTransition: String = "Instant", val rotationAt: Long = 0L,
-    val accent: String = "Original (Default)", val fontStyle: String = "Modern", val textSize: String = "Standard", val wallpaperVisibility: String = "Balanced", val focusAnimation: String = "Standard")
+    val accent: String = "Original (Default)", val fontStyle: String = "Modern", val textSize: String = "Standard", val wallpaperVisibility: String = "Balanced", val focusAnimation: String = "Standard",
+    val screensaverMinutes: Int = 30, val screensaverStyle: String = "Cinematic Wallpapers")
 class Preferences(context: Context) {
     private val store = context.applicationContext.store
     private val favourites = stringSetPreferencesKey("favourites")
@@ -38,11 +39,16 @@ class Preferences(context: Context) {
     private val visibility = stringPreferencesKey("wallpaper_visibility")
     private val focusAnimation = stringPreferencesKey("focus_animation")
     private val intensity = stringPreferencesKey("animation_intensity")
+    private val saverMinutes = intPreferencesKey("screensaver_minutes")
+    private val saverStyle = stringPreferencesKey("screensaver_style")
     val state = store.data.catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { LauncherPreferences(it[favourites].orEmpty(), it[motion] ?: false, validTheme(it[theme]), validMotion(it[intensity]), it[order]?.split("\n")?.filter(String::isNotBlank).orEmpty(), validWallpaper(it[wallpaper]),
             it[rotate] ?: false, validRotationInterval(it[interval] ?: 15),
             it[pool]?.filter { id -> validWallpaper(id) == id }?.toSet() ?: setOf("mountain", "coast", "desert"),
-            validWallpaperTransition(it[transition]), it[rotatedAt] ?: 0L, validAccent(it[accent]), validFontStyle(it[fontStyle]), validTextSize(it[textSize]), validWallpaperVisibility(it[visibility]), validFocusAnimation(it[focusAnimation] ?: legacyFocusAnimation(it[intensity]))) }
+            validWallpaperTransition(it[transition]), it[rotatedAt] ?: 0L, validAccent(it[accent]), validFontStyle(it[fontStyle]), validTextSize(it[textSize]), validWallpaperVisibility(it[visibility]), validFocusAnimation(it[focusAnimation] ?: legacyFocusAnimation(it[intensity])),
+            validScreensaverMinutes(it[saverMinutes]), validScreensaverStyle(it[saverStyle])) }
+    suspend fun setScreensaverMinutes(value: Int) { require(value in screensaverIntervals); store.edit { it[saverMinutes] = value } }
+    suspend fun setScreensaverStyle(value: String) { require(value in screensaverStyles); store.edit { it[saverStyle] = value } }
     suspend fun toggleFavourite(packageName: String) { store.edit { p ->
         val current = p[favourites].orEmpty(); p[favourites] = if (packageName in current) current - packageName else current + packageName
     } }

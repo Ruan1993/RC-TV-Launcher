@@ -33,6 +33,7 @@ class WallpaperImportCheck : Instrumentation() {
     override fun onStart() {
         val result = Bundle()
         try {
+            if(refinementMode=="j3bsaver") { ScreensaverReview.run(this,weatherLarge); result.putString("verification","Screensaver settings persistence, three previews, focus restoration, power shortcuts, accelerated idle/Never and external-app suppression passed"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j1home") { HomeJ1Review.run(this,j1Args!!); result.putString("verification","Clean Home, original card dimensions and fixed Settings checked"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="backdrops") { BackdropReview.run(this); result.putString("verification","Rendered all three modes of the same mountain wallpaper"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="settings") { SettingsReviewCheck.run(this,weatherLarge); result.putString("verification","All Settings categories, existing control access, wallpaper/utility Back and category focus restoration passed"); finish(Activity.RESULT_OK,result); return }

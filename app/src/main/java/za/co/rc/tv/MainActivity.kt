@@ -23,12 +23,27 @@ import java.util.Date
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
+    private var lastInteraction by mutableLongStateOf(android.os.SystemClock.elapsedRealtime())
+    private var activityResumed by mutableStateOf(false)
+    private var activityFocused by mutableStateOf(false)
+    private var screensaverVisible by mutableStateOf(false)
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        lastInteraction = android.os.SystemClock.elapsedRealtime()
+    }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        activityFocused = hasFocus
+        if (hasFocus) lastInteraction = android.os.SystemClock.elapsedRealtime()
+    }
     private var remoteAction: ((String, String) -> Boolean)? = null
     private val companion by lazy { za.co.rc.tv.companion.RemoteRuntime.server(this) }
     override fun onResume() {
         super.onResume()
+        activityResumed = true
+        lastInteraction = android.os.SystemClock.elapsedRealtime()
         za.co.rc.tv.companion.RemoteRuntime.foreground = { key, text ->
-            lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && (window.decorView.hasWindowFocus() || key == "CLOSE_SETUP") && remoteAction?.invoke(key, text) == true
+            lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && (window.decorView.hasWindowFocus() || screensaverVisible || key == "CLOSE_SETUP") && remoteAction?.invoke(key, text) == true
         }
         companion.resume()
     }
@@ -46,6 +61,8 @@ class MainActivity : ComponentActivity() {
         return super.onKeyUp(keyCode, event)
     }
     override fun onPause() {
+        activityResumed = false
+        screensaverVisible = false
         za.co.rc.tv.companion.RemoteRuntime.pause(this)
         RenderDiagnostics.snapshot()
         super.onPause()
@@ -101,8 +118,9 @@ class MainActivity : ComponentActivity() {
                 val remoteInputMode = androidx.compose.ui.platform.LocalInputModeManager.current
                 SideEffect {
                     remoteAction = { key, text ->
+                        lastInteraction = android.os.SystemClock.elapsedRealtime()
                         remoteInputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
-                        when (key) {
+                        if (screensaverVisible) { screensaverVisible = false; true } else when (key) {
                             "CLOSE_SETUP" -> if (companionOpen && companionState.pending == null && !offerOtherApps) { companionOpen = false; true } else false
                             "HOME" -> { section = "Home"; true }
                             "SEARCH_TEXT" -> { section = "Search"; query = text; true }
@@ -141,6 +159,25 @@ class MainActivity : ComponentActivity() {
                     if (result.resultCode == RESULT_OK) importImage(result.data?.data)
                 }
                 val lifecycle = LocalLifecycleOwner.current.lifecycle
+                val saverBlocked = section != "Home" || setupOpen || companionOpen || offerOtherApps || companionState.pending != null
+                val dismissSaver = { screensaverVisible = false; lastInteraction = android.os.SystemClock.elapsedRealtime() }
+                LaunchedEffect(companionState.pending) {
+                    if (companionState.pending != null) dismissSaver()
+                }
+                LaunchedEffect(lastInteraction, activityResumed, activityFocused, prefs.screensaverMinutes, saverBlocked, screensaverVisible) {
+                    if (!screensaverVisible && !saverBlocked && activityResumed && activityFocused) {
+                        val wait = screensaverDelay(prefs.screensaverMinutes, lastInteraction, android.os.SystemClock.elapsedRealtime())
+                        if (wait != null) {
+                            kotlinx.coroutines.delay(wait)
+                            // One check at the deadline. Active audio suppresses this idle session;
+                            // the next interaction or resume starts a fresh one. No polling service.
+                            val audio = getSystemService(android.media.AudioManager::class.java)
+                            val power = getSystemService(android.os.PowerManager::class.java)
+                            if (mayShowScreensaver(activityResumed, activityFocused, power.isInteractive,
+                                    audio.isMusicActive, saverBlocked)) screensaverVisible = true
+                        }
+                    }
+                }
                 LaunchedEffect(lifecycle, refresh) {
                     lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                         wallpapers = runCatching { wallpaperStore.list() }.getOrElse { message("Wallpaper library unavailable."); bundledWallpapers }
@@ -202,6 +239,9 @@ class MainActivity : ComponentActivity() {
                     onTextSize = { value -> scope.launch { preferences.setTextSize(value) } },
                     onWallpaperVisibility = { value -> scope.launch { preferences.setWallpaperVisibility(value) } },
                     onFocusAnimation = { value -> scope.launch { preferences.setFocusAnimation(value) } },
+                    onScreensaverMinutes = { value -> scope.launch { preferences.setScreensaverMinutes(value) } },
+                    onScreensaverStyle = { value -> scope.launch { preferences.setScreensaverStyle(value) } },
+                    onPreviewScreensaver = { screensaverVisible = true },
                     onResetAppearance = { scope.launch { preferences.resetAppearance() } },
                     onTheme = { value -> scope.launch { runCatching { preferences.setTheme(value) }.onFailure { message("Could not save theme.") } } },
                     onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
@@ -216,6 +256,7 @@ class MainActivity : ComponentActivity() {
                     confirmButton = { za.co.rc.tv.ui.FocusButton("Set up other apps", "Minimal") { offerOtherApps = false; companionPage = 1; companionOpen = true } },
                     dismissButton = { za.co.rc.tv.ui.FocusButton("Later", "Minimal") { offerOtherApps = false } })
                 za.co.rc.tv.companion.CompanionApproval(companion)
+                if (screensaverVisible && activityResumed) za.co.rc.tv.ui.Screensaver(prefs, clock, dismissSaver)
             }
         }
         // Android 11's Window getter can throw before the decor view exists.

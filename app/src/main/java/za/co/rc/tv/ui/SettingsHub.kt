@@ -23,6 +23,7 @@ internal val settingsCategories = listOf(
     SettingsCategory("connections","Connections & Devices","R"),
     SettingsCategory("apps","Apps & Media","A"),
     SettingsCategory("weather","Weather & Widgets","W"),
+    SettingsCategory("power","Screensaver & Power","T"),
     SettingsCategory("system","System & Updates","···"))
 
 @Composable internal fun ColumnScope.SettingsCategories(last: String, motion: String, choose: (String) -> Unit) {

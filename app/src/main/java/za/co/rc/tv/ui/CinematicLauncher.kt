@@ -73,7 +73,7 @@ private val GlassShape = RoundedCornerShape(22.dp)
 
 /** No backdrop blur or continuously running effects: safe for API 30 TV GPUs. */
 @Composable
-private fun Wallpaper(minimal: Boolean, id: String, transition: String, motion: String, visibility: String) {
+internal fun Wallpaper(minimal: Boolean, id: String, transition: String, motion: String, visibility: String) {
     SideEffect { RenderDiagnostics.wallpaperComposed() }
     val context = LocalContext.current.applicationContext
     val wallpaper by produceState<android.graphics.Bitmap?>(null, minimal, id, visibility) {
@@ -244,6 +244,7 @@ fun CinematicLauncher(
     onApplyWallpaper: suspend (String) -> Boolean,
     onSaveOrder: suspend (List<String>) -> Boolean,
     onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onFocusAnimation: (String) -> Unit, onResetAppearance: () -> Unit,
+    onScreensaverMinutes: (Int) -> Unit, onScreensaverStyle: (String) -> Unit, onPreviewScreensaver: () -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
     val weatherContext = LocalContext.current.applicationContext
@@ -401,6 +402,7 @@ fun CinematicLauncher(
                     } else if(settingsPage == null) SettingsCategories(lastSettingsCategory,motion) { key -> lastSettingsCategory=key; settingsPage=key }
                     else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,{ settingsPage=null }) {
                         when(settingsPage) {
+                            "power" -> ScreensaverSettings(prefs, motion, onScreensaverMinutes, onScreensaverStyle, onPreviewScreensaver)
                             "appearance" -> {
                                 Text("Wallpaper",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text(wallpapers.firstOrNull { it.id==prefs.wallpaper }?.title ?: "Mountain horizon")
