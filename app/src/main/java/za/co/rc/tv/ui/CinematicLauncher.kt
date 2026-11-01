@@ -249,6 +249,7 @@ fun CinematicLauncher(
 ) {
     val weatherContext = LocalContext.current.applicationContext
     val weather = remember(weatherContext) { WeatherRepository(weatherContext) }
+    LaunchedEffect(weather) { weather.observeConfiguration() }
     val network = remember(weatherContext) { NetworkStatusMonitor(weatherContext) }
     val settingsFocus=remember { FocusRequester() }; val clockFocus=remember { FocusRequester() }
     val favouriteShelfFocus = remember { FocusRequester() }
@@ -262,6 +263,8 @@ fun CinematicLauncher(
     var settingsPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     var lastSettingsCategory by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("appearance") }
     val launcherEntryFocus = remember { FocusRequester() }
+    val backupEntryFocus = remember { FocusRequester() }
+    var returnToBackupEntry by remember { mutableStateOf(false) }
     var restoreLauncherEntry by remember { mutableStateOf(false) }
     var utilityReturn by remember { mutableStateOf<String?>(null) }
     var weatherDetails by remember { mutableStateOf(false) }
@@ -291,13 +294,13 @@ fun CinematicLauncher(
     }
     val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null } }
     val closeSettingsPage = {
-        if (settingsPage == "launcher") { settingsPage = "system"; restoreLauncherEntry = true } else settingsPage = null
+        if (settingsPage == "launcher" || settingsPage == "backup") { returnToBackupEntry = settingsPage == "backup"; settingsPage = "system"; restoreLauncherEntry = true } else settingsPage = null
     }
     LaunchedEffect(settingsPage, restoreLauncherEntry) {
         if (settingsPage == "system" && restoreLauncherEntry) {
             withFrameNanos { }; withFrameNanos { }
             inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
-            launcherEntryFocus.requestFocus(); restoreLauncherEntry = false
+            (if (returnToBackupEntry) backupEntryFocus else launcherEntryFocus).requestFocus(); restoreLauncherEntry = false
         }
     }
     // Root Back always stays in RC TV; later modal/preview/move handlers retain priority.
@@ -416,6 +419,7 @@ fun CinematicLauncher(
                         when(settingsPage) {
                             "power" -> ScreensaverSettings(prefs, motion, onScreensaverMinutes, onScreensaverStyle, onPreviewScreensaver, onScreensaverProvider)
                             "launcher" -> LauncherManagement(motion, onChooseHome, onRestoreHome, onAndroidSettings, onResetLauncherAppearance)
+                            "backup" -> BackupRestore(motion)
                             "appearance" -> {
                                 Text("Wallpaper",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text(wallpapers.firstOrNull { it.id==prefs.wallpaper }?.title ?: "Mountain horizon")
@@ -463,6 +467,7 @@ fun CinematicLauncher(
                             "system" -> {
                                 Text("RC TV ${za.co.rc.tv.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 FocusButton("Easy setup",motion,onClick=onEasySetup)
+                                FocusButton("Backup & Restore", motion, Modifier.focusRequester(backupEntryFocus)) { settingsPage = "backup" }
                                 essentialSystemDestinations.forEach { SystemSettingsLink(it, motion) }
                                 FocusButton("Launcher Management", motion, Modifier.focusRequester(launcherEntryFocus)) { settingsPage = "launcher" }
                             }

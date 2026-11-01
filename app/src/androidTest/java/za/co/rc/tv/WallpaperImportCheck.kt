@@ -33,6 +33,9 @@ class WallpaperImportCheck : Instrumentation() {
     override fun onStart() {
         val result = Bundle()
         try {
+            if(refinementMode=="j3fsaf") { BackupReview.saf(this); result.putString("verification","Genuine emulator DocumentsUI save/readback/open/preview/confirmed restore passed"); finish(Activity.RESULT_OK,result); return }
+            if(refinementMode=="j3fcore") { BackupReview.core(this); result.putString("verification","J3F backup validation, failed I/O, atomic restore and physical data preservation passed"); finish(Activity.RESULT_OK,result); return }
+            if(refinementMode=="j3fui") { BackupReview.ui(this); result.putString("verification","J3F Settings/Back/D-pad, honest picker availability, actual Downloads export/readback, preview Cancel and confirmed UI restore passed"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3cstartup") { J3CReview.startupOrdering(this); result.putString("verification","Home content draw precedes optional resume/network work; navigation and favourites preserved"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3cvisual") { J3CReview.largeTextAndStorageStats(this); result.putString("verification","Extra Large Settings, provider chooser and reset confirmation checked; own installed storage measured"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3creset") { J3CReview.confirmedReset(this); result.putString("verification","Confirmed appearance reset preserved favourites/order, logical pairing, keyboard and screensaver settings; original appearance restored"); finish(Activity.RESULT_OK,result); return }

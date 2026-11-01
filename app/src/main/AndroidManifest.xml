@@ -2,6 +2,8 @@
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <queries>
+        <intent><action android:name="android.intent.action.CREATE_DOCUMENT" /><category android:name="android.intent.category.OPENABLE" /><data android:mimeType="application/json" /></intent>
+        <intent><action android:name="android.intent.action.OPEN_DOCUMENT" /><category android:name="android.intent.category.OPENABLE" /><data android:mimeType="application/json" /></intent>
         <package android:name="com.google.android.apps.mediashell" />
         <intent><action android:name="android.settings.HOME_SETTINGS" /></intent>
         <intent><action android:name="android.settings.SETTINGS" /></intent>

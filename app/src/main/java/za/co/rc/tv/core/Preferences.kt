@@ -14,8 +14,10 @@ import androidx.datastore.preferences.core.emptyPreferences
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.catch
 import java.io.IOException
+import kotlinx.coroutines.flow.first
 
 private val providerKey = stringPreferencesKey("screensaver_provider")
+internal val weatherConfigurationKey = stringPreferencesKey("weather_configuration")
 private val Context.store by preferencesDataStore("launcher", corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
     produceMigrations = { context ->
         // Capture before the first read creates a new datastore file. Persist the decision
@@ -25,6 +27,12 @@ private val Context.store by preferencesDataStore("launcher", corruptionHandler 
             override suspend fun shouldMigrate(currentData: androidx.datastore.preferences.core.Preferences) = currentData[providerKey] !in screensaverProviders
             override suspend fun migrate(currentData: androidx.datastore.preferences.core.Preferences) = currentData.toMutablePreferences().apply {
                 this[providerKey] = initialScreensaverProvider(currentData[providerKey], existing)
+            }
+            override suspend fun cleanUp() = Unit
+        }, object : androidx.datastore.core.DataMigration<androidx.datastore.preferences.core.Preferences> {
+            override suspend fun shouldMigrate(currentData: androidx.datastore.preferences.core.Preferences) = currentData[weatherConfigurationKey] == null
+            override suspend fun migrate(currentData: androidx.datastore.preferences.core.Preferences) = currentData.toMutablePreferences().apply {
+                this[weatherConfigurationKey] = WeatherConfiguration.fromLegacy(context.getSharedPreferences("weather", Context.MODE_PRIVATE).getString("record", null)).encode()
             }
             override suspend fun cleanUp() = Unit
         })
@@ -55,6 +63,24 @@ class Preferences(context: Context) {
     private val intensity = stringPreferencesKey("animation_intensity")
     private val saverMinutes = intPreferencesKey("screensaver_minutes")
     private val saverStyle = stringPreferencesKey("screensaver_style")
+    val weatherConfiguration = store.data.map { WeatherConfiguration.decode(it[weatherConfigurationKey] ?: WeatherConfiguration().encode()) }
+    suspend fun setWeatherConfiguration(value: WeatherConfiguration) { store.edit { it[weatherConfigurationKey] = value.encode() } }
+    internal suspend fun backupValues(): Map<String, Any> = store.data.first().asMap().entries.associate { it.key.name to it.value }
+    internal suspend fun restoreBackup(values: Map<String, Any>) {
+        BackupSchema.validate(values)
+        store.edit { target ->
+            BackupSchema.rules.keys.forEach { name -> target.asMap().keys.firstOrNull { it.name == name }?.let { target.remove(it) } }
+            values.forEach { (name, value) -> when (value) {
+                is Boolean -> target[booleanPreferencesKey(name)] = value
+                is Int -> target[intPreferencesKey(name)] = value
+                is String -> target[stringPreferencesKey(name)] = value
+                is Set<*> -> target[stringSetPreferencesKey(name)] = value.filterIsInstance<String>().toSet()
+                else -> error("Unsupported setting")
+            } }
+            // Runtime scheduling is local to this device, not part of the portable backup.
+            target[rotatedAt] = System.currentTimeMillis()
+        }
+    }
     val state = store.data.catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { LauncherPreferences(it[favourites].orEmpty(), it[motion] ?: false, validTheme(it[theme]), validMotion(it[intensity]), it[order]?.split("\n")?.filter(String::isNotBlank).orEmpty(), validWallpaper(it[wallpaper]),
             it[rotate] ?: false, validRotationInterval(it[interval] ?: 15),

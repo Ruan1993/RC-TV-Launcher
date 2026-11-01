@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -23,6 +25,7 @@ data class WeatherState(val place: WeatherPlace? = null, val reading: WeatherRea
 class WeatherRepository(context: Context, private val now: () -> Long = { System.currentTimeMillis() },
     private val fetch: (String) -> String = ::weatherHttp, storageName: String = "weather") {
     private val storage = context.applicationContext.getSharedPreferences(storageName, Context.MODE_PRIVATE)
+    private val preferences = if (storageName == "weather") Preferences(context) else null
     private val mutex = Mutex()
     @Volatile private var revision = 0
     private var lastAttempt = 0L
@@ -43,12 +46,26 @@ class WeatherRepository(context: Context, private val now: () -> Long = { System
         current.reading?.let { record.put("reading", JSONObject().put("temperature_2m",it.celsius).put("weather_code",it.code).put("time",it.observed / 1000).put("apparent_temperature",it.feelsLike).put("relative_humidity_2m",it.humidity).put("wind_speed_10m",it.windKmh)) }
         storage.edit().putString("record", record.toString()).apply()
     }
-    @Synchronized fun select(place: WeatherPlace) { revision++; lastAttempt = 0; mutable.value = WeatherState(place, message = "Location saved. Weather refreshes on Home."); save() }
-    @Synchronized fun setEnabled(enabled: Boolean) {
-        if(mutable.value.place == null) return
-        revision++; mutable.value=mutable.value.copy(enabled=enabled,loading=false,message=if(enabled) "Weather enabled" else "Weather is off"); save()
+    private fun applyConfiguration(config: WeatherConfiguration) = synchronized(this) {
+        if (mutable.value.place == config.place && mutable.value.enabled == config.enabled) return@synchronized
+        revision++
+        val reading = mutable.value.reading.takeIf { mutable.value.place == config.place }
+        lastAttempt = 0
+        mutable.value = WeatherState(config.place, reading, enabled = config.enabled,
+            message = if (!config.enabled) "Weather is off" else "Location saved. Weather refreshes on Home.")
+        if (config.place == null) storage.edit().clear().apply() else save()
     }
-    @Synchronized fun disable() { revision++; lastAttempt = 0; mutable.value = WeatherState(); storage.edit().clear().apply() }
+    suspend fun observeConfiguration() { preferences?.weatherConfiguration?.distinctUntilChanged()?.collect { applyConfiguration(it) } }
+    suspend fun select(place: WeatherPlace) {
+        val config = WeatherConfiguration(place, true)
+        preferences?.setWeatherConfiguration(config); applyConfiguration(config)
+    }
+    suspend fun setEnabled(enabled: Boolean) {
+        val place = (preferences?.weatherConfiguration?.first()?.place ?: mutable.value.place) ?: return
+        val config = WeatherConfiguration(place, enabled)
+        preferences?.setWeatherConfiguration(config); applyConfiguration(config)
+    }
+    suspend fun disable() { val config = WeatherConfiguration(); preferences?.setWeatherConfiguration(config); applyConfiguration(config) }
     suspend fun search(query: String): List<WeatherPlace> = withContext(Dispatchers.IO) {
         require(query.trim().length in 2..80) { "Enter a city name (2–80 characters)." }
         val json = JSONObject(fetch("https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(query.trim(), "UTF-8")}&count=3&language=en&format=json"))
@@ -60,6 +77,7 @@ class WeatherRepository(context: Context, private val now: () -> Long = { System
         }
     }
     suspend fun refreshIfDue() = withContext(Dispatchers.IO) { mutex.withLock {
+        preferences?.weatherConfiguration?.first()?.let { applyConfiguration(it) }
         val (place, generation) = synchronized(this@WeatherRepository) {
             val current = mutable.value.place ?: return@withLock
             if (!mutable.value.enabled || !WeatherPolicy.refreshDue(now(), lastAttempt)) return@withLock

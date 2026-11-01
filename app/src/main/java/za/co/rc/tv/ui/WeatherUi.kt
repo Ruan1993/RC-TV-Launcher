@@ -124,7 +124,7 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
         }
     },confirmButton={ FocusButton("Back",motion) { about=false } })
     FocusButton(if(state.place==null) "Set up weather" else "Weather: ${if(state.enabled) "On" else "Off"}",motion,selected=state.enabled) {
-        if(state.place==null) editing=true else repository.setEnabled(!state.enabled)
+        if(state.place==null) editing=true else scope.launch { runCatching { repository.setEnabled(!state.enabled) }.onFailure { feedback="Could not save weather settings." } }
     }
     if(state.place!=null) {
         Text("Location",style=MaterialTheme.typography.titleMedium,color=LocalAppearance.current.accent)
@@ -145,9 +145,9 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
             } }
         }
         if(feedback.isNotEmpty()) Text(feedback)
-        places.forEach { place -> FocusButton(place.label,motion) { repository.select(place); places=emptyList(); query=""; editing=false; feedback="" } }
+        places.forEach { place -> FocusButton(place.label,motion) { scope.launch { runCatching { repository.select(place) }.onSuccess { places=emptyList(); query=""; editing=false; feedback="" }.onFailure { feedback="Could not save location." } } } }
         Text("Search and location are shared with Open-Meteo.",style=MaterialTheme.typography.bodySmall)
     }
-    if(state.place!=null) FocusButton("Remove saved location",motion) { repository.disable(); editing=true; feedback=""; query=""; places=emptyList() }
+    if(state.place!=null) FocusButton("Remove saved location",motion) { scope.launch { runCatching { repository.disable() }.onSuccess { editing=true; feedback=""; query=""; places=emptyList() }.onFailure { feedback="Could not remove location." } } }
     FocusButton("About weather & privacy",motion) { about=true }
 }
