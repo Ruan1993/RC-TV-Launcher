@@ -101,8 +101,14 @@ private fun openSaverSystemSettings(context: android.content.Context, action: St
     }, confirmButton = { FocusButton("Back", motion, onClick = close) })
 }
 
-/** A foreground dialog only: no overlay permission, DreamService, wake lock or keep-screen-on flag. */
+/** In-app preview/idle wrapper; the system dream reuses the same content without a dialog. */
 @Composable internal fun Screensaver(prefs: LauncherPreferences, clock: String, dismiss: () -> Unit) {
+    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        ScreensaverContent(prefs, clock, dismiss)
+    }
+}
+
+@Composable internal fun ScreensaverContent(prefs: LauncherPreferences, clock: String, dismiss: () -> Unit) {
     val focus = remember { FocusRequester() }
     val input = LocalInputModeManager.current
     var wallpaper by remember { mutableStateOf(prefs.wallpaper) }
@@ -114,7 +120,6 @@ private fun openSaverSystemSettings(context: android.content.Context, action: St
             wallpaper = pool[(pool.indexOf(wallpaper) + 1).mod(pool.size)]
         }
     }
-    Dialog(onDismissRequest = dismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         LaunchedEffect(Unit) { withFrameNanos { }; input.requestInputMode(InputMode.Keyboard); focus.requestFocus() }
         Box(Modifier.fillMaxSize().background(Color.Black)
             .semantics { contentDescription = "RC TV screensaver" }
@@ -138,5 +143,4 @@ private fun openSaverSystemSettings(context: android.content.Context, action: St
                 }
             }
         }
-    }
 }
