@@ -1,0 +1,41 @@
+{
+  "device": "MiTV-AFKR0",
+  "codename": "jaws",
+  "fingerprint": "Xiaomi/jaws/jaws:11/RTT0.211222.001/774:user/release-keys",
+  "activeUser": 0,
+  "savedHomeRole": "za.co.rc.tv",
+  "preferredHome": "za.co.rc.tv/.MainActivity",
+  "resolvedHome": "com.google.android.apps.tv.launcherx/.home.HomeActivity",
+  "packages": {
+    "com.google.android.apps.tv.launcherx": {
+      "installed": true,
+      "suspended": false,
+      "enabledState": 0,
+      "versionName": "1.0.1002449598",
+      "enabledComponents": ["com.google.android.apps.tv.launcherx.home.HomeActivity"],
+      "disabledComponents": ["com.google.android.apps.tv.launcherx.home.VanillaModeHomeActivity"]
+    },
+    "com.google.android.tungsten.setupwraith": {
+      "installed": true,
+      "suspended": false,
+      "enabledState": 0,
+      "versionName": "1.0.993403918",
+      "enabledComponents": ["com.google.android.tungsten.setupwraith.RecoveryActivity"],
+      "disabledComponents": ["com.google.android.tungsten.setupwraith.MainActivity"]
+    },
+    "com.android.tv.settings": {
+      "installed": true,
+      "suspended": false,
+      "enabledState": 0,
+      "versionName": "1.0",
+      "disabledComponents": ["com.android.tv.settings.users.RestrictedProfileActivityLauncherEntry"]
+    }
+  },
+  "homePriorities": {
+    "com.google.android.apps.tv.launcherx/.home.HomeActivity": 2,
+    "com.google.android.tungsten.setupwraith/.RecoveryActivity": 1,
+    "za.co.rc.tv/.MainActivity": 0,
+    "com.android.tv.settings/.system.FallbackHome": -1000
+  },
+  "scope": "Captured original installed/current-package user-0 Home overrides; not all Android package state or a firmware image. Do not apply automatically."
+}
