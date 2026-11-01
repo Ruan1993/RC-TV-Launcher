@@ -23,13 +23,14 @@ Even successful wired recovery would not establish a permitted takeover method: 
 | First post-boot inspection | Google TV `/.home.HomeActivity` resumed; this is an ADB observation, not a new user-observed first-frame acceptance result |
 | Role / preference | RC TV still holds HOME; full preferred-activity XML identical before and after reboot |
 | Physical Settings route | Previous user-operated long-Home → Google dashboard → Android Settings trace remains valid; it has not been tested under a disabled Home |
+| Physical USB host | User confirms one regular USB-A port supplies power and has successfully played HDD movies, series and images; HDMI, audio jack and dedicated power input also confirmed; no visible USB-C or micro-USB data port |
 | Wired USB | No cable attached, separate USB transport enumerated or serial-specific USB shell verified |
 
 Post-reboot explicit-launch samples were RC TV WARM 1515 ms and Settings WARM 808 ms. These single observations do not measure cold boot or prove a responsiveness improvement. Settings was left open. No standby or injected Home-key test was needed because no routing change was made.
 
 ### USB connection: what is and is not established
 
-The manufacturer documents one USB 2.0 socket for the corresponding TV Box S (2nd Gen) product; imagery shows a full-size USB-A-style socket, with separate power and HDMI connections. Exact unit hardware revision and connector inspection remain unverified. [Xiaomi specifications](https://www.mi.com/global/product/xiaomi-tv-box-s-2nd-gen/specs/).
+The manufacturer documents one USB 2.0 socket for the corresponding TV Box S (2nd Gen) product. The user has now physically confirmed this unit's regular USB-A, HDMI, audio jack and dedicated power input, and no visible USB-C/micro-USB data socket. USB host power and HDD media use are physically verified by the user's prior successful use. Exact PCB revision and USB device-mode connectivity remain unverified. Host operation does not prove or disprove device-mode capability. [Xiaomi specifications](https://www.mi.com/global/product/xiaomi-tv-box-s-2nd-gen/specs/).
 
 Prior device reads exposed `fdd00000.dwc2_a` in the USB device-controller class, ADB gadget configuration, and a disconnected USB manager. Fresh local reads of the actual firmware's `/vendor/etc/init/hw/init.amlogic.board.rc` also show that the `adbd=running` / `persist.vendor.usb.debug=1` condition sets GPIO474 direction to input; the debug-off condition sets it to output. This corroborates board-specific USB-debug infrastructure. The GPIO's electrical purpose is not documented by the readable file, and reading its live direction was permission-denied. No attempt was made to write it, alter USB mode or bypass permissions.
 
@@ -100,6 +101,14 @@ $adb = 'C:\Users\ruanc\AppData\Local\Android\Sdk\platform-tools\adb.exe'
 
 These require working wireless connectivity and the authorised PC; they do not solve its loss. Physical long-Home → Settings was previously tested but passes through Google TV. No hardware recovery menu, sideload or fastboot test was entered, and no factory reset is an acceptable data-preserving rollback.
 
-Next prerequisite: obtain reliable model/build-specific normal-Android USB-debug connection guidance (connector, role and cable electrical specification), then inspect available cables and seek physical confirmation for a connection-only test. Do not purchase an arbitrary cable or begin takeover to test the rescue route. Independently, an OEM-supported Home-routing correction that preserves setup recovery remains necessary under the current permitted approaches. Further allowance does not justify bypassing either blocker.
+Current next action: seek an OEM-supported Home-routing correction that preserves setup recovery. Do not repeat the inconclusive USB diagnostics, recommend host-to-host USB-A connections or recommend adapter purchases without exact hardware-specific evidence. Wired recovery remains an unmet prerequisite for a future system-change experiment, but proving it alone would not resolve the independent routing blocker.
+
+### Focused routing follow-up after physical hardware clarification
+
+Reviewed the previously captured package-shell help and Android 11 `runSetHomeActivity`: the exposed Home-setting command sets the Home role, which RC TV already holds; no independent supported priority override was established. No new on-device diagnostics or configuration writes were needed for this follow-up.
+
+The original same-model contributor report covers builds 737/772 (also notes 683), not this unit's 774. It reports that excluding launcherx alone selects RecoveryActivity, and its workaround also disables setupwraith. It reports a Wi-Fi interruption/re-entry of credentials and loss of stock Apps/other shortcut handling after package exclusion. These are other-device observations, not fresh physical tests here. They corroborate the risk assessment but do not authorise the workaround. No additional exact-build supported routing fix was found. [Original contributor's model-specific notes](https://github.com/Gathin23/cleanyourtv/blob/main/examples/xiaomi-mi-box-s-2nd-gen/debloat.txt).
+
+**Takeover remains blocked under the current requirements.** RC TV's registration is valid; supported selection has already failed operative routing; Google-only exclusion leaves the recovery candidate; setup/recovery changes, whole-Google-TV removal of remote shortcuts, root and forced-launch workarounds remain excluded. Physical USB clarification changes the host evidence classification, not this conclusion. All current configurations, RC TV data and Google TV components are preserved.
 
 Local ignored evidence: `releases/review/phase-j3e/` contains pre/post package/role/preference captures, USB/init files, boot IDs and binary manifest analysis. Raw identifiers, dumps and APKs are not committed. Validation: documentation diff checks; no code change requiring compilation or tests. Stage 3 and primary-Home physical acceptance remain **not run**; J3E is **blocked, not complete**.

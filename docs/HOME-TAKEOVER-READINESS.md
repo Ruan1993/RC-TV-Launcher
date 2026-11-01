@@ -131,7 +131,7 @@ Local ignored evidence: `releases/review/home-takeover-readiness/` contains pre/
 
 ADB again identified `MiTV-AFKR0`, `jaws`, Amlogic, build 774 / Android 11. The exact chassis label, hardware revision and physical connector layout have **not** been inspected. The user requested proceeding with ADB/documented information and no cable connection. Original packaging is not required.
 
-The corresponding Xiaomi TV Box S (2nd Gen) product specifications list **one USB 2.0 port**, one HDMI, one power interface and one audio output. Published product imagery shows the full-size USB-A style. This is the documented product layout, not a physical inspection of this unit or proof of device-mode wiring. No dedicated USB-C/micro-USB debugging socket is documented there. [Xiaomi specifications](https://www.mi.com/global/product/xiaomi-tv-box-s-2nd-gen/specs/).
+The corresponding Xiaomi TV Box S (2nd Gen) product specifications list **one USB 2.0 port**, one HDMI, one power interface and one audio output. Subsequent user physical clarification confirms a regular USB-A port, HDMI, audio jack and dedicated power input, with no visible USB-C/micro-USB data port. The user has successfully powered external HDDs and played their movies, series and images: **USB host functionality is physically verified**. Exact hardware revision and wired ADB device-mode connectivity remain unverified. No inference of wired ADB support follows from host media operation. [Xiaomi specifications](https://www.mi.com/global/product/xiaomi-tv-box-s-2nd-gen/specs/).
 
 Read-only observations on this exact running firmware:
 
