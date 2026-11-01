@@ -14,7 +14,7 @@ object HomeJ1Review {
     fun run(test: Instrumentation,args: Bundle) {
         val prefs=Preferences(test.targetContext); val before=runBlocking { prefs.state.first() }
         try {
-            runBlocking { prefs.setTextSize(if(args.getString("large")=="true") "Extra Large" else "Standard"); prefs.setFocusAnimation(args.getString("intensity","Standard")); prefs.setReducedMotion(args.getString("reduced")=="true") }
+            runBlocking { prefs.setTextSize(args.getString("textSize") ?: if(args.getString("large")=="true") "Extra Large" else "Standard"); prefs.setFocusAnimation(args.getString("intensity","Standard")); prefs.setReducedMotion(args.getString("reduced")=="true") }
             val activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Thread.sleep(1400); val ui=test.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)!!
             test.runOnMainSync { activity.window.decorView.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) }
@@ -59,12 +59,20 @@ object HomeJ1Review {
             query { it.contentDescription?.toString()=="Speed Test" }.let { check(focusedBelow(it)); it.recycle() }
             key(KeyEvent.KEYCODE_DPAD_RIGHT)
             query { it.contentDescription?.toString()=="Settings" }.let { check(focusedBelow(it)); it.recycle() }
-            key(KeyEvent.KEYCODE_DPAD_DOWN)
-            query { it.contentDescription?.toString()?.contains("Open Connections & Devices")==true }.let { check(focusedBelow(it)); it.recycle() }
-            key(KeyEvent.KEYCODE_DPAD_UP)
-            query { it.contentDescription?.toString()=="Settings" }.let { check(focusedBelow(it)); it.recycle() }
+            // Every navbar entry must leave its focus group for the real favourite cards.
+            val navbar=listOf("Settings","Speed Test","Cast","Apps","Search","Home")
+            navbar.forEachIndexed { index, name ->
+                repeat(index) { key(KeyEvent.KEYCODE_DPAD_LEFT) }
+                query { it.contentDescription?.toString()==name }.let { check(focusedBelow(it)) { "Left navigation: $name" }; it.recycle() }
+                key(KeyEvent.KEYCODE_DPAD_DOWN)
+                query { it.isFocused }.let {
+                    val b=Rect(); it.getBoundsInScreen(b); it.recycle()
+                    check(b.top>300 && b.width()>=432 && b.height()>=380) { "$name Down missed shelf: $b" }
+                }
+                key(KeyEvent.KEYCODE_DPAD_UP)
+                query { it.contentDescription?.toString()=="Settings" }.let { check(focusedBelow(it)) { "Shelf Up missed Settings" }; it.recycle() }
+            }
             // D-pad focus must produce a real transform, not just save a choice.
-            key(KeyEvent.KEYCODE_DPAD_DOWN)
             key(KeyEvent.KEYCODE_DPAD_DOWN)
             query { it.isFocused }.let {
                 val b=Rect(); it.getBoundsInScreen(b); it.recycle()
@@ -79,6 +87,10 @@ object HomeJ1Review {
             val ui=test.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)!!
             ui.takeScreenshot()?.let { bmp -> File(test.targetContext.getExternalFilesDir(null),"j1-failure.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG,100,it) }; bmp.recycle() }
             throw failure
-        } finally { runBlocking { prefs.setTextSize(before.textSize); prefs.setFocusAnimation(before.focusAnimation); prefs.setReducedMotion(before.reducedMotion) } }
+        } finally { runBlocking {
+            prefs.setTextSize(before.textSize); prefs.setFocusAnimation(before.focusAnimation); prefs.setReducedMotion(before.reducedMotion)
+            val after=prefs.state.first()
+            check(after.favourites==before.favourites && after.favouriteOrder==before.favouriteOrder) { "Favourites changed" }
+        } }
     }
 }

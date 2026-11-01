@@ -250,6 +250,7 @@ fun CinematicLauncher(
     val weather = remember(weatherContext) { WeatherRepository(weatherContext) }
     val network = remember(weatherContext) { NetworkStatusMonitor(weatherContext) }
     val settingsFocus=remember { FocusRequester() }; val clockFocus=remember { FocusRequester() }
+    val favouriteShelfFocus = remember { FocusRequester() }
     var previousSection by remember { mutableStateOf(section) }
     LaunchedEffect(section) {
         if(previousSection=="Settings" && section=="Home") { withFrameNanos { }; runCatching { settingsFocus.requestFocus() } }
@@ -371,7 +372,8 @@ fun CinematicLauncher(
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion, prefs.wallpaperVisibility)
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> { utilityReturn=null; settingsPage=null; onSection(next) } } } }, motion, settingsFocus, clockFocus)
+            CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> { utilityReturn=null; settingsPage=null; onSection(next) } } } }, motion, settingsFocus,
+                if (contentSection == "Home" && visible.isNotEmpty() && draftOrder == null && previewWallpaper == null) favouriteShelfFocus else clockFocus)
             Column(Modifier.weight(1f).fillMaxWidth().vividContrast(vivid && contentSection != "Home"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -479,7 +481,10 @@ fun CinematicLauncher(
                         discovery.error?.let { Text(it, color = MaterialTheme.colorScheme.error); FocusButton("Retry discovery", motion) { onRetry() } }
                         if (!discovery.loaded) Text("Discovering apps…", color = Ice)
                         else if (visible.isEmpty()) Text("No matching applications. Try Apps or change your search.", color = Ice)
-                        if (contentSection == "Home") LazyRow(Modifier.fillMaxWidth().height(220.dp), state = homeListState, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
+                        // Target the shelf, rather than a lazy item that may have been scrolled out.
+                        // Up always returns to the fixed Settings button, including at Extra Large.
+                        if (contentSection == "Home") LazyRow(Modifier.fillMaxWidth().height(220.dp)
+                            .focusRequester(favouriteShelfFocus).focusGroup(), state = homeListState, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) {
                             items(visible, key = { it.packageName }) { app ->
                                 if (previewWallpaper != null) {
                                     HomeAppCard(app, repository, iconGeneration, motion, {}, Modifier.focusProperties { canFocus = false })
@@ -513,7 +518,7 @@ fun CinematicLauncher(
                                                 }, selected, position > 0, position < order.lastIndex)
                                     }
                                 } else AppActionHost(app, repository, prefs, discovery.apps, motion, true, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
-                                    HomeAppCard(app, repository, iconGeneration, "Minimal", { onLaunch(app) }, modifier.cinematicFocus(26.dp).then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
+                                    HomeAppCard(app, repository, iconGeneration, "Minimal", { onLaunch(app) }, modifier.focusProperties { up = settingsFocus }.cinematicFocus(26.dp).then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
                                 }
                             }
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
@@ -549,7 +554,7 @@ fun CinematicLauncher(
 
 /** Scrolls only enough to reveal the focused item; labels are never compressed to fit. */
 @Composable
-private fun CinematicNavigation(section: String, onSection: (String) -> Unit, motion: String, settingsFocus: FocusRequester, clockFocus: FocusRequester) {
+private fun CinematicNavigation(section: String, onSection: (String) -> Unit, motion: String, settingsFocus: FocusRequester, contentFocus: FocusRequester) {
     val state=rememberLazyListState(); val scope=rememberCoroutineScope(); val last=remember { FocusRequester() }
     val items=listOf("Home" to "H","Search" to "S","Apps" to "A","Cast" to "C","Speed Test" to "T")
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -560,11 +565,12 @@ private fun CinematicNavigation(section: String, onSection: (String) -> Unit, mo
             items(items,key={ it.first }) { (name,symbol) ->
                 val bring=remember { BringIntoViewRequester() }
                 Box(Modifier.bringIntoViewRequester(bring).onFocusChanged { if(it.hasFocus) scope.launch { bring.bringIntoView() } }.semantics { contentDescription=name }) {
-                    FocusButton(name,motion,Modifier.widthIn(min=108.dp).then(if(name=="Speed Test") Modifier.focusRequester(last).focusProperties { right=settingsFocus; down=clockFocus } else Modifier),selected=section==name,quiet=true,icon=symbol) { onSection(name) }
+                    FocusButton(name,motion,Modifier.widthIn(min=108.dp).focusProperties { down=contentFocus }
+                        .then(if(name=="Speed Test") Modifier.focusRequester(last).focusProperties { right=settingsFocus } else Modifier),selected=section==name,quiet=true,icon=symbol) { onSection(name) }
                 }
             }
         }
-        FocusButton("Settings",motion,Modifier.focusRequester(settingsFocus).focusProperties { down=clockFocus }
+        FocusButton("Settings",motion,Modifier.focusRequester(settingsFocus).focusProperties { down=contentFocus }
             .onPreviewKeyEvent { event ->
                 val key=event.nativeKeyEvent
                 if(key.keyCode==android.view.KeyEvent.KEYCODE_DPAD_LEFT) {
