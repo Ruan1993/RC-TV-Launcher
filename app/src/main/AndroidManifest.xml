@@ -2,6 +2,8 @@
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <queries>
+        <package android:name="com.google.android.apps.tv.launcherx" />
+        <package android:name="com.google.android.tungsten.setupwraith" />
         <package android:name="org.videolan.vlc" />
         <package android:name="com.xiaomi.mitv.mediaexplorer" />
         <intent><action android:name="android.intent.action.OPEN_DOCUMENT_TREE" /></intent>

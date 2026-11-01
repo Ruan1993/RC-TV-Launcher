@@ -1,14 +1,21 @@
 package za.co.rc.tv.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -22,12 +29,50 @@ import za.co.rc.tv.core.*
     val home by produceState(HomeIntegration.inspect(context), lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { value = HomeIntegration.inspect(context) }
     }
+    var recovery by remember { mutableStateOf(HomeIntegration.originalHomeRecovery(context)) }
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { recovery = HomeIntegration.originalHomeRecovery(context) }
+    }
+    var recoveryOpen by remember { mutableStateOf(false) }
     Text("Current Home Launcher", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
     Text(home.resolvedPackage?.let { home.resolvedLabel } ?: "Unknown — Android has not exposed a reliable default")
     Text(home.description(context.packageName), style = MaterialTheme.typography.bodyMedium)
     FocusButton("Set RC TV as Default Home", motion, onClick = chooseHome)
-    FocusButton("Switch to Original Xiaomi Home", motion, onClick = restoreHome)
-    Text("In Android’s Home selection, choose the original Google TV / Xiaomi launcher to switch back. Android confirms the change. The original launcher stays installed.")
+    FocusButton(recovery.buttonLabel, motion) {
+        // Recheck at activation as package state may have changed while this page was open.
+        recovery = HomeIntegration.originalHomeRecovery(context)
+        if (recovery.useHomeSelection) restoreHome() else recoveryOpen = true
+    }
+    Text(recovery.description)
+    if (recoveryOpen) {
+        val closeFocus = remember { FocusRequester() }
+        val detailsFocus = remember { FocusRequester() }
+        val detailsScroll = rememberScrollState()
+        val detailsScope = rememberCoroutineScope()
+        LaunchedEffect(Unit) { withFrameNanos { }; closeFocus.requestFocus() }
+        AlertDialog(onDismissRequest = { recoveryOpen = false }, title = { Text("Restore original Google TV") },
+            text = {
+                Column(Modifier.heightIn(max = 280.dp).verticalScroll(detailsScroll)
+                    .focusRequester(detailsFocus).onPreviewKeyEvent { event ->
+                        val key = event.nativeKeyEvent
+                        val delta = when (key.keyCode) {
+                            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> if (detailsScroll.canScrollForward) 140f else null
+                            android.view.KeyEvent.KEYCODE_DPAD_UP -> if (detailsScroll.canScrollBackward) -140f else null
+                            else -> null
+                        }
+                        if (delta != null) {
+                            if (key.action == android.view.KeyEvent.ACTION_DOWN) detailsScope.launch { detailsScroll.scrollBy(delta) }
+                            true
+                        } else false
+                    }.focusable()) {
+                    Text(recovery.description)
+                    Spacer(Modifier.height(12.dp))
+                    Text(recovery.recoverySteps, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = { FocusButton("Open Android Settings", motion) { recoveryOpen = false; androidSettings() } },
+            dismissButton = { FocusButton("Back", motion, Modifier.focusRequester(closeFocus).focusProperties { up = detailsFocus }) { recoveryOpen = false } })
+    }
     FocusButton("Open Android Settings", motion, onClick = androidSettings)
     HorizontalDivider()
     var confirm by remember { mutableStateOf(false) }
