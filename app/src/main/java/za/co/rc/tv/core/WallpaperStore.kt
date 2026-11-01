@@ -22,7 +22,7 @@ class WallpaperStore(context: Context) {
         root.listFiles().orEmpty().filter { it.name.startsWith(".pending_") && isImportedWallpaper(it.name.removePrefix(".pending_")) }.forEach { it.deleteRecursively() }
         bundledWallpapers + root.listFiles().orEmpty().filter {
             isImportedWallpaper(it.name) && File(it, "image.webp").isFile
-        }.sortedBy { it.name }.map { WallpaperOption(it.name, File(it, "title.txt").takeIf { f -> f.isFile && f.length() <= 4096 }?.readText()?.take(40) ?: "Imported ${it.name.takeLast(6)}") }
+        }.sortedBy { it.name }.map { WallpaperOption(it.name, File(it, "title.txt").takeIf { f -> f.isFile && f.length() <= 4096 }?.readText()?.take(40) ?: "Imported ${it.name.takeLast(6)}", onlineWallpaperCredit(it)) }
     } }
     suspend fun import(uri: Uri): String = withContext(Dispatchers.IO) { mutex.withLock {
         require(root.listFiles().orEmpty().count { isImportedWallpaper(it.name) } < 24) { "Remove an imported wallpaper first (maximum 24)." }

@@ -250,7 +250,8 @@ fun CinematicLauncher(
     onSaveOrder: suspend (List<String>) -> Boolean,
     onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onFocusAnimation: (String) -> Unit, onResetAppearance: () -> Unit, onResetLauncherAppearance: suspend () -> Boolean,
     onScreensaverMinutes: (Int) -> Unit, onScreensaverStyle: (String) -> Unit, onPreviewScreensaver: () -> Unit, onScreensaverProvider: (String) -> Unit,
-    onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
+    onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit,
+    onOnlineApply: suspend (OnlineWallpaper, android.graphics.Bitmap) -> String = { _, _ -> error("Online wallpaper saving unavailable.") }
 ) {
     val weatherContext = LocalContext.current.applicationContext
     val weather = remember(weatherContext) { WeatherRepository(weatherContext) }
@@ -461,7 +462,7 @@ fun CinematicLauncher(
                             wallpaperChoice ?: prefs.wallpaper, prefs.wallpaper, motion, applyingWallpaper || wallpaperBusy,
                             prefs.theme == "Minimalist", { wallpaperChoice = it },
                             { previewWallpaper = wallpaperChoice ?: prefs.wallpaper },
-                            { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers)
+                            { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers, onOnlineApply)
                     } else if(settingsPage == null) SettingsCategories(lastSettingsCategory,motion) { key -> lastSettingsCategory=key; settingsPage=key }
                     else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,closeSettingsPage) {
                         when(settingsPage) {

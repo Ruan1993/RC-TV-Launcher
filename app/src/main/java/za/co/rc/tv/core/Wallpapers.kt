@@ -11,7 +11,7 @@ enum class BundledWallpaper(val id: String, val title: String) {
     }
 }
 
-data class WallpaperOption(val id: String, val title: String)
+data class WallpaperOption(val id: String, val title: String, val attribution: String? = null)
 val bundledWallpapers get() = BundledWallpaper.entries.map { WallpaperOption(it.id, it.title) }
 fun isImportedWallpaper(id: String) = Regex("local_[a-f0-9]{32}").matches(id)
 fun validWallpaper(value: String?) = value?.takeIf { isImportedWallpaper(it) || BundledWallpaper.entries.any { w -> w.id == it } } ?: "mountain"

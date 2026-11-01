@@ -291,6 +291,13 @@ class MainActivity : ComponentActivity() {
                     onRotateWallpaper = { runCatching { preferences.advanceWallpaper(wallpapers.map { it.id }) }.onFailure { message("Could not rotate wallpaper.") }; Unit },
                     onApplyWallpaper = { id -> runCatching { preferences.setWallpaper(id) }
                         .onFailure { message("Could not apply wallpaper. Please try again.") }.isSuccess },
+                    onOnlineApply = { image, bitmap ->
+                        val id = OnlineWallpaperStorage(this@MainActivity).apply(image, bitmap, prefs.rotationPool) { preferences.setWallpaper(it) }
+                        wallpapers = runCatching { wallpaperStore.list() }.getOrElse {
+                            wallpapers.filterNot { it.id == id } + WallpaperOption(id, image.title.take(40), image.attribution)
+                        }
+                        id
+                    },
                     onSaveOrder = { order -> runCatching { preferences.reorderFavourites(order) }
                         .onFailure { message("Could not save order. Favourites may have changed; try again.") }.isSuccess },
                     onRetry = { refresh++ }, onChooseHome = { selectHome() }, onRestoreHome = { openSettings() },

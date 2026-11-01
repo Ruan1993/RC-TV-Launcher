@@ -39,7 +39,12 @@ internal fun WallpaperSettings(options: List<WallpaperOption>, prefs: LauncherPr
     onRotation: (Boolean) -> Unit, onInterval: (Int) -> Unit, onPool: (String) -> Unit,
     onTransition: (String) -> Unit, onNext: () -> Unit, selectedId: String, appliedId: String, motion: String, saving: Boolean,
     minimalist: Boolean, onSelect: (String) -> Unit, onPreview: () -> Unit,
-    onApply: () -> Unit, onClose: () -> Unit) {
+    onApply: () -> Unit, onClose: () -> Unit,
+    onOnlineApply: suspend (OnlineWallpaper, Bitmap) -> String) {
+    var onlineOpen by remember { mutableStateOf(false) }
+    var onlineReturn by remember { mutableStateOf(false) }
+    val onlineFocus = remember { FocusRequester() }
+    LaunchedEffect(onlineOpen) { if (!onlineOpen && onlineReturn) { withFrameNanos { }; onlineFocus.requestFocus(); onlineReturn = false } }
     var removeConfirmation by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -100,7 +105,11 @@ internal fun WallpaperSettings(options: List<WallpaperOption>, prefs: LauncherPr
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             FocusButton(if (saving) "Working…" else "Import image…", motion) { if (!saving) onImport() }
+            FocusButton("Online Wallpapers", motion, Modifier.focusRequester(onlineFocus)) { if (!saving) onlineOpen = true }
             if (isImportedWallpaper(safeSelection)) FocusButton("Remove selected…", motion) { if (!saving) removeConfirmation = true }
+        }
+        options.firstOrNull { it.id == safeSelection }?.attribution?.let { credit ->
+            Text(credit, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = .8f))
         }
         HorizontalDivider(color = Color.White.copy(alpha = .12f))
         Text("Automatic rotation", style = MaterialTheme.typography.titleLarge)
@@ -127,6 +136,7 @@ internal fun WallpaperSettings(options: List<WallpaperOption>, prefs: LauncherPr
         if (minimalist) Text("Minimalist keeps a plain background. Your wallpaper is saved for the Cinematic theme.",
             style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .78f))
     }
+    if (onlineOpen) OnlineWallpaperGallery(motion, onOnlineApply, onSelect) { onlineReturn = true; onlineOpen = false }
     if (removeConfirmation) AlertDialog(onDismissRequest = { if (!removing) removeConfirmation = false },
         title = { Text("Remove imported wallpaper?") },
         text = { Text("The private copy will be deleted. If it is current, the mountain will be restored. Your original image is unchanged.") },
