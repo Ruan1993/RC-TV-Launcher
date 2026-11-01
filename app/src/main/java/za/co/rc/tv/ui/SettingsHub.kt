@@ -24,7 +24,7 @@ internal val settingsCategories = listOf(
     SettingsCategory("apps","Apps & Media","A"),
     SettingsCategory("weather","Weather & Widgets","W"),
     SettingsCategory("power","Screensaver & Power","T"),
-    SettingsCategory("system","System & Updates","···"))
+    SettingsCategory("system","System & Recovery","···"))
 
 @Composable internal fun ColumnScope.SettingsCategories(last: String, motion: String, choose: (String) -> Unit) {
     val focus = remember { FocusRequester() }

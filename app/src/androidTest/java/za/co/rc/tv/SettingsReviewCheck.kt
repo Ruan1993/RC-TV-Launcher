@@ -83,9 +83,9 @@ object SettingsReviewCheck {
             click("Apps & Media"); visible("Android app settings"); click("Browse installed apps"); key(KeyEvent.KEYCODE_BACK)
             visible("Android app settings"); key(KeyEvent.KEYCODE_BACK); focused("Apps & Media")
             click("Weather & Widgets"); visible("About weather & privacy"); shot("settings-weather.png"); key(KeyEvent.KEYCODE_BACK); focused("Weather & Widgets")
-            click("System & Updates")
+            click("System & Recovery")
             for(label in listOf("Easy setup","Android settings","Choose RC TV as Home…","Open Home settings / restore")) visible(label)
-            shot("settings-system.png"); key(KeyEvent.KEYCODE_BACK); focused("System & Updates"); key(KeyEvent.KEYCODE_BACK)
+            shot("settings-system.png"); key(KeyEvent.KEYCODE_BACK); focused("System & Recovery"); key(KeyEvent.KEYCODE_BACK)
             test.runOnMainSync { activity.finish() }
         } catch(failure: Exception) {
             capture?.takeScreenshot()?.let { bitmap -> File(test.targetContext.getExternalFilesDir(null),"settings-failure.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }; bitmap.recycle() }

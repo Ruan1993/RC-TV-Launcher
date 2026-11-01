@@ -428,10 +428,10 @@ fun CinematicLauncher(
                             }
                             "apps" -> {
                                 FocusButton("Browse installed apps",motion) { utilityReturn="apps"; onSection("Apps") }
-                                FocusButton("Android app settings",motion) {
-                                    runCatching { weatherContext.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                                        .onFailure { android.widget.Toast.makeText(weatherContext,"Open Android Settings → Apps.",android.widget.Toast.LENGTH_LONG).show() }
-                                }
+                                SystemSettingsLink(appSettingsDestination, motion)
+                                Text("Choose an app in Android to manage its permissions, storage and cache.")
+                                StorageSummary()
+                                SystemSettingsLink(storageSettingsDestination, motion)
                             }
                             "weather" -> WeatherSettings(weather,motion,{ weatherDetails=true })
                             "remote" -> {
@@ -450,7 +450,7 @@ fun CinematicLauncher(
                             "system" -> {
                                 Text("RC TV ${za.co.rc.tv.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 FocusButton("Easy setup",motion,onClick=onEasySetup)
-                                FocusButton("Android settings",motion,onClick=onAndroidSettings)
+                                essentialSystemDestinations.forEach { SystemSettingsLink(it, motion) }
                                 Text("Default Home & recovery",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text(homeStatus)
                                 ReadableNote("Choosing Home is optional. Keep the original launcher installed for recovery. Android asks you to choose; RC TV does not change it automatically.")
