@@ -190,3 +190,35 @@ Before a controlled takeover:
 6. Resolve the independent Home-routing blocker as well: setupwraith RecoveryActivity still competes above RC TV. No recovery check authorises disabling setup/recovery or makes Google-only exclusion sufficient.
 
 **GO:** further read-only preparation and, after explicit approval, the benign physical Settings-route test above. **NO-GO:** any launcher takeover, USB mode switch, recovery entry, factory reset or privileged workaround. No data-preserving recovery is verified for the combined failure of both Homes and wireless ADB. Wait for user confirmation after the usage reset; no takeover starts automatically.
+
+## 8. Physical Apps and long-Home routes — follow-up from 905fd41
+
+The user physically observed Apps opening an installed-app list containing RC TV, and long-Home opening a quick-access panel containing Settings. The remote has no dedicated Settings button. Those observations establish working shortcuts in the intact configuration, not independence from Google TV. This investigation issued read-only ADB commands only; no injected keys, launch commands or configuration changes.
+
+### Observed component chain
+
+| Physical shortcut | Device evidence on 1 November 2026 | Owner |
+| --- | --- | --- |
+| Apps | At 12:38:39.954, system UID 1000 starts `android.intent.action.ALL_APPS` explicitly in `com.google.android.apps.tv.launcherx/.gateway.LauncherDeepLink`; at 12:38:41.658 Google TV starts `/.guide.home.moreapps.ui.FullscreenAppsActivity`. The same chain recurs at 12:38:57.737/.833. The latter activity was foreground when inspected. | Google TV, not a separate Xiaomi/SystemUI app drawer |
+| Long-Home | HOME key repeats coincide with 12:41:17.203 launch of `android.app.action.TOGGLE_NOTIFICATION_HANDLER_PANEL` to `com.google.android.apps.tv.launcherx/.dashboard.DashboardHandler`, from UID 10074. The device package list maps 10074 to `com.android.systemui`; foreground reporting identifies Google TV `/.dashboard.DashboardActivity`. | SystemUI initiates; Google TV provides the panel |
+| Settings destination | Generic `android.settings.SETTINGS` independently resolves to `com.android.tv.settings/.MainSettings`. Physical panel-to-Settings transition requires its own observed trace; generic resolution alone does not prove which action the panel uses. | Android Settings for the generic action; panel destination to be recorded separately |
+
+The installed Google TV manifest corroborates the chain: `LauncherDeepLink` is an exported alias of `com.google.apps.tiktok.nav.gateway.GatewayActivity` with an ALL_APPS filter. `FullscreenAppsActivity` is a distinct non-exported activity. `DashboardHandler` is an exported, STATUS_BAR_SERVICE-protected alias targeting the distinct non-exported `DashboardActivity`. Neither alias targets `/.home.HomeActivity`. Google TV's UID is 10057; the observed internal app-drawer launch comes from that UID. SystemUI being the dashboard caller does not make the dashboard independent of Google TV.
+
+### Survival assessment and smallest potential change
+
+**Whole Google TV package exclusion would remove both recovery shortcuts' providers.** They are not independent fallbacks for option C. This is a manifest/component consequence; no package was disabled to test it.
+
+If *only* Google TV `/.home.HomeActivity` were disabled, the distinct app drawer, gateway and dashboard components would remain enabled in principle. This makes survival plausible at the component-declaration level, not proven at runtime. Shared process initialization, internal navigation through Home, boot behaviour and framework routing can still defeat either route. No disabled-Home test was performed. Even a working Settings screen would need an actual, supported means to restore the changed component; merely reaching Settings is not proof of that ability.
+
+The unchanged enabled HOME query still returns Google TV priority 2, setupwraith `/.RecoveryActivity` priority 1, RC TV priority 0, and Settings FallbackHome -1000. Under the source-supported priority explanation, Google-Home-only exclusion is insufficient: RecoveryActivity would become the leading candidate. Its actual runtime response remains untested. The OEM resolver/boot implementation has not been proven exhaustively, so this is a strong prediction rather than a measured post-change outcome.
+
+The smallest *conceptual candidate exclusion* capable of leaving RC TV above fallback would affect **both** Google's HomeActivity and setupwraith RecoveryActivity for user 0, leaving all other package functions intact. This is **not an available or approved method**: modifying setup/recovery remains prohibited, and the inspected Android 11 shell guard rejects component changes for non-test packages. No public per-user switch for only their HOME intent filters was established. Increasing RC TV priority is capped for ordinary apps; changing the saved role already failed. There is therefore **no currently demonstrated permissible reversible configuration change that makes RC TV the operative Home**. Do not turn this conceptual minimum into a two-component disable recipe, root workaround or wider package disable.
+
+### Updated recommendation
+
+**NO-GO for takeover remains.** The shortcuts improve intact-device accessibility, but both originate in Google TV and neither is verified under the proposed failure conditions. USB ADB and data-preserving recovery after loss of wireless access remain unverified. No system-package, component, Home role, preference or ADB transport state was changed.
+
+Safest next experiment after the user's reset and separate approval: with all components unchanged, open an unrelated app and physically use Apps to launch RC TV; separately use long-Home → Settings, correlate each transition, then inspect whether Settings exposes any supported restoration control for individual activities **without operating it**. A supported control must be demonstrated before calling that route recovery-capable. This does not require disabling either Home or setup/recovery. If no supported component restoration exists, prioritise verification of normal USB ADB under the hardware/cable prerequisites in section 7 or OEM guidance. Do not begin a takeover merely because the shortcuts work normally.
+
+Evidence is retained locally in ignored `releases/review/remote-recovery-routes/remote-log.txt`, with the installed-manifest evidence in `releases/review/home-routing-diagnostics/google-tv-manifest.txt`. Raw logs/APKs are excluded from Git. The current task's scope ends with documentation and reporting.
