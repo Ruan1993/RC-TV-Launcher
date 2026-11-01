@@ -251,8 +251,11 @@ fun CinematicLauncher(
     onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onFocusAnimation: (String) -> Unit, onResetAppearance: () -> Unit, onResetLauncherAppearance: suspend () -> Boolean,
     onScreensaverMinutes: (Int) -> Unit, onScreensaverStyle: (String) -> Unit, onPreviewScreensaver: () -> Unit, onScreensaverProvider: (String) -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit,
-    onOnlineApply: suspend (OnlineWallpaper, android.graphics.Bitmap) -> String = { _, _ -> error("Online wallpaper saving unavailable.") }
+    onOnlineApply: suspend (OnlineWallpaper, android.graphics.Bitmap) -> String = { _, _ -> error("Online wallpaper saving unavailable.") },
+    onOnlineSave: suspend (OnlineWallpaper, android.graphics.Bitmap) -> String = { _, _ -> error("Online wallpaper saving unavailable.") },
+    onAddRotation: suspend (Set<String>) -> Unit = {}
 ) {
+    val onlineHistory = remember { WallpaperPageHistory() }
     val weatherContext = LocalContext.current.applicationContext
     val weather = remember(weatherContext) { WeatherRepository(weatherContext) }
     val weatherState by weather.state.collectAsState()
@@ -462,7 +465,7 @@ fun CinematicLauncher(
                             wallpaperChoice ?: prefs.wallpaper, prefs.wallpaper, motion, applyingWallpaper || wallpaperBusy,
                             prefs.theme == "Minimalist", { wallpaperChoice = it },
                             { previewWallpaper = wallpaperChoice ?: prefs.wallpaper },
-                            { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers, onOnlineApply)
+                            { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers, onOnlineApply, onOnlineSave, onApplyWallpaper, onAddRotation, onlineHistory)
                     } else if(settingsPage == null) SettingsCategories(lastSettingsCategory,motion) { key -> lastSettingsCategory=key; settingsPage=key }
                     else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,closeSettingsPage) {
                         when(settingsPage) {

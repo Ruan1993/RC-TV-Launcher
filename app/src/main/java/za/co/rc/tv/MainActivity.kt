@@ -281,8 +281,8 @@ class MainActivity : ComponentActivity() {
                             .onFailure { message("Image browser could not be opened.") }
                     },
                     onRemoveWallpaper = { id ->
-                        runCatching { preferences.removeWallpaper(id); wallpaperStore.remove(id); wallpapers = wallpaperStore.list() }
-                            .onFailure { message("Could not remove wallpaper.") }.isSuccess
+                        runCatching { preferences.removeWallpaper(id, OnlineWallpaperStorage.isOnline(this@MainActivity, id)); wallpaperStore.remove(id); wallpapers = wallpaperStore.list() }
+                            .onFailure { message(it.message ?: "Could not remove wallpaper.") }.isSuccess
                     },
                     onRotation = { value -> saveWallpaperSetting { preferences.setRotation(value) } },
                     onRotationInterval = { value -> saveWallpaperSetting { preferences.setRotationMinutes(value) } },
@@ -292,11 +292,23 @@ class MainActivity : ComponentActivity() {
                     onApplyWallpaper = { id -> runCatching { preferences.setWallpaper(id) }
                         .onFailure { message("Could not apply wallpaper. Please try again.") }.isSuccess },
                     onOnlineApply = { image, bitmap ->
-                        val id = OnlineWallpaperStorage(this@MainActivity).apply(image, bitmap, prefs.rotationPool) { preferences.setWallpaper(it) }
+                        val id = OnlineWallpaperStorage(this@MainActivity).save(image, bitmap)
+                        preferences.setWallpaper(id)
                         wallpapers = runCatching { wallpaperStore.list() }.getOrElse {
                             wallpapers.filterNot { it.id == id } + WallpaperOption(id, image.title.take(40), image.attribution)
                         }
                         id
+                    },
+                    onOnlineSave = { image, bitmap ->
+                        val id = OnlineWallpaperStorage(this@MainActivity).save(image, bitmap)
+                        wallpapers = runCatching { wallpaperStore.list() }.getOrElse {
+                            wallpapers.filterNot { it.id == id } + WallpaperOption(id, image.title.take(40), image.attribution)
+                        }
+                        id
+                    },
+                    onAddRotation = { ids ->
+                        check(ids.all { id -> wallpapers.any { it.id == id && it.attribution != null } }) { "A selected image is no longer available." }
+                        preferences.addRotationWallpapers(ids)
                     },
                     onSaveOrder = { order -> runCatching { preferences.reorderFavourites(order) }
                         .onFailure { message("Could not save order. Favourites may have changed; try again.") }.isSuccess },

@@ -122,7 +122,13 @@ class Preferences(context: Context) {
         nextWallpaper(validWallpaper(p[wallpaper]), p[pool] ?: setOf("mountain", "coast", "desert"), available)?.let { p[wallpaper] = it }
         p[rotatedAt] = System.currentTimeMillis()
     } }
-    suspend fun removeWallpaper(id: String) { require(isImportedWallpaper(id)); store.edit { p ->
+    suspend fun addRotationWallpapers(ids: Set<String>) { store.edit { p ->
+        p[pool] = addGalleryRotation(p[pool] ?: setOf("mountain", "coast", "desert"), ids)
+    } }
+    suspend fun removeWallpaper(id: String, requireUnused: Boolean = false) { require(isImportedWallpaper(id)); store.edit { p ->
+        check(!requireUnused || canDeleteGalleryWallpaper(id, validWallpaper(p[wallpaper]), p[pool] ?: setOf("mountain", "coast", "desert"))) {
+            "Apply another Home wallpaper and remove this image from rotation before deleting it."
+        }
         if (p[wallpaper] == id) p[wallpaper] = "mountain"
         p[pool] = (p[pool] ?: setOf("mountain", "coast", "desert")) - id
     } }

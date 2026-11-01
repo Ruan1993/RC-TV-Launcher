@@ -1,5 +1,7 @@
 # Online wallpapers — rc1.23 (55)
 
+Historical implementation notes below. Current collection, retention and numbered-page behaviour is documented in [WALLPAPER-COLLECTION.md](WALLPAPER-COLLECTION.md) for rc1.25 (57).
+
 Entry: Settings → Appearance → Choose wallpaper → Online Wallpapers.
 Baseline: rc1.22 (54), `1da57ad`. No device installation or configuration changes were made during this batch.
 

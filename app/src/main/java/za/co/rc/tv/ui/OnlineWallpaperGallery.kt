@@ -1,5 +1,6 @@
 package za.co.rc.tv.ui
 
+import android.graphics.ImageDecoder
 import android.graphics.Bitmap
 import android.view.KeyEvent
 import androidx.compose.foundation.Image
@@ -33,69 +34,106 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import za.co.rc.tv.core.*
+
+private data class GalleryPreview(val online: OnlineWallpaper? = null, val saved: WallpaperOption? = null) {
+    val id get() = online?.id ?: saved!!.id
+    val title get() = online?.title ?: saved!!.title
+    val attribution get() = online?.attribution ?: saved!!.attribution.orEmpty()
+}
 
 @Composable
 internal fun OnlineWallpaperGallery(motion: String, onApply: suspend (OnlineWallpaper, Bitmap) -> String,
-    onApplied: (String) -> Unit, onClose: () -> Unit) {
+    onApplied: (String) -> Unit, onClose: () -> Unit,
+    options: List<WallpaperOption>, prefs: LauncherPreferences, history: WallpaperPageHistory,
+    startSaved: Boolean, onSave: suspend (OnlineWallpaper, Bitmap) -> String,
+    onSavedApply: suspend (String) -> Boolean, onRemove: suspend (String) -> Boolean,
+    onAddRotation: suspend (Set<String>) -> Unit) {
     val context = LocalContext.current
     val repository = remember { OnlineWallpapers(context) }
     val scope = rememberCoroutineScope()
-    var cursors by remember { mutableStateOf(listOf<OnlineWallpaperCursor?>(null)) }
-    var pageIndex by remember { mutableIntStateOf(0) }
+    var pageIndex by remember { mutableIntStateOf(history.current) }
+    var myGallery by remember { mutableStateOf(startSaved) }
+    val saved = options.filter { it.attribution != null }
+    val myGalleryFocus = remember { FocusRequester() }
     var retry by remember { mutableIntStateOf(0) }
     var page by remember { mutableStateOf<OnlineWallpaperPage?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selected by remember { mutableStateOf<OnlineWallpaper?>(null) }
+    var selected by remember { mutableStateOf<GalleryPreview?>(null) }
     var preview by remember { mutableStateOf<Bitmap?>(null) }
     var previewError by remember { mutableStateOf<String?>(null) }
     var previewRetry by remember { mutableIntStateOf(0) }
     var applying by remember { mutableStateOf(false) }
     var applied by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf<String?>(null) }
     val firstFocus = remember { FocusRequester() }
     val backFocus = remember { FocusRequester() }
     val applyFocus = remember { FocusRequester() }
     val grid = rememberLazyGridState()
     val cardFocus = remember { mutableMapOf<Long, FocusRequester>() }
     fun closePreview() { if (!applying) { selected = null; preview = null; previewError = null; applied = false } }
-    LaunchedEffect(pageIndex, retry) {
-        page = null; error = null; cardFocus.clear()
-        try { page = repository.page(cursors[pageIndex]) }
-        catch (cancel: CancellationException) { throw cancel }
-        catch (failure: Exception) { error = failure.message ?: "Cannot connect. Check Wi-Fi and try again." }
-        grid.scrollToItem(0)
-        withFrameNanos { }
-        runCatching { if (page?.images?.isNotEmpty() == true) firstFocus.requestFocus() else backFocus.requestFocus() }
+    LaunchedEffect(pageIndex, retry, myGallery) {
+        if (myGallery) return@LaunchedEffect
+        error = null; cardFocus.clear()
+        try {
+            if (history.entry().page == null) history.store(repository.page(history.entry().cursor))
+            page = history.entry().page
+        } catch (cancel: CancellationException) { throw cancel }
+        catch (failure: Exception) { error = failure.message ?: "Cannot connect. Check Wi-Fi and try again."; page = null }
+        val restoreId = history.entry().focused
+        val index = page?.images?.indexOfFirst { it.page == restoreId }?.coerceAtLeast(0) ?: 0
+        grid.scrollToItem(index)
+        withFrameNanos { }; withFrameNanos { }
+        runCatching { (restoreId?.let { cardFocus[it] } ?: if (page?.images?.isNotEmpty() == true) firstFocus else backFocus).requestFocus() }
     }
     LaunchedEffect(selected, previewRetry) {
-        preview = null; previewError = null; applied = false
+        preview = null; previewError = null; applied = false; status = null
         val image = selected ?: return@LaunchedEffect
         try {
             val metrics = context.resources.displayMetrics
-            preview = repository.preview(image, metrics.widthPixels, metrics.heightPixels)
+            val file = WallpaperStore.image(context, image.id)
+            preview = if (file.isFile) withContext(Dispatchers.IO) {
+                ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
+                    val size = OnlineWallpaperPolicy.fit(info.size.width, info.size.height, metrics.widthPixels, metrics.heightPixels)
+                    decoder.setTargetSize(size.first, size.second); decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                }
+            } else repository.preview(image.online ?: error("Saved image unavailable."), metrics.widthPixels, metrics.heightPixels)
         } catch (cancel: CancellationException) { throw cancel }
         catch (failure: Exception) { previewError = failure.message ?: "Preview unavailable. Check Wi-Fi and try again." }
         withFrameNanos { }; runCatching { applyFocus.requestFocus() }
     }
     var returnCard by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(selected) { if (selected == null) { withFrameNanos { }; returnCard?.let { runCatching { cardFocus[it]?.requestFocus() } } } }
-    Dialog(onDismissRequest = { if (selected != null) closePreview() else if (!applying) onClose() },
+    Dialog(onDismissRequest = { if (selected != null) closePreview() else if (myGallery && !startSaved) myGallery = false else if (!applying) onClose() },
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnBackPress = !applying, dismissOnClickOutside = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().background(Color(0xFF0B1822))) {
-            if (selected == null) Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (myGallery) MyWallpaperGallery(saved, prefs, motion, visible = selected == null, onPreview = { selected = GalleryPreview(saved = it) },
+                onApply = { id -> if (onSavedApply(id)) { onApplied(id); true } else false }, onRemove = onRemove,
+                onAddRotation = onAddRotation, onClose = { if (startSaved) onClose() else myGallery = false })
+            if (selected == null && !myGallery) Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Online Wallpapers", style = MaterialTheme.typography.headlineLarge)
                 Text("Wikimedia Commons · Featured landscapes · Select to preview", style = MaterialTheme.typography.bodyLarge)
-                Text("Thumbnails: up to 10 MB. Previews are temporary. Only applied images are saved offline.", style = MaterialTheme.typography.bodySmall)
-                Text("A new online image replaces the previous one unless included in rotation. Your imports are kept.", style = MaterialTheme.typography.bodySmall)
+                Text("Thumbnails: up to 10 MB. Add images to your offline gallery without changing Home.", style = MaterialTheme.typography.bodySmall)
+                Text("Gallery limit: 16 MB. Saved images are kept until you explicitly remove them.", style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FocusButton("Back", motion, Modifier.focusRequester(backFocus), onClick = onClose)
-                    if (pageIndex > 0) FocusButton("Previous", motion) { pageIndex-- }
+                    FocusButton("My Wallpaper Gallery", motion, Modifier.focusRequester(myGalleryFocus)) { myGallery = true }
                     if (page?.next != null) FocusButton("Next page", motion) {
-                        cursors = cursors.take(pageIndex + 1) + page!!.next; pageIndex++
+                        if (history.next()) { page = null; pageIndex = history.current } else error = "No new page is available."
                     }
-                    FocusButton("Reload", motion) { retry++ }
-                    Text("Page ${pageIndex + 1}", Modifier.align(Alignment.CenterVertically))
+                    FocusButton("Reload", motion) { history.entry().page = null; retry++ }
                 }
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(history.numbers().size) { index ->
+                        val number = history.numbers()[index]
+                        FocusButton("$number", motion, selected = number == pageIndex) {
+                            if (number != pageIndex) { history.visit(number); page = null; pageIndex = number }
+                        }
+                    }
+                }
+                Text("Page $pageIndex · Last 10 pages kept for this app session", style = MaterialTheme.typography.bodySmall)
                 error?.let { Text(it, color = Color(0xFFFFD6AA)) }
                 if (page == null && error == null) Text("Loading landscapes…")
                 if (page?.images?.isEmpty() == true) Text("No compatible licensed images on this page. Try the next page.")
@@ -106,13 +144,13 @@ internal fun OnlineWallpaperGallery(motion: String, onApply: suspend (OnlineWall
                         val focus = cardFocus.getOrPut(image.page) { FocusRequester() }
                         var thumbnailFailed by remember(image, retry) { mutableStateOf(false) }
                         val thumbnail by produceState<Bitmap?>(null, image, retry) {
-                            try { value = repository.thumbnail(image) }
+                            try { value = if (saved.any { it.id == image.id }) withContext(Dispatchers.IO) { wallpaperThumbnail(context, image.id) } else repository.thumbnail(image) }
                             catch (cancel: CancellationException) { throw cancel }
                             catch (_: Exception) { thumbnailFailed = true; value = null }
                         }
-                        OutlinedButton(onClick = { returnCard = image.page; selected = image },
+                        OutlinedButton(onClick = { returnCard = image.page; selected = GalleryPreview(online = image) },
                             modifier = Modifier.fillMaxWidth().height(180.dp).focusRequester(focus)
-                                .onFocusChanged { focused = it.isFocused }
+                                .onFocusChanged { focused = it.isFocused; if (focused) history.entry().focused = image.page }
                                 .border(if (focused) 2.dp else 1.dp, if (focused) Color(0xFFC7E9E2) else Color(0x33FFFFFF), RoundedCornerShape(20.dp))
                                 .then(if (page?.images?.firstOrNull()?.page == image.page) Modifier.focusRequester(firstFocus) else Modifier),
                             contentPadding = PaddingValues(10.dp),
@@ -152,15 +190,28 @@ internal fun OnlineWallpaperGallery(motion: String, onApply: suspend (OnlineWall
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         FocusButton(if (applying) "Saving…" else if (applied) "Applied offline" else "Apply wallpaper", motion, Modifier.focusRequester(applyFocus)) {
                             val bitmap = preview
-                            if (bitmap != null && !applying && !applied) { applying = true; previewError = null; scope.launch {
-                                try { val id = onApply(image, bitmap); onApplied(id); applied = true }
+                            if (bitmap != null && !applying && !applied) { applying = true; previewError = null; status = null; scope.launch {
+                                try {
+                                    val id = if (image.online != null) onApply(image.online, bitmap)
+                                        else image.id.also { check(onSavedApply(it)) { "Could not apply saved wallpaper." } }
+                                    onApplied(id); applied = true
+                                }
                                 catch (failure: Exception) { previewError = failure.message ?: "Could not save. Existing wallpaper unchanged." }
+                                finally { applying = false }
+                            } }
+                        }
+                        if (image.online != null) FocusButton(if (saved.any { it.id == image.id }) "In My Gallery" else "Add to Gallery", motion) {
+                            val bitmap = preview
+                            if (!applying && bitmap != null && saved.none { it.id == image.id }) { applying = true; previewError = null; scope.launch {
+                                try { onSave(image.online, bitmap); status = "Saved offline. Home and rotation unchanged." }
+                                catch (failure: Exception) { previewError = failure.message ?: "Could not save wallpaper." }
                                 finally { applying = false }
                             } }
                         }
                         if (preview == null && previewError != null) FocusButton("Retry preview", motion) { previewRetry++ }
                         FocusButton("Back to gallery", motion) { closePreview() }
                     }
+                    status?.let { Text(it, color = Color(0xFFC7E9E2)) }
                     if (preview != null && previewError != null) Text(previewError!!, color = Color(0xFFFFD6AA))
                 }
             }

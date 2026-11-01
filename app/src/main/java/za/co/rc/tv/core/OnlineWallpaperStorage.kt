@@ -12,24 +12,26 @@ import java.io.File
 import java.io.FilterOutputStream
 import java.io.IOException
 
-/** Stage first, commit the existing preference atomically, then remove unpinned online copies. */
+/** Private offline collection. Saving never applies or evicts an existing image. */
 class OnlineWallpaperStorage(context: Context) {
     private val root = File(context.applicationContext.filesDir, "wallpapers")
-    suspend fun apply(image: OnlineWallpaper, bitmap: Bitmap, rotation: Set<String>, commit: suspend (String) -> Unit): String =
+    suspend fun save(image: OnlineWallpaper, bitmap: Bitmap): String =
         withContext(Dispatchers.IO + NonCancellable) { mutex.withLock {
-            check(OnlineWallpaperPolicy.hasSpace(root.parentFile!!.usableSpace, 6L * 1024 * 1024)) {
-                "Not enough free storage. RC TV leaves 384 MB free; remove other files before applying."
-            }
             check(root.exists() || root.mkdirs()) { "Wallpaper storage unavailable." }
             val target = File(root, image.id)
+            if (target.exists()) {
+                check(File(target, "image.webp").isFile && File(target, "online.json").isFile) { "Saved wallpaper is incomplete. Remove it and try again." }
+                return@withLock image.id
+            }
+            check(OnlineWallpaperPolicy.hasSpace(root.parentFile!!.usableSpace, 6L * 1024 * 1024)) {
+                "Not enough free storage. RC TV leaves 384 MB free; remove other files before saving."
+            }
             val pending = File(root, ".online_pending")
             if (pending.exists()) check(pending.deleteRecursively())
             val previous = root.listFiles().orEmpty().filter { isImportedWallpaper(it.name) && File(it, "online.json").isFile }
-            val obsolete = previous.filter { it.name != image.id && it.name !in rotation }
-            var created = false
             try {
                 if (!target.exists()) {
-                    check(root.listFiles().orEmpty().count { isImportedWallpaper(it.name) } - obsolete.size < 24) { "Remove an imported wallpaper first (maximum 24)." }
+                    check(root.listFiles().orEmpty().count { isImportedWallpaper(it.name) } < 24) { "Wallpaper gallery is full (maximum 24 saved/imported images). Remove an unused image first." }
                     check(pending.mkdir()) { "Wallpaper storage unavailable." }
                     writeImage(File(pending, "image.webp"), bitmap, 86, OnlineWallpaperPolicy.IMAGE_BYTES)
                     val size = OnlineWallpaperPolicy.fit(bitmap.width, bitmap.height, 320, 180)
@@ -41,18 +43,11 @@ class OnlineWallpaperStorage(context: Context) {
                         .put("revision", image.revision).put("attribution", image.attribution).toString()
                     check(metadata.toByteArray(Charsets.UTF_8).size <= 16 * 1024) { "Image credits are too large to preserve safely. Please choose another image." }
                     File(pending, "online.json").writeText(metadata)
-                    // Count old copies too: even a failed cleanup cannot grow the published library beyond the cap.
+                    // Collection images are never evicted to make room.
                     val retained = previous.sumOf { folderSize(it) }
-                    check(retained + folderSize(pending) <= OnlineWallpaperPolicy.LIBRARY_BYTES) { "Online wallpaper storage is full (16 MB). Remove a saved rotation image first." }
+                    check(retained + folderSize(pending) <= OnlineWallpaperPolicy.LIBRARY_BYTES) { "Online wallpaper storage is full (16 MB). Remove an unused image from My Wallpaper Gallery first." }
                     check(pending.renameTo(target)) { "Could not save wallpaper." }
-                    created = true
-                } else check(File(target, "image.webp").isFile && File(target, "online.json").isFile) { "Saved wallpaper is incomplete. Remove it and try again." }
-                try { commit(image.id) } catch (failure: Exception) {
-                    if (created) target.deleteRecursively()
-                    throw failure
                 }
-                // Only our own copies are eligible. Explicitly selected rotation images and all imports survive.
-                obsolete.forEach { it.deleteRecursively() }
                 image.id
             } finally { pending.deleteRecursively() }
         } }
@@ -72,7 +67,11 @@ class OnlineWallpaperStorage(context: Context) {
             raw.fd.sync()
         }
     }
-    companion object { private val mutex = Mutex() }
+    companion object {
+        private val mutex = Mutex()
+        fun isOnline(context: Context, id: String) = isImportedWallpaper(id) &&
+            File(context.filesDir, "wallpapers/$id/online.json").isFile
+    }
 }
 
 fun onlineWallpaperCredit(folder: File): String? = runCatching {

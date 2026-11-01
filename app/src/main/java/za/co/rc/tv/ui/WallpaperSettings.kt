@@ -40,11 +40,15 @@ internal fun WallpaperSettings(options: List<WallpaperOption>, prefs: LauncherPr
     onTransition: (String) -> Unit, onNext: () -> Unit, selectedId: String, appliedId: String, motion: String, saving: Boolean,
     minimalist: Boolean, onSelect: (String) -> Unit, onPreview: () -> Unit,
     onApply: () -> Unit, onClose: () -> Unit,
-    onOnlineApply: suspend (OnlineWallpaper, Bitmap) -> String) {
+    onOnlineApply: suspend (OnlineWallpaper, Bitmap) -> String,
+    onOnlineSave: suspend (OnlineWallpaper, Bitmap) -> String, onSavedApply: suspend (String) -> Boolean,
+    onAddRotation: suspend (Set<String>) -> Unit, onlineHistory: WallpaperPageHistory) {
+    var startSaved by remember { mutableStateOf(false) }
     var onlineOpen by remember { mutableStateOf(false) }
     var onlineReturn by remember { mutableStateOf(false) }
     val onlineFocus = remember { FocusRequester() }
-    LaunchedEffect(onlineOpen) { if (!onlineOpen && onlineReturn) { withFrameNanos { }; onlineFocus.requestFocus(); onlineReturn = false } }
+    val myGalleryFocus = remember { FocusRequester() }
+    LaunchedEffect(onlineOpen) { if (!onlineOpen && onlineReturn) { withFrameNanos { }; (if (startSaved) myGalleryFocus else onlineFocus).requestFocus(); onlineReturn = false } }
     var removeConfirmation by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -105,9 +109,10 @@ internal fun WallpaperSettings(options: List<WallpaperOption>, prefs: LauncherPr
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             FocusButton(if (saving) "Working…" else "Import image…", motion) { if (!saving) onImport() }
-            FocusButton("Online Wallpapers", motion, Modifier.focusRequester(onlineFocus)) { if (!saving) onlineOpen = true }
+            FocusButton("Online Wallpapers", motion, Modifier.focusRequester(onlineFocus)) { if (!saving) { startSaved = false; onlineOpen = true } }
             if (isImportedWallpaper(safeSelection)) FocusButton("Remove selected…", motion) { if (!saving) removeConfirmation = true }
         }
+        FocusButton("My Wallpaper Gallery", motion, Modifier.focusRequester(myGalleryFocus)) { if (!saving) { startSaved = true; onlineOpen = true } }
         options.firstOrNull { it.id == safeSelection }?.attribution?.let { credit ->
             Text(credit, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = .8f))
         }
@@ -136,7 +141,8 @@ internal fun WallpaperSettings(options: List<WallpaperOption>, prefs: LauncherPr
         if (minimalist) Text("Minimalist keeps a plain background. Your wallpaper is saved for the Cinematic theme.",
             style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = .78f))
     }
-    if (onlineOpen) OnlineWallpaperGallery(motion, onOnlineApply, onSelect) { onlineReturn = true; onlineOpen = false }
+    if (onlineOpen) OnlineWallpaperGallery(motion, onOnlineApply, onSelect, { onlineReturn = true; onlineOpen = false },
+        options, prefs, onlineHistory, startSaved, onOnlineSave, onSavedApply, onRemove, onAddRotation)
     if (removeConfirmation) AlertDialog(onDismissRequest = { if (!removing) removeConfirmation = false },
         title = { Text("Remove imported wallpaper?") },
         text = { Text("The private copy will be deleted. If it is current, the mountain will be restored. Your original image is unchanged.") },
