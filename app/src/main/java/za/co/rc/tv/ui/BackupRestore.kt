@@ -9,11 +9,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInputModeManager
@@ -62,7 +67,8 @@ import za.co.rc.tv.core.*
             catch (e: Exception) { fail(e) } finally { busy = false; resultFocus(true) } } }
     }
     Text("Protect your RC TV settings", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
-    Text("Save favourites and their order, appearance and animation choices, screensaver settings, and weather location. Choose a USB/HDD or another writable location in Android’s file picker.")
+    Text("Save favourites and their order, appearance and animation choices, screensaver settings, and weather location. " +
+        if (savePicker) "Choose a USB/HDD or another writable location in Android’s file picker." else "Use TV Downloads below for a local copy; this TV’s storage picker is unavailable.")
     if (message.isNotEmpty()) Text(message, Modifier.bringIntoViewRequester(statusPosition), color = LocalAppearance.current.accent)
     FocusButton(if (busy) "Working…" else "Create backup", motion, Modifier.focusRequester(exportFocus)) {
         if (!busy && !savePicker) message = "This TV firmware does not provide a working Android save picker. USB/HDD export is unavailable here. You can save a local copy to TV Downloads instead."
@@ -102,13 +108,26 @@ import za.co.rc.tv.core.*
     }
     preview?.let { candidate ->
         val cancelFocus = remember { FocusRequester() }
+        val detailsFocus = remember { FocusRequester() }
+        val detailsScroll = rememberScrollState()
+        var detailsFocused by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { withFrameNanos { }; input.requestInputMode(InputMode.Keyboard); cancelFocus.requestFocus() }
         AlertDialog(onDismissRequest = { if (!busy) { preview = null; message = "Restore cancelled. Your settings were not changed." } },
             title = { Text("Restore this backup?") },
             text = {
-                Column(Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState()).focusable(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.heightIn(max = 280.dp).border(1.dp, if (detailsFocused) LocalAppearance.current.accent else androidx.compose.ui.graphics.Color.Transparent)
+                    .verticalScroll(detailsScroll).focusRequester(detailsFocus).onFocusChanged { detailsFocused = it.isFocused }
+                    .onPreviewKeyEvent { event ->
+                        val key = event.nativeKeyEvent
+                        val delta = when (key.keyCode) {
+                            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> if (detailsScroll.canScrollForward) 140f else null
+                            android.view.KeyEvent.KEYCODE_DPAD_UP -> if (detailsScroll.canScrollBackward) -140f else null
+                            else -> null
+                        }
+                        if (delta != null) { if (key.action == android.view.KeyEvent.ACTION_DOWN) scope.launch { detailsScroll.scrollBy(delta) }; true } else false
+                    }.focusable(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Saved ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(candidate.createdAt))} · RC TV ${candidate.appVersion}")
-                    Text("${candidate.favourites.size} favourites in saved order:\n${candidate.favourites.joinToString(" → ").ifEmpty { "None" }}")
+                    Text("${candidate.favourites.size} favourites in saved order:\n${candidate.favouriteLabels.ifEmpty { candidate.favourites }.joinToString(" → ").ifEmpty { "None" }}")
                     Text("Appearance: ${candidate.values["theme"]}, ${candidate.values["accent_theme"]}, ${candidate.values["font_style"]}, ${candidate.values["text_size"]}. Wallpaper: ${candidate.values["wallpaper"]}. Rotation: ${candidate.values["wallpaper_rotation"]} / ${candidate.values["wallpaper_interval"]} minutes.")
                     Text("Motion: ${candidate.values["animation_intensity"]}; focus ${candidate.values["focus_animation"]}; Reduced Motion ${candidate.values["reduced_motion"]}.")
                     Text("Wallpaper visibility: ${candidate.values["wallpaper_visibility"]}; transition: ${candidate.values["wallpaper_transition"]}; rotation pool: ${(candidate.values["wallpaper_pool"] as Set<*>).size} images.")
@@ -119,11 +138,11 @@ import za.co.rc.tv.core.*
                     Text("This replaces supported settings and favourites together. Phone pairing, Android Home, permissions and other app data stay unchanged. Cancel to keep your current settings.")
                 }
             },
-            confirmButton = { FocusButton(if (busy) "Restoring…" else "Restore settings", motion) {
+            confirmButton = { FocusButton(if (busy) "Restoring…" else "Restore settings", motion, Modifier.focusProperties { up = detailsFocus }) {
                 if (!busy) { busy = true; scope.launch { try {
                     backup.restore(candidate); preview = null; message = "Settings restored successfully. Existing phone pairing and Android settings were kept."
                 } catch (e: Exception) { fail(e); preview = null } finally { busy = false; resultFocus(true) } } }
             } },
-            dismissButton = { FocusButton("Cancel", motion, Modifier.focusRequester(cancelFocus)) { if (!busy) { preview = null; message = "Restore cancelled. Your settings were not changed." } } })
+            dismissButton = { FocusButton("Cancel", motion, Modifier.focusRequester(cancelFocus).focusProperties { up = detailsFocus }) { if (!busy) { preview = null; message = "Restore cancelled. Your settings were not changed." } } })
     }
 }

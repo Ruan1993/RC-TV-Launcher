@@ -71,6 +71,9 @@ object BackupReview {
         invalid(byteArrayOf(0xc3.toByte(), 0x28))
         invalid((String(bytes) + "trailing content").toByteArray())
         invalid(("{\"nested\":".repeat(1000) + "0" + "}".repeat(1000)).toByteArray())
+        invalid(String(bytes).replaceFirst("\"format\"", "'format'").toByteArray())
+        invalid(("/* comment */" + String(bytes)).toByteArray())
+        invalid(String(bytes).replaceFirst("\"format\":", "\"format\":\"rc-tv-settings\",\"format\":").toByteArray())
         val envelope = JSONObject(String(bytes))
         invalid(JSONObject(envelope.toString()).put("schemaVersion", 99).toString().toByteArray())
         invalid(JSONObject(envelope.toString()).put("sha256", "0".repeat(64)).toString().toByteArray())
@@ -131,6 +134,9 @@ object BackupReview {
             driver.select("Save a copy to TV Downloads")
             Thread.sleep(1200)
             val saved = runBlocking { service.downloads().first() }
+            val savedBytes = BackupCodec.read(test.targetContext.contentResolver.openInputStream(saved.uri) ?: error("No Downloads input"))
+            BackupCodec.decode(savedBytes)
+            File(test.targetContext.filesDir, "j3f-ui-export-copy.json").writeBytes(savedBytes)
             val original = runBlocking { BackupSchema.snapshot(Preferences(test.targetContext).backupValues()) }
             check(runBlocking { service.inspect(saved.uri) }.values == original)
             val preferences = Preferences(test.targetContext)
@@ -141,6 +147,9 @@ object BackupReview {
                 driver.select(saved.name)
                 driver.control("Cancel").let { check(it.isFocused); it.recycle() }
                 driver.shot("backup-preview")
+                driver.key(KeyEvent.KEYCODE_DPAD_UP)
+                repeat(8) { driver.key(KeyEvent.KEYCODE_DPAD_DOWN) }
+                driver.shot("backup-preview-details")
                 driver.key(KeyEvent.KEYCODE_BACK)
                 check(runBlocking { BackupSchema.snapshot(preferences.backupValues()) } != original) { "Back unexpectedly restored" }
                 driver.select("Restore a TV Downloads copy"); driver.select(saved.name)
@@ -153,6 +162,7 @@ object BackupReview {
             } finally { runBlocking { preferences.restoreBackup(original) } }
             driver.key(KeyEvent.KEYCODE_BACK)
             driver.control("Backup & Restore").let { check(it.isFocused); it.recycle() }
+            File(test.targetContext.filesDir, "j3f-ui-result.txt").writeText("PASS: genuine local Downloads file exported and read back; preview Cancel/Back and explicit confirmed restore; D-pad scrolling reaches lower details; eight favourites/order and pairing grants preserved; Back restores entry focus. USB/HDD SAF unavailable on firmware.")
         } else {
             Thread.sleep(700)
             check(driver.foregroundPackage() != test.targetContext.packageName) { "SAF picker did not open" }

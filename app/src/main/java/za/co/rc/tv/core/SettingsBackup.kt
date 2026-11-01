@@ -57,7 +57,7 @@ internal object BackupSchema {
 }
 
 internal data class BackupPreview(val values: Map<String, Any>, val createdAt: Long, val appVersion: String,
-    val favourites: List<String>, val notes: List<String>)
+    val favourites: List<String>, val notes: List<String>, val favouriteLabels: List<String> = emptyList())
 internal data class LocalBackup(val name: String, val uri: Uri)
 
 internal object BackupCodec {
@@ -104,23 +104,42 @@ internal object BackupCodec {
     }
 }
 
-/** Bound parser recursion before JSONTokener sees untrusted input; reject trailing content. */
+/** Strict streaming reader bounds recursion and rejects duplicate keys and trailing content. */
 internal fun parseBackupObject(text: String): JSONObject {
-    var depth = 0; var quoted = false; var escaped = false
-    text.forEach { c ->
-        if (quoted) {
-            if (escaped) escaped = false else if (c == '\\') escaped = true else if (c == '"') quoted = false
-        } else when (c) {
-            '"' -> quoted = true
-            '{', '[' -> { depth++; require(depth <= 12) { "Backup structure is too deeply nested." } }
-            '}', ']' -> { depth--; require(depth >= 0) { "Malformed backup structure." } }
+    android.util.JsonReader(java.io.StringReader(text)).use { reader ->
+        reader.isLenient = false
+        fun value(depth: Int): Any {
+            require(depth <= 12) { "Backup structure is too deeply nested." }
+            return when (reader.peek()) {
+                android.util.JsonToken.BEGIN_OBJECT -> {
+                    reader.beginObject()
+                    val objectValue = JSONObject(); val names = mutableSetOf<String>()
+                    while (reader.hasNext()) {
+                        val name = reader.nextName()
+                        require(names.add(name) && names.size <= 64) { "Duplicate or excessive backup fields." }
+                        objectValue.put(name, value(depth + 1))
+                    }
+                    reader.endObject(); objectValue
+                }
+                android.util.JsonToken.BEGIN_ARRAY -> {
+                    reader.beginArray(); val array = JSONArray()
+                    while (reader.hasNext()) { require(array.length() < 256) { "Too many backup list entries." }; array.put(value(depth + 1)) }
+                    reader.endArray(); array
+                }
+                android.util.JsonToken.STRING -> reader.nextString()
+                android.util.JsonToken.NUMBER -> {
+                    val raw = reader.nextString()
+                    raw.toIntOrNull() ?: raw.toLongOrNull() ?: raw.toDouble().also { require(it.isFinite()) { "Invalid backup number." } }
+                }
+                android.util.JsonToken.BOOLEAN -> reader.nextBoolean()
+                android.util.JsonToken.NULL -> { reader.nextNull(); JSONObject.NULL }
+                else -> error("Malformed backup value.")
+            }
         }
+        val result = value(0)
+        require(result is JSONObject && reader.peek() == android.util.JsonToken.END_DOCUMENT) { "Unexpected content after backup." }
+        return result
     }
-    require(!quoted && depth == 0) { "Incomplete backup structure." }
-    val parser = org.json.JSONTokener(text)
-    val value = parser.nextValue()
-    require(value is JSONObject && parser.nextClean() == '\u0000') { "Unexpected content after backup." }
-    return value
 }
 
 internal class SettingsBackup(context: Context) {
@@ -189,7 +208,10 @@ internal class SettingsBackup(context: Context) {
             context.packageManager.queryIntentActivities(android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_LAUNCHER), 0).map { it.activityInfo.packageName }
         val missing = preview.favourites.count { it !in installed }
         if (missing > 0) notes += "$missing favourite app(s) are not currently available. Their saved positions will be kept; apps are not installed by restore."
-        return preview.copy(values = values.toMap(), notes = notes.toList())
+        val labels = preview.favourites.map { packageName -> runCatching {
+            context.packageManager.getApplicationInfo(packageName, 0).loadLabel(context.packageManager).toString().filterNot(Char::isISOControl).take(80)
+        }.getOrDefault(packageName) }
+        return preview.copy(values = values.toMap(), notes = notes.toList(), favouriteLabels = labels)
     }
     suspend fun restore(preview: BackupPreview) = withContext(Dispatchers.IO) {
         // Revalidate just before the single durable edit; no other stores are written.
