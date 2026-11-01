@@ -1,5 +1,7 @@
 # J3D — Xiaomi Home takeover readiness
 
+Current follow-up: [J3E recovery recheck and Home-registration audit](PHASE-J3E.md). The usage reset and J3E continuation are authorised. Wired recovery and a permitted routing method remain unverified; no takeover changes have been made.
+
 Prepared 1 November 2026 from `ff175de`, TV **1.0.0-rc1.15 (44)**. Preparation only: **no Home-role, preferred-activity, component-state or system-package changes were executed.** Normal explicit activity launches, one wake key and one normal reboot were used for the requested readiness checks. No install, data clearing, reset or instrumentation was performed.
 
 **Decision: recovery access in the intact configuration is verified; a safe takeover is not yet ready. Wait for the user's confirmation after their usage reset before any next stage.** A reset or confirmation does not by itself resolve the blockers below.
