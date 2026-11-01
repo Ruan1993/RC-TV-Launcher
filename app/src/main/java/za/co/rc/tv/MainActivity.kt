@@ -24,10 +24,12 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     private var experimentHomeRequest by mutableIntStateOf(0)
+    private var homeKeySettings by mutableStateOf(false)
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == HomeKeyExperimentService.ACTION_HOME) {
+        if (intent.action == HomeKeyExperimentService.ACTION_HOME || intent.action == HomeKeyExperimentService.ACTION_SETTINGS) {
+            homeKeySettings = intent.action == HomeKeyExperimentService.ACTION_SETTINGS
             screensaverVisible = false
             lastInteraction = android.os.SystemClock.elapsedRealtime()
             experimentHomeRequest++
@@ -103,7 +105,10 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (intent.action == HomeKeyExperimentService.ACTION_HOME) experimentHomeRequest++
+        if (intent.action == HomeKeyExperimentService.ACTION_HOME || intent.action == HomeKeyExperimentService.ACTION_SETTINGS) {
+            homeKeySettings = intent.action == HomeKeyExperimentService.ACTION_SETTINGS
+            experimentHomeRequest++
+        }
         val suggestSetup = SetupProgress.offerOnFirstOpen(getSharedPreferences("easy-setup", MODE_PRIVATE).getBoolean("seen", false),
             java.io.File(filesDir, "datastore/launcher.preferences_pb").exists())
         setContent {
@@ -120,7 +125,8 @@ class MainActivity : ComponentActivity() {
                 var offerOtherApps by remember { mutableStateOf(false) }
                 LaunchedEffect(experimentHomeRequest) {
                     if (experimentHomeRequest > 0) {
-                        section = "Home"; setupOpen = false; companionOpen = false; offerOtherApps = false
+                        section = if (homeKeySettings) "Settings" else "Home"
+                        setupOpen = false; companionOpen = false; offerOtherApps = false
                     }
                 }
                 val companionState by companion.state.collectAsStateWithLifecycle()
