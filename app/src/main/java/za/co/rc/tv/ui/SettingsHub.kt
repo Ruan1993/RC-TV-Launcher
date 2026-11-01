@@ -20,7 +20,7 @@ internal data class SettingsCategory(val key: String, val title: String, val ico
 internal val settingsCategories = listOf(
     SettingsCategory("appearance","Appearance & Personalisation","E"),
     SettingsCategory("remote","Remote & Keyboard","R"),
-    SettingsCategory("connections","Connections & Devices","R"),
+    SettingsCategory("connections","Connections & Devices","N"),
     SettingsCategory("apps","Apps & Media","A"),
     SettingsCategory("weather","Weather & Widgets","W"),
     SettingsCategory("power","Screensaver & Power","T"),

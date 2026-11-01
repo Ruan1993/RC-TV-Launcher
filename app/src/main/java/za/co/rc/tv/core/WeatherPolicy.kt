@@ -1,5 +1,14 @@
 package za.co.rc.tv.core
 
+import java.util.Locale
+
+/** Only display measurements actually supplied by the existing provider/cache. */
+internal fun weatherDetailMeasurements(reading: WeatherReading?, locale: Locale = Locale.getDefault()): List<Pair<String, String>> = buildList {
+    reading?.feelsLike?.takeIf(Double::isFinite)?.let { add("Feels like" to String.format(locale, "%.0f °C", it)) }
+    reading?.humidity?.takeIf(Double::isFinite)?.let { add("Humidity" to String.format(locale, "%.0f%%", it)) }
+    reading?.windKmh?.takeIf(Double::isFinite)?.let { add("Wind" to String.format(locale, "%.1f km/h", it)) }
+}
+
 object WeatherPolicy {
     const val HOUR = 3_600_000L
     const val DAY = 24 * HOUR

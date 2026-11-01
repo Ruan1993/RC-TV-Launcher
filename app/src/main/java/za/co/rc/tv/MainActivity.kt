@@ -167,6 +167,33 @@ class MainActivity : ComponentActivity() {
                 var homeStatus by remember { mutableStateOf("") }
                 var refresh by remember { mutableIntStateOf(0) }
                 var iconGeneration by remember { mutableIntStateOf(0) }
+                DisposableEffect(repository) {
+                    val receiver = object : android.content.BroadcastReceiver() {
+                        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+                            val packages = intent?.data?.schemeSpecificPart?.let { arrayOf(it) }
+                                ?: intent?.getStringArrayExtra(Intent.EXTRA_CHANGED_PACKAGE_LIST).orEmpty()
+                            if (packages.isNotEmpty()) {
+                                packages.forEach(repository::invalidateIcons)
+                                iconGeneration++
+                                refresh++
+                            }
+                        }
+                    }
+                    val packages = android.content.IntentFilter().apply {
+                        addAction(Intent.ACTION_PACKAGE_ADDED); addAction(Intent.ACTION_PACKAGE_REMOVED)
+                        addAction(Intent.ACTION_PACKAGE_CHANGED); addAction(Intent.ACTION_PACKAGE_REPLACED)
+                        addDataScheme("package")
+                    }
+                    val availability = android.content.IntentFilter().apply {
+                        addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_AVAILABLE); addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE)
+                        addAction(Intent.ACTION_PACKAGES_SUSPENDED); addAction(Intent.ACTION_PACKAGES_UNSUSPENDED)
+                    }
+                    // Package broadcasts are protected system broadcasts. Keep observing while paused,
+                    // so returning from an installer or Android Settings refreshes just the affected icons.
+                    androidx.core.content.ContextCompat.registerReceiver(this@MainActivity, receiver, packages, androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
+                    androidx.core.content.ContextCompat.registerReceiver(this@MainActivity, receiver, availability, androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
+                    onDispose { unregisterReceiver(receiver) }
+                }
                 var clock by remember { mutableStateOf("") }
                 val scope = rememberCoroutineScope()
                 val saveWallpaperSetting: (suspend () -> Unit) -> Unit = { action ->
@@ -214,8 +241,6 @@ class MainActivity : ComponentActivity() {
                         discovery = refreshDiscovery(discovery, { repository.discover() }) {
                             android.util.Log.e("RcDiscovery", "Installed app discovery failed", it)
                         }
-                        repository.invalidateIcons()
-                        iconGeneration++
                         android.util.Log.d("RcDiscovery", "Refresh complete: ${discovery.apps.size} apps, error=${discovery.error != null}")
                     }
                 }

@@ -8,6 +8,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -46,7 +54,7 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
     val palette=LocalAppearance.current; var focused by remember { mutableStateOf(false) }
     Column(modifier.onFocusChanged { focused=it.isFocused }.background(palette.glass,RoundedCornerShape(12.dp))
         .border(if(focused) 2.dp else 1.dp,if(focused) palette.focus else palette.border,RoundedCornerShape(12.dp))
-        .clickable(onClick=details).padding(horizontal=12.dp,vertical=4.dp)) {
+        .clickable(role=Role.Button,onClick=details).padding(horizontal=12.dp,vertical=4.dp)) {
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
             WeatherMark(reading?.code,Modifier.size(30.dp))
             Text(reading?.let { degrees(it.celsius) } ?: "—",fontSize=24.sp,lineHeight=30.sp,fontWeight=if(palette.highReadability) FontWeight.Bold else FontWeight.Medium)
@@ -91,8 +99,23 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
 @Composable fun WeatherDetails(repository: WeatherRepository, motion: String, close: () -> Unit) {
     val state by repository.state.collectAsState()
     val reading=state.reading?.takeIf { WeatherPolicy.usable(System.currentTimeMillis(),it.observed) }
+    val backFocus = remember { FocusRequester() }
+    val detailsFocus = remember { FocusRequester() }
+    val input = LocalInputModeManager.current
+    val scroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { withFrameNanos { }; input.requestInputMode(InputMode.Keyboard); backFocus.requestFocus() }
     AlertDialog(onDismissRequest=close,modifier=Modifier.widthIn(max=680.dp),title={ Text("Weather details") },text={
-        Column(Modifier.heightIn(max=240.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.heightIn(max=240.dp).verticalScroll(scroll).focusRequester(detailsFocus)
+            .onPreviewKeyEvent { event ->
+                val key = event.nativeKeyEvent
+                val delta = when (key.keyCode) {
+                    android.view.KeyEvent.KEYCODE_DPAD_DOWN -> if (scroll.canScrollForward) 120f else null
+                    android.view.KeyEvent.KEYCODE_DPAD_UP -> if (scroll.canScrollBackward) -120f else null
+                    else -> null
+                }
+                if (delta != null) { if (key.action == android.view.KeyEvent.ACTION_DOWN) scope.launch { scroll.scrollBy(delta) }; true } else false
+            }.focusable(),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             Text(state.place?.label ?: "No location selected",style=MaterialTheme.typography.titleLarge)
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)) {
                 WeatherMark(reading?.code,Modifier.size(44.dp))
@@ -101,14 +124,14 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
             Text(reading?.let { WeatherPolicy.condition(it.code) } ?: "Conditions unavailable")
             Text(updated(state,reading))
             if(reading != null) {
-                reading.feelsLike?.let { ReadableNote("Feels like: ${degrees(it)}") }
-                reading.humidity?.let { ReadableNote("Humidity: ${String.format(Locale.getDefault(),"%.0f",it)}%") }
-                reading.windKmh?.let { ReadableNote("Wind: ${String.format(Locale.getDefault(),"%.1f",it)} km/h") }
-                if(reading.feelsLike==null && reading.humidity==null && reading.windKmh==null) ReadableNote("Extra measurements aren't available in this cached report.")
+                val measurements = weatherDetailMeasurements(reading)
+                measurements.forEach { (label, value) -> Text("$label: $value") }
+                if(measurements.isEmpty()) Text("Extra measurements aren't available in this cached report.")
             }
-            ReadableNote("Open-Meteo model conditions · Cached reports expire after 24 hours. Opening details does not request another update.")
+            Text("Forecast data is not included in this report.", style=MaterialTheme.typography.bodySmall)
+            Text("Open-Meteo model conditions · Cached reports expire after 24 hours. Opening details does not request another update.", style=MaterialTheme.typography.bodySmall)
         }
-    },confirmButton={ FocusButton("Back",motion,onClick=close) })
+    },confirmButton={ FocusButton("Back",motion,Modifier.focusRequester(backFocus).focusProperties { up=detailsFocus },onClick=close) })
 }
 
 @Composable fun WeatherSettings(repository: WeatherRepository, motion: String, details: () -> Unit = {}) {

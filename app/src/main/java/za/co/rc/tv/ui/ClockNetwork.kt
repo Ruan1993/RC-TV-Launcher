@@ -24,7 +24,7 @@ import za.co.rc.tv.core.*
 
 @Composable internal fun floatingTextStyle(): TextStyle = androidx.compose.material3.LocalTextStyle.current.copy(shadow=Shadow(Color.Black.copy(alpha=.9f),Offset(0f,2f),5f))
 
-@Composable internal fun ClockNetwork(clock: String, monitor: NetworkStatusMonitor, focus: FocusRequester, settings: FocusRequester, open: () -> Unit) {
+@Composable internal fun ClockNetwork(clock: String, monitor: NetworkStatusMonitor, focus: FocusRequester, settings: FocusRequester, weather: FocusRequester? = null, open: () -> Unit) {
     val status by monitor.state.collectAsState(); val lifecycle=LocalLifecycleOwner.current.lifecycle
     val contentReady = LocalHomeContentReady.current
     DisposableEffect(lifecycle,monitor,contentReady) {
@@ -35,7 +35,7 @@ import za.co.rc.tv.core.*
         onDispose { lifecycle.removeObserver(observer); monitor.stop() }
     }
     var focused by remember { mutableStateOf(false) }; val palette=LocalAppearance.current
-    Row(Modifier.focusRequester(focus).focusProperties { up=settings; right=settings }.onFocusChanged { focused=it.isFocused }
+    Row(Modifier.focusRequester(focus).focusProperties { up=settings; right=settings; left=weather ?: FocusRequester.Default }.onFocusChanged { focused=it.isFocused }
         .cinematicFocus(12.dp).border(1.dp,if(focused) palette.focus else Color.Transparent,RoundedCornerShape(12.dp))
         .semantics(mergeDescendants=true) { contentDescription="$clock. ${status.description}. Open Connections & Devices" }
         .clickable(onClick=open).padding(horizontal=6.dp,vertical=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {

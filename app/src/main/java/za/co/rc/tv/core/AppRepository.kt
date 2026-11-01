@@ -23,11 +23,15 @@ class AppRepository(private val context: Context) {
     private val icons = object : LruCache<String, Bitmap>(2 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap) = value.allocationByteCount
     }
-    fun invalidateIcons() = icons.evictAll()
+    private val iconVersions = AppIconVersions()
+    fun invalidateIcons(packageName: String) {
+        iconVersions.invalidate(packageName)
+        icons.snapshot().keys.filter { it.startsWith("$packageName@") }.forEach(icons::remove)
+    }
 
     suspend fun icon(packageName: String, sizeDp: Int = 48): Bitmap? = withContext(Dispatchers.IO) {
         val size = (sizeDp * context.resources.displayMetrics.density).toInt().coerceIn(48, 192)
-        val cacheKey = "$packageName@$size"
+        val cacheKey = iconVersions.key(packageName, size)
         icons.get(cacheKey) ?: try {
             val drawable = context.packageManager.getApplicationIcon(packageName)
             RenderDiagnostics.iconRasterized()

@@ -249,6 +249,11 @@ fun CinematicLauncher(
 ) {
     val weatherContext = LocalContext.current.applicationContext
     val weather = remember(weatherContext) { WeatherRepository(weatherContext) }
+    val weatherState by weather.state.collectAsState()
+    val weatherAvailable = weatherState.enabled && weatherState.place != null
+    val weatherFocus = remember { FocusRequester() }
+    var weatherReturnFocus by remember { mutableStateOf(false) }
+    var weatherFromHome by remember { mutableStateOf(false) }
     LaunchedEffect(weather) { weather.observeConfiguration() }
     val network = remember(weatherContext) { NetworkStatusMonitor(weatherContext) }
     val settingsFocus=remember { FocusRequester() }; val clockFocus=remember { FocusRequester() }
@@ -383,7 +388,17 @@ fun CinematicLauncher(
                 filtered.sortedBy { order.indexOf(it.packageName).let { rank -> if (rank < 0) Int.MAX_VALUE else rank } }
             } else filtered
         } }
-    if(weatherDetails) WeatherDetails(weather, motion, { weatherDetails=false })
+    LaunchedEffect(weatherReturnFocus) {
+        if (weatherReturnFocus) {
+            withFrameNanos { }; inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
+            (if (weatherAvailable) weatherFocus else clockFocus).requestFocus()
+            weatherReturnFocus = false
+        }
+    }
+    if(weatherDetails) WeatherDetails(weather, motion, {
+        weatherDetails=false
+        weatherReturnFocus = weatherFromHome && section == "Home"
+    })
     val vivid = prefs.wallpaperVisibility == "Vivid"
     Box(Modifier.fillMaxSize()) {
         Wallpaper(prefs.theme == "Minimalist" && previewWallpaper == null, previewWallpaper ?: prefs.wallpaper, prefs.wallpaperTransition, motion, prefs.wallpaperVisibility)
@@ -397,10 +412,14 @@ fun CinematicLauncher(
                         Text("Your world. In focus.", style=floatingTextStyle(), fontSize = 13.sp, color = Color.White.copy(alpha = .65f))
                     }
                     if (contentSection == "Home") {
-                        WeatherGlance(weather, Modifier.weight(1f).padding(horizontal=16.dp), now = System.currentTimeMillis(), details = { weatherDetails=true })
+                        WeatherGlance(weather, Modifier.weight(1f).padding(horizontal=16.dp).focusRequester(weatherFocus)
+                            .focusProperties {
+                                up=settingsFocus; left=settingsFocus; right=clockFocus
+                                down=if (visible.isNotEmpty() && draftOrder == null && previewWallpaper == null) favouriteShelfFocus else clockFocus
+                            }, now = System.currentTimeMillis(), details = { weatherFromHome=true; weatherDetails=true })
                         NowPlayingGlance(Modifier.weight(1f).padding(horizontal=8.dp))
                     }
-                    ClockNetwork(clock,network,clockFocus,settingsFocus) {
+                    ClockNetwork(clock,network,clockFocus,settingsFocus,if (contentSection == "Home" && weatherAvailable) weatherFocus else null) {
                         lastSettingsCategory="connections"; settingsPage="connections"; utilityReturn=null; onSection("Settings")
                     }
                 }
@@ -451,7 +470,7 @@ fun CinematicLauncher(
                                 StorageSummary()
                                 SystemSettingsLink(storageSettingsDestination, motion)
                             }
-                            "weather" -> WeatherSettings(weather,motion,{ weatherDetails=true })
+                            "weather" -> WeatherSettings(weather,motion,{ weatherFromHome=false; weatherDetails=true })
                             "remote" -> {
                                 Text("Phone remote",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 FocusButton("Phone pairing & download",motion,onClick=onCompanion)
@@ -536,7 +555,7 @@ fun CinematicLauncher(
                                                 }, selected, position > 0, position < order.lastIndex)
                                     }
                                 } else AppActionHost(app, repository, prefs, discovery.apps, motion, true, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
-                                    HomeAppCard(app, repository, iconGeneration, "Minimal", { onLaunch(app) }, modifier.focusProperties { up = settingsFocus }.cinematicFocus(26.dp).then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
+                                    HomeAppCard(app, repository, iconGeneration, "Minimal", { onLaunch(app) }, modifier.focusProperties { up = if (weatherAvailable) weatherFocus else settingsFocus }.cinematicFocus(26.dp).then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
                                 }
                             }
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {

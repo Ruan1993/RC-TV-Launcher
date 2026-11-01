@@ -1,4 +1,4 @@
 <resources>
-    <string name="home_experiment_name">RC TV Home experiment</string>
-    <string name="home_experiment_description">Optional Home-button and startup test. Short Home opens RC TV; long Home opens RC TV Settings. On service startup, redirects Google TV’s exact Home screen once. Does not read screen contents or change default Home. Turn this service off to undo.</string>
+    <string name="home_experiment_name">RC TV Home buttons</string>
+    <string name="home_experiment_description">Optional Home-button control. Short Home opens RC TV Home; long Home opens RC TV Settings. Requires Android Accessibility permission. Does not read screen contents, redirect startup or change default Home. Turn this service off to restore Android’s normal Home-button handling.</string>
 </resources>

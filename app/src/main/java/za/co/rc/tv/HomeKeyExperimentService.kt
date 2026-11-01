@@ -6,10 +6,9 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 
-/** Temporary opt-in SDK experiment; no third-party implementation is incorporated. */
+/** Opt-in Home gestures. Component name and saved mode remain stable for existing installations. */
 class HomeKeyExperimentService : AccessibilityService() {
     private var homeDownTime: Long? = null
-    private var startupRedirectAttempted = false
     private val mode get() = getSharedPreferences("home-key-experiment", MODE_PRIVATE).getString("mode", "keys")
     override fun onServiceConnected() { Log.i("RcHomeExperiment", "connected mode=$mode") }
     // The service process owns this preference. Foreground test controls send explicit commands,
@@ -40,17 +39,7 @@ class HomeKeyExperimentService : AccessibilityService() {
         }
         return true
     }
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (mode == "off" || startupRedirectAttempted ||
-            event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        // Exact activity match excludes Apps, Dashboard, Settings, setup and recovery.
-        if (event.packageName?.toString() != "com.google.android.apps.tv.launcherx" ||
-            event.className?.toString() != "com.google.android.apps.tv.launcherx.home.HomeActivity") return
-        // One attempt per service connection/lifetime: repeated window events cannot form a loop.
-        // Set before launching so synchronous/re-entrant events cannot schedule another launch.
-        startupRedirectAttempted = true
-        openHome("startup-stock-home")
-    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
     private fun openHome(reason: String, settings: Boolean = false) {
         runCatching {
             startActivity(Intent(this, MainActivity::class.java).setAction(if (settings) ACTION_SETTINGS else ACTION_HOME)
