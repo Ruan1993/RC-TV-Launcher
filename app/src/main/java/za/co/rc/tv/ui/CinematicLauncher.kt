@@ -444,6 +444,7 @@ fun CinematicLauncher(
                                 FocusButton("Internet Speed Test",motion) { utilityReturn="connections"; onSection("Speed Test") }
                             }
                             "apps" -> {
+                                FocusButton("Media Browser", motion) { weatherContext.startActivity(android.content.Intent(weatherContext, MediaBrowserActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                                 FocusButton("Browse installed apps",motion) { utilityReturn="apps"; onSection("Apps") }
                                 SystemSettingsLink(appSettingsDestination, motion)
                                 Text("Choose an app in Android to manage its permissions, storage and cache.")
@@ -475,7 +476,8 @@ fun CinematicLauncher(
                     } }
                     "Library" -> GlassPanel(Modifier.fillMaxWidth()) {
                         Text("A place for your stories", fontSize = 28.sp, fontWeight = FontWeight.Normal)
-                        Text("Local media and watchlists are planned. Your installed apps are ready now.", modifier = Modifier.padding(vertical = 16.dp))
+                        Text("Browse available folders, play video and audio in VLC, or view images.", modifier = Modifier.padding(vertical = 16.dp))
+                        FocusButton("Media Browser", motion) { weatherContext.startActivity(android.content.Intent(weatherContext, MediaBrowserActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
                         FocusButton("Browse apps", motion) { onSection("Apps") }
                     }
                     else -> {

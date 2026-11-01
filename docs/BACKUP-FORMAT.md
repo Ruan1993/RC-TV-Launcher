@@ -15,6 +15,7 @@
 | Keyboard/accessibility enabled state and selected input method | Android secure settings | Exclude; restore cannot grant Android permissions or change keyboard selection |
 | Keyboard text, transient navigation/search/remote messages | Memory/editor state | Exclude |
 | Easy-setup completed flag | `shared_prefs/easy-setup.xml` | Exclude device onboarding state |
+| J4 connected media folders | `shared_prefs/media-folders.xml` plus Android persisted URI grants | Exclude device-specific folder URIs and grants; choose folders again on another device |
 | Android Home role, package states, Wi-Fi, accounts, other apps | Android/system stores | Exclude; no system restoration |
 
 Weather configuration will move into the launcher DataStore, migrating the legacy configuration once without losing the cached report. This lets a supported restore replace all portable settings, including weather, in one durable DataStore transaction. Weather cache remains separate and nonauthoritative for configuration. Pairing stores are never opened by the backup implementation.
@@ -52,5 +53,7 @@ Primary create/open actions use Storage Access Framework contracts, without new 
 Xiaomi build 774 resolves both actions to `com.google.android.tv.frameworkpackagestubs/.Stubs$DocumentsStub`; the observed stub closes without returning a document. RC TV detects this known stub and explains that USB/HDD picker backup is unavailable on that firmware. No system picker is installed, replaced or enabled by RC TV.
 
 An additional **TV Downloads** route uses `MediaStore.Downloads` for files this app creates, requiring no broad permission. Files are pending until write/readback verification succeeds, then published under Android's Downloads collection in `RC TV/`. Failed creations remove the newly inserted row where possible. A list of this app's published backups provides the identical preview/confirmation/restore path. This is local storage, not USB/HDD, a cross-device import replacement, or independent recovery: copy it off the TV with a trusted file app or PC. Reinstall/reset ownership and data-loss caveats apply; arbitrary files require a working SAF picker.
+
+J4 also exposes **Export to connected folder** and **Restore from connected folder** using explicitly user-granted document trees. Export creates a new uniquely named document and uses the same write/readback integrity verification; a failed creation attempts to delete only its new document. Import passes the selected JSON URI to the existing validation/preview/confirmation pipeline. It does not write settings directly. This requires a real folder picker and grants; Xiaomi build 774 exposes no OPEN_DOCUMENT_TREE handler, so this route is not claimed physically verified there. MediaStore media-read permission does not grant access to arbitrary JSON backups on an otherwise inaccessible HDD.
 
 References: [Android SAF](https://developer.android.com/training/data-storage/shared/documents-files), [app-owned MediaStore files](https://developer.android.com/training/data-storage/shared/media#access-own-media-files).

@@ -2,6 +2,9 @@
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <queries>
+        <package android:name="org.videolan.vlc" />
+        <package android:name="com.xiaomi.mitv.mediaexplorer" />
+        <intent><action android:name="android.intent.action.OPEN_DOCUMENT_TREE" /></intent>
         <intent><action android:name="android.intent.action.CREATE_DOCUMENT" /><category android:name="android.intent.category.OPENABLE" /><data android:mimeType="application/json" /></intent>
         <intent><action android:name="android.intent.action.OPEN_DOCUMENT" /><category android:name="android.intent.category.OPENABLE" /><data android:mimeType="application/json" /></intent>
         <package android:name="com.google.android.apps.mediashell" />
@@ -28,6 +31,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <application android:label="RC TV Launcher" android:theme="@style/AppTheme" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:banner="@drawable/rc_banner" android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:supportsRtl="true">
         <service android:name=".companion.RemoteAccessibilityService" android:label="@string/remote_accessibility_name" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
@@ -35,6 +40,7 @@
             <meta-data android:name="android.accessibilityservice" android:resource="@xml/remote_accessibility" />
         </service>
         <activity android:name=".ui.MediaImageBrowserActivity" android:exported="false" android:screenOrientation="landscape" />
+        <activity android:name=".ui.MediaBrowserActivity" android:exported="false" android:screenOrientation="landscape" />
         <service android:name=".keyboard.RcInputMethodService" android:label="@string/rc_keyboard_name" android:permission="android.permission.BIND_INPUT_METHOD" android:exported="true">
             <intent-filter><action android:name="android.view.InputMethod" /></intent-filter>
             <meta-data android:name="android.view.im" android:resource="@xml/rc_input_method" />

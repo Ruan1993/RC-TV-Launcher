@@ -66,6 +66,14 @@ import za.co.rc.tv.core.*
         else { busy = true; scope.launch { try { preview = backup.inspect(uri); message = "Backup validated. Review it before restoring." }
             catch (e: Exception) { fail(e) } finally { busy = false; resultFocus(true) } } }
     }
+    val connectedFolder = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK && result.data?.data != null) {
+            val uri = result.data!!.data!!
+            if (result.data!!.hasExtra("name")) { message = "Backup saved and read back in the connected folder: ${result.data!!.getStringExtra("name")}"; resultFocus(false) }
+            else { busy = true; scope.launch { try { preview = backup.inspect(uri); message = "Backup validated. Review it before restoring." }
+                catch (e: Exception) { fail(e) } finally { busy = false; resultFocus(true) } } }
+        } else { message = "Folder operation cancelled. Your settings were not changed."; resultFocus(true) }
+    }
     Text("Protect your RC TV settings", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
     Text("Save favourites and their order, appearance and animation choices, screensaver settings, and weather location. " +
         if (savePicker) "Choose a USB/HDD or another writable location in Android’s file picker." else "Use TV Downloads below for a local copy; this TV’s storage picker is unavailable.")
@@ -89,6 +97,12 @@ import za.co.rc.tv.core.*
     FocusButton("Restore a TV Downloads copy", motion) {
         if (!busy) { busy = true; scope.launch { try { val copies = backup.downloads(); if (copies.isEmpty()) message = "No RC TV backups found in this TV’s Downloads." else localCopies = copies }
             catch (e: Exception) { fail(e) } finally { busy = false } } }
+    }
+    FocusButton("Export to connected folder…", motion) {
+        if (!busy) connectedFolder.launch(android.content.Intent(context, MediaBrowserActivity::class.java).putExtra(MediaBrowserActivity.OPERATION, MediaBrowserActivity.EXPORT))
+    }
+    FocusButton("Restore from connected folder…", motion) {
+        if (!busy) connectedFolder.launch(android.content.Intent(context, MediaBrowserActivity::class.java).putExtra(MediaBrowserActivity.OPERATION, MediaBrowserActivity.IMPORT))
     }
     Text("Backups include your chosen weather location and coordinates. They are readable settings files, not encrypted archives. Store them privately.")
     Text("Phone credentials, passwords, keys, Android Home selection and permissions are never included. Existing pairing on this TV stays untouched; securely pair your phone again on another TV. Keyboard activation and remote permissions must be set up on that TV.")

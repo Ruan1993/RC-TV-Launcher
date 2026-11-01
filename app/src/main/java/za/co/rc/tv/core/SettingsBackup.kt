@@ -145,6 +145,14 @@ internal fun parseBackupObject(text: String): JSONObject {
 internal class SettingsBackup(context: Context) {
     private val context = context.applicationContext
     private val preferences = Preferences(context)
+    suspend fun saveInFolder(directory: Uri): LocalBackup = withContext(Dispatchers.IO) {
+        require(directory.scheme == "content" && android.provider.DocumentsContract.isDocumentUri(context, directory))
+        val name = "RC-TV-settings-${java.text.SimpleDateFormat("yyyy-MM-dd-HHmmss-SSS", java.util.Locale.ROOT).format(java.util.Date())}.json"
+        val uri = android.provider.DocumentsContract.createDocument(context.contentResolver, directory, "application/json", name)
+            ?: error("This folder does not allow creating backup files.")
+        try { export(uri); LocalBackup(name, uri) }
+        catch (e: Exception) { runCatching { android.provider.DocumentsContract.deleteDocument(context.contentResolver, uri) }; throw e }
+    }
     fun pickerAvailable(action: String): Boolean {
         val intent = android.content.Intent(action).addCategory(android.content.Intent.CATEGORY_OPENABLE).setType("application/json")
         val activity = context.packageManager.resolveActivity(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo ?: return false
