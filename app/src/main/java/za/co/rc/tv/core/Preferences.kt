@@ -103,9 +103,17 @@ class Preferences(context: Context) {
     suspend fun setWallpaperVisibility(value: String) { require(value in wallpaperVisibilities); store.edit { it[visibility] = value } }
     suspend fun setFocusAnimation(value: String) { require(value in focusAnimations); store.edit { it[focusAnimation] = value } }
     suspend fun resetAppearance() { store.edit { it.remove(accent); it.remove(fontStyle); it.remove(textSize); it.remove(visibility); it.remove(focusAnimation) } }
+    suspend fun resetLauncherAppearance() { store.edit { resetLauncherVisualPreferences(it) } }
     suspend fun setTheme(value: String) { store.edit { it[theme] = validTheme(value) } }
     suspend fun setMotion(value: String) { store.edit { it[intensity] = validMotion(value) } }
     suspend fun setReducedMotion(enabled: Boolean) { store.edit { it[motion] = enabled } }
+}
+
+/** Explicit visual allowlist. Imported files, accessibility motion, screensaver and nonvisual data stay intact. */
+fun resetLauncherVisualPreferences(prefs: androidx.datastore.preferences.core.MutablePreferences) {
+    val visual = setOf("theme", "wallpaper", "wallpaper_rotation", "wallpaper_interval", "wallpaper_pool", "wallpaper_transition", "wallpaper_rotated_at",
+        "accent_theme", "font_style", "text_size", "wallpaper_visibility", "focus_animation", "animation_intensity")
+    prefs.asMap().keys.filter { it.name in visual }.forEach { prefs.remove(it) }
 }
 
 fun validTheme(value: String?) = value?.takeIf { it in listOf("Cinematic", "Minimalist") } ?: "Cinematic"

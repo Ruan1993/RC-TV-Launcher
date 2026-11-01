@@ -33,6 +33,9 @@ class WallpaperImportCheck : Instrumentation() {
     override fun onStart() {
         val result = Bundle()
         try {
+            if(refinementMode=="j3cvisual") { J3CReview.largeTextAndStorageStats(this); result.putString("verification","Extra Large Settings, provider chooser and reset confirmation checked; own installed storage measured"); finish(Activity.RESULT_OK,result); return }
+            if(refinementMode=="j3creset") { J3CReview.confirmedReset(this); result.putString("verification","Confirmed appearance reset preserved favourites/order, logical pairing, keyboard and screensaver settings; original appearance restored"); finish(Activity.RESULT_OK,result); return }
+            if(refinementMode=="j3clauncher") { J3CReview.launcher(this); result.putString("verification","Launcher management, honest Home status, reset Cancel and supported Home selection entry passed"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3cprovider") { J3CReview.providers(this); result.putString("verification","Provider switching, RC auto suppression, preview, saved choices and favourites passed"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3cproviderpersist") { J3CReview.providerPersistence(this); result.putString("verification","Provider, interval, style and favourites persisted after process restart"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3csettings") { J3CReview.settings(this,weatherLarge); result.putString("verification","Essential settings destinations, real storage, D-pad activation, Back return and preference preservation passed"); finish(Activity.RESULT_OK,result); return }

@@ -46,9 +46,13 @@ internal class TvReview(val test: Instrumentation) {
         error("No button $label")
     }
     fun select(label: String) {
-        val target=control(label)
+        var target=control(label)
         target.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.id)
         Thread.sleep(150)
+        if (!target.isFocused && !target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) {
+            // A preceding shell tap can leave Compose in touch input mode.
+            target.recycle(); key(KeyEvent.KEYCODE_DPAD_UP); target=control(label)
+        }
         check(target.isFocused || target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) { "Cannot focus $label" }
         target.recycle(); key(KeyEvent.KEYCODE_DPAD_CENTER); Thread.sleep(500)
     }
@@ -65,6 +69,97 @@ internal class TvReview(val test: Instrumentation) {
 }
 
 object J3CReview {
+    fun largeTextAndStorageStats(test: Instrumentation) {
+        val prefs=Preferences(test.targetContext)
+        val before=runBlocking { prefs.state.first() }
+        val driver=TvReview(test)
+        var activity: android.app.Activity?=null
+        try {
+            runBlocking { prefs.setTextSize("Extra Large") }
+            activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            Thread.sleep(1500)
+            driver.select("Settings"); driver.select("Apps & Media"); driver.control("Storage & USB settings").recycle(); driver.shot("apps-xl")
+            driver.key(KeyEvent.KEYCODE_BACK); driver.select("System & Recovery"); driver.select("Launcher Management"); driver.shot("launcher-xl")
+            driver.select("Reset RC TV Appearance"); driver.shot("reset-confirmation-xl"); driver.select("Cancel")
+            driver.key(KeyEvent.KEYCODE_BACK); driver.key(KeyEvent.KEYCODE_BACK)
+            driver.select("Screensaver & Power"); driver.select(before.screensaverProvider); driver.shot("provider-choice-xl"); driver.key(KeyEvent.KEYCODE_BACK)
+            val stats=test.targetContext.getSystemService(android.app.usage.StorageStatsManager::class.java)
+                .queryStatsForPackage(android.os.storage.StorageManager.UUID_DEFAULT,test.targetContext.packageName,android.os.Process.myUserHandle())
+            File(test.targetContext.filesDir,"j3c-size-evidence.txt").writeText("StorageStats own package: appBytes=${stats.appBytes}; dataBytes=${stats.dataBytes}; cacheBytes=${stats.cacheBytes}\n")
+            check(runBlocking { prefs.state.first() }.let { it.favourites==before.favourites && it.favouriteOrder==before.favouriteOrder && it.screensaverProvider==before.screensaverProvider })
+        } catch(failure: Throwable) { driver.shot("failure"); throw failure }
+        finally { test.runOnMainSync { activity?.finish() }; runBlocking { prefs.setTextSize(before.textSize) } }
+    }
+    /** Exercise the real confirmation, then restore only its visual-key allowlist. */
+    @Suppress("UNCHECKED_CAST")
+    fun confirmedReset(test: Instrumentation) {
+        val prefs=Preferences(test.targetContext)
+        val field=Preferences::class.java.getDeclaredField("store").apply { isAccessible=true }
+        val store=field.get(prefs) as androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
+        val snapshot=runBlocking { store.data.first() }
+        val before=runBlocking { prefs.state.first() }
+        val resetCopy=snapshot.toMutablePreferences().also { resetLauncherVisualPreferences(it) }
+        val visualKeys=snapshot.asMap().keys-resetCopy.asMap().keys
+        val pairing=za.co.rc.tv.link.SecureRecord(test.targetContext,"companion-grants").read()?.optJSONArray("grants")?.toString()
+        val keyboard=android.provider.Settings.Secure.getString(test.targetContext.contentResolver,android.provider.Settings.Secure.DEFAULT_INPUT_METHOD)
+        val driver=TvReview(test)
+        var activity: android.app.Activity?=null
+        try {
+            activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            Thread.sleep(1500)
+            driver.select("Settings"); driver.select("System & Recovery"); driver.select("Launcher Management")
+            driver.select("Reset RC TV Appearance"); driver.select("Reset appearance")
+            val reset=runBlocking { kotlinx.coroutines.withTimeout(5000) { store.data.first { data -> data.asMap().keys.none { it in visualKeys } } }; prefs.state.first() }
+            check(reset.theme=="Cinematic" && reset.wallpaper=="mountain" && reset.textSize=="Standard" && reset.accent=="Original (Default)")
+            check(reset.favourites==before.favourites && reset.favouriteOrder==before.favouriteOrder && reset.reducedMotion==before.reducedMotion)
+            check(reset.screensaverProvider==before.screensaverProvider && reset.screensaverStyle==before.screensaverStyle && reset.screensaverMinutes==before.screensaverMinutes)
+            check(za.co.rc.tv.link.SecureRecord(test.targetContext,"companion-grants").read()?.optJSONArray("grants")?.toString()==pairing)
+            check(android.provider.Settings.Secure.getString(test.targetContext.contentResolver,android.provider.Settings.Secure.DEFAULT_INPUT_METHOD)==keyboard)
+            driver.shot("reset-applied-test")
+        } finally {
+            runBlocking { store.updateData { current -> current.toMutablePreferences().apply {
+                resetLauncherVisualPreferences(this)
+                snapshot.asMap().filterKeys { it in visualKeys }.forEach { (key,value) -> this[key as androidx.datastore.preferences.core.Preferences.Key<Any>] = value }
+            } } }
+            test.runOnMainSync { activity?.finish() }
+        }
+        val restored=runBlocking { prefs.state.first() }
+        check(restored.accent==before.accent && restored.fontStyle==before.fontStyle && restored.textSize==before.textSize && restored.focusAnimation==before.focusAnimation)
+        check(restored.favourites==before.favourites && restored.favouriteOrder==before.favouriteOrder)
+        File(test.targetContext.filesDir,"j3c-reset-evidence.txt").writeText("Confirmed production reset applied default visuals; all ${before.favourites.size} favourites/order, logical pairing grants, keyboard and screensaver choices preserved. Original visual keys restored after test.\n")
+    }
+    fun launcher(test: Instrumentation) {
+        val prefs=Preferences(test.targetContext)
+        val before=runBlocking { prefs.state.first() }
+        val driver=TvReview(test)
+        var activity: android.app.Activity?=null
+        try {
+            activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            Thread.sleep(1500)
+            driver.select("Settings"); driver.select("System & Recovery"); driver.select("Launcher Management")
+            driver.control("Set RC TV as Default Home").recycle(); driver.shot("launcher-management")
+            val home=HomeIntegration.inspect(test.targetContext)
+            File(test.targetContext.filesDir,"j3c-home-before.txt").writeText("${home.resolvedPackage}\n${home.description(test.targetContext.packageName)}\nHome settings=${home.homeSettingsAvailable}; role available=${home.roleAvailable}; held=${home.roleHeld}\n")
+            driver.select("Reset RC TV Appearance")
+            driver.control("Cancel").let { check(it.isFocused) { "Reset should focus Cancel" }; it.recycle() }
+            driver.shot("reset-confirmation"); driver.key(KeyEvent.KEYCODE_BACK)
+            val cancelled=runBlocking { prefs.state.first() }
+            check(cancelled.copy(wallpaper=before.wallpaper, rotationAt=before.rotationAt)==before &&
+                (before.rotationEnabled || cancelled.wallpaper==before.wallpaper)) { "Cancelling reset changed preferences" }
+            driver.select("Open Android Settings"); check(driver.foregroundPackage()?.contains("settings")==true); driver.returnWithBack()
+            driver.key(KeyEvent.KEYCODE_BACK)
+            driver.control("Launcher Management").let { check(it.isFocused) { "Nested Back did not restore Launcher Management focus" }; it.recycle() }
+            driver.select("Launcher Management")
+            driver.select("Switch to Original Xiaomi Home")
+            check(driver.foregroundPackage()=="com.google.android.permissioncontroller" || driver.foregroundPackage()?.contains("settings")==true)
+            driver.shot("home-selection")
+            driver.returnWithBack()
+            check(HomeIntegration.inspect(test.targetContext).resolvedPackage==home.resolvedPackage) { "Opening chooser changed Home without selection" }
+            check(runBlocking { prefs.state.first() }.let { it.favourites==before.favourites && it.favouriteOrder==before.favouriteOrder })
+            File(test.targetContext.filesDir,"j3c-launcher-evidence.txt").writeText("Launcher UI, reset confirmation/Cancel, Android settings, nested Back focus and Home selection entry passed; no default changed\n")
+        } catch(failure: Throwable) { driver.shot("failure"); throw failure }
+        finally { test.runOnMainSync { activity?.finish() } }
+    }
     fun providers(test: Instrumentation) {
         val prefs=Preferences(test.targetContext)
         val before=runBlocking { prefs.state.first() }

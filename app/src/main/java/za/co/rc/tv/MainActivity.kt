@@ -72,8 +72,14 @@ class MainActivity : ComponentActivity() {
     private val preferences by lazy { Preferences(this) }
     private fun message(text: String) = Toast.makeText(this, text, Toast.LENGTH_LONG).show()
     private fun openSettings() {
-        runCatching { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
-            .onFailure { runCatching { startActivity(Intent(Settings.ACTION_SETTINGS)) }.onFailure { message("Open Android Settings from your original launcher.") } }
+        val intent = HomeIntegration.homeSettings(this)
+        if (intent == null) {
+            message("Home selection is unavailable here. Check Android Settings → Apps → Default apps. The original launcher remains installed.")
+            openSystemDestination(this, androidSettingsDestination)
+        } else runCatching { homeSelection.launch(intent) }.onFailure {
+            message("Home selection could not open. Choose the original launcher in Android Settings if available.")
+            openSystemDestination(this, androidSettingsDestination)
+        }
     }
     private val homeSelection = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) {
         message(HomeIntegration.inspect(this).description(packageName))
@@ -81,8 +87,8 @@ class MainActivity : ComponentActivity() {
     private fun selectHome() {
         val state = HomeIntegration.inspect(this)
         val roles = getSystemService(RoleManager::class.java)
-        val intent = if (state.roleAvailable && !state.roleHeld) roles.createRequestRoleIntent(RoleManager.ROLE_HOME)
-            else HomeIntegration.homeSettings(this)
+        val intent = runCatching { if (state.roleAvailable && !state.roleHeld) roles.createRequestRoleIntent(RoleManager.ROLE_HOME)
+            else HomeIntegration.homeSettings(this) }.getOrNull()
         if (intent == null) message("This firmware does not expose supported Home selection. Continue launching RC TV as an app; Xiaomi Home is unchanged.")
         else runCatching { homeSelection.launch(intent) }.onFailure { message("Home selection is unavailable on this firmware. Xiaomi's launcher remains installed.") }
     }
@@ -247,6 +253,8 @@ class MainActivity : ComponentActivity() {
                     onScreensaverStyle = { value -> scope.launch { preferences.setScreensaverStyle(value) } },
                     onPreviewScreensaver = { screensaverVisible = true },
                     onResetAppearance = { scope.launch { preferences.resetAppearance() } },
+                    onResetLauncherAppearance = { runCatching { preferences.resetLauncherAppearance() }
+                        .onFailure { message("Could not reset appearance. Your other settings are unchanged.") }.isSuccess },
                     onTheme = { value -> scope.launch { runCatching { preferences.setTheme(value) }.onFailure { message("Could not save theme.") } } },
                     onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
                     onReducedMotion = { scope.launch { runCatching { preferences.setReducedMotion(!prefs.reducedMotion) }.onFailure { message("Could not save preference.") } } }

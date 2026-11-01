@@ -35,3 +35,43 @@ Android provider cancels/skips the RC idle coroutine; RC preview remains an expl
 Physical provider-switch test passed: upgrade selected RC TV as expected; Android selection suppressed an accelerated idle deadline; explicit RC preview and Back dismissal worked while Android was selected; RC selection enabled the same deadline; style/interval and all eight favourites/order stayed intact. Original provider and interval were restored after testing. A separate instrumentation process after explicitly stopping only RC TV confirmed provider/interval/style/favourites/order persisted. Screenshots: provider-android.png and provider-rc.png. Evidence: checkpoint-b.txt under releases/review/phase-j3c.
 
 48 unit tests, APK/test APK build and lint passed (0 errors, 27 existing warnings). Fresh-install default/migration choices are unit-tested; the physical user data was not cleared to simulate a fresh install. APK: releases/phase-j3c/RC-TV-Launcher-1.0.0-rc1.13-debug.apk. A rollback: releases/rollback/RC-TV-Launcher-7ff2f25-debug.apk.
+
+## Checkpoint C — TV 1.0.0-rc1.14 (43)
+
+Checkpoint B committed as faba59d before this work. Added System & Recovery → Launcher Management, with live-on-resume actual Home status, explicit supported RC Home selection, original-launcher chooser, full Android Settings fallback and confirmed visual reset. Chooser/stub resolutions are reported as unknown instead of being mistaken for a default app. A Home role grant is explicitly distinguished from actual Home routing. Returning from the nested screen restores focus to its Launcher Management entry.
+
+The reset atomically removes a visual-only preference allowlist (wallpaper and rotation, theme, colours, font/size, visibility and focus/interface animation). It does not remove imported wallpaper files. Favourites/order, phone pairing, keyboard, Reduced Motion, screensaver provider/style/interval and unrelated future preferences are preserved. Cancel is initially focused. The physical confirmed-reset test exercised the production action, checked actual logical encrypted pairing records and selected keyboard without printing credentials, and restored only the original visual keys afterward. The test uses reflection only on RC TV's own private DataStore field; no Android hidden API or permission bypass is used.
+
+### Physical recovery result — BLOCKED by firmware
+
+1. The public Android Home chooser opened successfully and showed Google TV, RC TV Launcher and Setup Wizard.
+2. Before this test, RC TV was already checked in that chooser and Android reported the RC TV Home role as held; actual Home resolution was nevertheless Google TV. The test explicitly selected the visible RC TV Launcher row again.
+3. Three actual Android Home-key events still opened com.google.android.apps.tv.launcherx/.home.HomeActivity. PackageManager's default Home resolution also remained that Google TV activity. RC TV cannot honestly claim it became the operative default Home.
+4. The switch/restart recovery sequence was stopped at this failure, as requested. Reboot and switch-back/reboot steps 4–8 were not attempted or claimed. No launcher disabling, forceful preferred-activity/role modification, root, device-owner or accessibility workaround was used. Google TV remains installed and was observed launching correctly. RC TV remains usable by opening it as an app; the management screen shows the role/routing mismatch.
+
+This is an unresolved device/platform default-Home acceptance blocker, not a quota stop. No unsupported default-launcher workaround is included.
+
+### Verification
+
+- 50 unit tests passed, including safe Home-status classification and visual-reset preservation.
+- APK and separate test APK builds passed. Final lint: 0 errors, 27 existing warnings.
+- Physical Launcher Management, live Home description, confirmation/Cancel, Android Settings, nested Back focus and supported Home chooser entry passed without a silent default change.
+- Physical confirmed reset passed default-visual assertions and preserved all eight favourites/order, logical pairing grants, keyboard, Reduced Motion and screensaver choices. Original visual preferences were restored after testing.
+- Extra Large physical review passed Apps & Media, Launcher Management, reset confirmation and provider dialog; text size was restored afterward. Corresponding screenshots were retrieved and visually reviewed.
+- Approved HomeAppCard SHA256 remains 57340A0268E445499609688E9150ADB031125C8C596BB90BC6DA0FD3A68C1508; no Home geometry/artwork/navbar/weather/animation redesign. Phone sources unchanged; PR #2 unmerged; no public release.
+- The user's supplied J3B acceptance (real 10-minute timer, Reduced Motion and 15–20 minutes of uninterrupted streaming, 15/17 tested checks passed) is retained; those long checks were not repeated unnecessarily.
+
+### Lightweight baseline (debug, not a stock comparison)
+
+APK: 27873174 bytes. Android own-package StorageStats: appBytes=27893760, dataBytes=24621056, cacheBytes=249856. Data includes retained test screenshots/evidence and normal app data. No usage-access permission was requested. [Own-package storage API](https://developer.android.com/reference/android/app/usage/StorageStatsManager#queryStatsForPackage(java.util.UUID,%20java.lang.String,%20android.os.UserHandle)).
+
+One post-open memory sample: total PSS 77135 KiB, RSS 161284 KiB, graphics 7020 KiB. Explicit cold app opening took 3459 ms (ADB total time); this is not working Home-button routing or a statistically controlled benchmark. The Google TV process was present while RC TV was foreground; no stock background service was stopped. No faster-than-stock claim is made.
+
+Final APK: releases/phase-j3c/RC-TV-Launcher-1.0.0-rc1.14-debug.apk, SHA256 81A8ED5742CB3A32D1AE54973E721804BCE1041B118C43FE2C8260F255EDD9F0.
+Rollbacks: releases/rollback/RC-TV-Launcher-faba59d-debug.apk (B / rc1.13), RC-TV-Launcher-7ff2f25-debug.apk (A / rc1.12), RC-TV-Launcher-499ed8b-debug.apk (J3B / rc1.11). All earlier rollback APKs remain preserved.
+
+Final evidence under releases/review/phase-j3c: apps.png, system.png, provider-android.png, provider-rc.png, launcher-management.png, reset-confirmation.png, home-selection.png, home-routing-result.png; Extra Large apps-xl.png, launcher-xl.png, reset-confirmation-xl.png and provider-choice-xl.png. Text evidence includes checkpoint-a.txt, checkpoint-b.txt, checkpoint-c-ui.txt, reset-evidence.txt, size-evidence.txt and memory-baseline.txt.
+
+Next product work: J4 USB/HDD file management with VLC, with explicit device-granted storage access and existing Android storage controls as recovery. Default-Home firmware acceptance remains separately blocked; do not silently relax the no-system-package-workaround rule.
+
+Settled foreground-idle sample (after wallpaper/icon caches had loaded): total PSS 136617 KiB, RSS 219488 KiB, graphics 48064 KiB; saved as memory-idle.txt. This is a more representative idle sample than the earlier immediate post-open number, still a single debug-build observation rather than a controlled comparison.

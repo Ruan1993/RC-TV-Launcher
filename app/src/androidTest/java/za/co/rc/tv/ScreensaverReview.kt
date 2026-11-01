@@ -81,7 +81,7 @@ object ScreensaverReview {
         }
         fun saverPresent() = node("RC TV screensaver")?.let { it.recycle(); true } ?: false
         try {
-            runBlocking { prefs.setTextSize(if(large) "Extra Large" else "Standard"); prefs.setScreensaverMinutes(10); if(large) prefs.setReducedMotion(true) }
+            runBlocking { prefs.setTextSize(if(large) "Extra Large" else "Standard"); prefs.setScreensaverMinutes(10); prefs.setScreensaverProvider(RC_SCREENSAVER); if(large) prefs.setReducedMotion(true) }
             activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             Thread.sleep(1500)
             click("Settings"); click("Screensaver & Power")
@@ -148,7 +148,7 @@ object ScreensaverReview {
         finally {
             test.runOnMainSync { activity?.finish() }
             runBlocking {
-                prefs.setTextSize(before.textSize); prefs.setScreensaverMinutes(before.screensaverMinutes); prefs.setScreensaverStyle(before.screensaverStyle); prefs.setReducedMotion(before.reducedMotion)
+                prefs.setTextSize(before.textSize); prefs.setScreensaverMinutes(before.screensaverMinutes); prefs.setScreensaverStyle(before.screensaverStyle); prefs.setScreensaverProvider(before.screensaverProvider); prefs.setReducedMotion(before.reducedMotion)
                 val after=prefs.state.first()
                 check(after.favourites==before.favourites && after.favouriteOrder==before.favouriteOrder)
                 File(test.targetContext.filesDir,"j3b-preservation.txt").writeText("Favourites: ${after.favourites.size}\nSaved order: unchanged\nAppearance restored: ${after.textSize}\nReduced Motion restored: ${after.reducedMotion}\nScreensaver restored: ${after.screensaverMinutes} minutes / ${after.screensaverStyle}\n")

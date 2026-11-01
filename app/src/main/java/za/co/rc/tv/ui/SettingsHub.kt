@@ -44,7 +44,7 @@ internal val settingsCategories = listOf(
     Column(Modifier.fillMaxWidth().weight(1f),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         Row(horizontalArrangement=Arrangement.spacedBy(14.dp),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
             FocusButton("Back",motion,Modifier.focusRequester(backFocus),onClick=close)
-            Text(settingsCategories.first { it.key==key }.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge)
+            Text(if (key == "launcher") "Launcher Management" else settingsCategories.first { it.key==key }.title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge)
         }
         val palette=LocalAppearance.current; val shape=RoundedCornerShape(22.dp)
         Column(Modifier.fillMaxWidth().weight(1f).clip(shape).background(palette.glass).border(1.dp,palette.border,shape)

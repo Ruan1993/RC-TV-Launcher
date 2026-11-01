@@ -84,7 +84,7 @@ object SettingsReviewCheck {
             visible("Android app settings"); key(KeyEvent.KEYCODE_BACK); focused("Apps & Media")
             click("Weather & Widgets"); visible("About weather & privacy"); shot("settings-weather.png"); key(KeyEvent.KEYCODE_BACK); focused("Weather & Widgets")
             click("System & Recovery")
-            for(label in listOf("Easy setup","Android settings","Choose RC TV as Home…","Open Home settings / restore")) visible(label)
+            for(label in listOf("Easy setup","Android settings","Launcher Management")) visible(label)
             shot("settings-system.png"); key(KeyEvent.KEYCODE_BACK); focused("System & Recovery"); key(KeyEvent.KEYCODE_BACK)
             test.runOnMainSync { activity.finish() }
         } catch(failure: Exception) {

@@ -4,6 +4,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class HomeIntegrationTest {
+    @Test fun chooserAndStubNeverBecomeGuessedDefaults() {
+        assertFalse(reliableHomeTarget("android", "ResolverActivity"))
+        assertFalse(reliableHomeTarget("com.google.android.tv.frameworkpackagestubs", "HomeActivity"))
+        assertTrue(reliableHomeTarget("stock.home", "HomeActivity"))
+        assertTrue(HomeIntegrationState(null,"Android",true,false,true).description("rc.home").contains("unknown"))
+    }
     @Test fun roleGrantDoesNotMisreportActualHomeRouting() {
         val state = HomeIntegrationState("stock.home", "Stock Home", true, true, true)
         assertTrue(state.description("rc.home").contains("still resolves to Stock Home"))

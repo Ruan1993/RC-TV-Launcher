@@ -243,7 +243,7 @@ fun CinematicLauncher(
     onTransition: (String) -> Unit, onRotateWallpaper: suspend () -> Unit,
     onApplyWallpaper: suspend (String) -> Boolean,
     onSaveOrder: suspend (List<String>) -> Boolean,
-    onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onFocusAnimation: (String) -> Unit, onResetAppearance: () -> Unit,
+    onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onFocusAnimation: (String) -> Unit, onResetAppearance: () -> Unit, onResetLauncherAppearance: suspend () -> Boolean,
     onScreensaverMinutes: (Int) -> Unit, onScreensaverStyle: (String) -> Unit, onPreviewScreensaver: () -> Unit, onScreensaverProvider: (String) -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
@@ -261,6 +261,8 @@ fun CinematicLauncher(
     SideEffect { RenderDiagnostics.shellComposed() }
     var settingsPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     var lastSettingsCategory by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("appearance") }
+    val launcherEntryFocus = remember { FocusRequester() }
+    var restoreLauncherEntry by remember { mutableStateOf(false) }
     var utilityReturn by remember { mutableStateOf<String?>(null) }
     var weatherDetails by remember { mutableStateOf(false) }
     var wallpaperSettingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
@@ -288,10 +290,20 @@ fun CinematicLauncher(
         onDispose { lifecycle.removeObserver(observer) }
     }
     val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null } }
+    val closeSettingsPage = {
+        if (settingsPage == "launcher") { settingsPage = "system"; restoreLauncherEntry = true } else settingsPage = null
+    }
+    LaunchedEffect(settingsPage, restoreLauncherEntry) {
+        if (settingsPage == "system" && restoreLauncherEntry) {
+            withFrameNanos { }; withFrameNanos { }
+            inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
+            launcherEntryFocus.requestFocus(); restoreLauncherEntry = false
+        }
+    }
     // Root Back always stays in RC TV; later modal/preview/move handlers retain priority.
     BackHandler {
         if (section == "Settings" && wallpaperSettingsOpen) closeWallpapers()
-        else if (section == "Settings" && settingsPage != null) settingsPage=null
+        else if (section == "Settings" && settingsPage != null) closeSettingsPage()
         else if (utilityReturn != null && section in listOf("Speed Test","Apps")) {
             settingsPage=utilityReturn; utilityReturn=null; onSection("Settings")
         } else if (section != "Home") {
@@ -400,9 +412,10 @@ fun CinematicLauncher(
                             { previewWallpaper = wallpaperChoice ?: prefs.wallpaper },
                             { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers)
                     } else if(settingsPage == null) SettingsCategories(lastSettingsCategory,motion) { key -> lastSettingsCategory=key; settingsPage=key }
-                    else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,{ settingsPage=null }) {
+                    else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,closeSettingsPage) {
                         when(settingsPage) {
                             "power" -> ScreensaverSettings(prefs, motion, onScreensaverMinutes, onScreensaverStyle, onPreviewScreensaver, onScreensaverProvider)
+                            "launcher" -> LauncherManagement(motion, onChooseHome, onRestoreHome, onAndroidSettings, onResetLauncherAppearance)
                             "appearance" -> {
                                 Text("Wallpaper",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text(wallpapers.firstOrNull { it.id==prefs.wallpaper }?.title ?: "Mountain horizon")
@@ -451,11 +464,7 @@ fun CinematicLauncher(
                                 Text("RC TV ${za.co.rc.tv.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 FocusButton("Easy setup",motion,onClick=onEasySetup)
                                 essentialSystemDestinations.forEach { SystemSettingsLink(it, motion) }
-                                Text("Default Home & recovery",style=MaterialTheme.typography.titleMedium,color=Ice)
-                                Text(homeStatus)
-                                ReadableNote("Choosing Home is optional. Keep the original launcher installed for recovery. Android asks you to choose; RC TV does not change it automatically.")
-                                FocusButton("Choose RC TV as Home…",motion,onClick=onChooseHome)
-                                FocusButton("Open Home settings / restore",motion,onClick=onRestoreHome)
+                                FocusButton("Launcher Management", motion, Modifier.focusRequester(launcherEntryFocus)) { settingsPage = "launcher" }
                             }
                         }
                     } }
