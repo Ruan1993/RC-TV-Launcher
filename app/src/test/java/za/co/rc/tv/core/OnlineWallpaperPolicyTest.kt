@@ -5,6 +5,18 @@ import org.junit.Test
 import java.nio.file.Files
 
 class OnlineWallpaperPolicyTest {
+    @Test fun acceptsLicenceUrlsCapturedFromRealCommonsGalleryPages() {
+        val rows = javaClass.getResourceAsStream("/commons-wallpaper-licences.tsv")!!.bufferedReader().use { reader ->
+            reader.readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map { it.split('\t') }
+        }
+        assertEquals(14, rows.size)
+        assertTrue(rows.any { !it[2].endsWith("/") })
+        rows.forEach { row -> assertEquals("Commons page ${row[1]}", row[3], OnlineWallpaperPolicy.license(row[2])) }
+        val pages = rows.groupBy { it[0] }
+        assertTrue(pages.getValue("1").map { it[1] }.toSet().intersect(pages.getValue("2").map { it[1] }.toSet()).isEmpty())
+        listOf("https://creativecommons.org/licenses/by-nc/4.0", "https://creativecommons.org/licenses/by-nd/4.0",
+            "https://creativecommons.org.evil.test/licenses/by-sa/3.0").forEach { assertNull(OnlineWallpaperPolicy.license(it)) }
+    }
     @Test fun onlyExplicitSupportedLicencesAreAccepted() {
         assertEquals("https://creativecommons.org/licenses/by-sa/4.0/", OnlineWallpaperPolicy.license("http://creativecommons.org/licenses/by-sa/4.0/"))
         listOf("https://creativecommons.org/licenses/by-nc/4.0/", "https://creativecommons.org/licenses/by-nd/4.0/",

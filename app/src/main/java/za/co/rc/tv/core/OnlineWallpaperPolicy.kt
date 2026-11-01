@@ -18,8 +18,10 @@ object OnlineWallpaperPolicy {
     }.getOrDefault(false)
     fun license(value: String): String? = runCatching {
         val u = URI(value)
+        // Commons LicenseUrl metadata commonly omits the canonical trailing slash.
+        val path = if (u.path.endsWith("/")) u.path else "${u.path}/"
         if (u.scheme !in setOf("http", "https") || u.host != "creativecommons.org" || u.userInfo != null || u.port != -1 || u.query != null) null
-        else u.path.takeIf { it in setOf("/licenses/by/3.0/", "/licenses/by/4.0/", "/licenses/by-sa/3.0/", "/licenses/by-sa/4.0/", "/publicdomain/zero/1.0/") }?.let { "https://creativecommons.org$it" }
+        else path.takeIf { it in setOf("/licenses/by/3.0/", "/licenses/by/4.0/", "/licenses/by-sa/3.0/", "/licenses/by-sa/4.0/", "/publicdomain/zero/1.0/") }?.let { "https://creativecommons.org$it" }
     }.getOrNull()
     fun fit(width: Int, height: Int, maxWidth: Int, maxHeight: Int): Pair<Int, Int> {
         require(width > 0 && height > 0 && maxWidth > 0 && maxHeight > 0)

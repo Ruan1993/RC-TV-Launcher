@@ -52,3 +52,11 @@ Rollback APK remains `releases/phase-continue-watching/RC-TV-Launcher-1.0.0-rc1.
 6. Check low-storage failure preserves the current image, and cache eviction remains bounded during ordinary paging. Do not fill the physical TV's storage merely to test this; policy and file-cache boundaries are covered by unit tests.
 
 No takeover, Home handling, Accessibility, DreamService, phone companion, favourites, weather-provider or system-package changes are part of this feature. Physical rendering, remote navigation and device-specific network behaviour are not claimed verified by the PC checks.
+
+## rc1.24 (56) — empty gallery correction
+
+Physical build-55 testing found no visible images. The exact live API query returns valid `LicenseUrl` values such as `https://creativecommons.org/licenses/by-sa/3.0` without a trailing slash. The allowlist required `/3.0/`, rejecting these compatible licences before the remaining filters ran. Normalise only the optional final slash before the existing exact licence-path comparison. Host, scheme, user-info, port, query, supported-licence, attribution and image checks are unchanged. No gallery, download, preview, save, cache or storage-limit changes.
+
+Live two-page verification on 2026-11-01: page 1 contains 12 source files, zero eligible before and 12 after correction; page 2 contains 12 source files, zero eligible before and 2 after. All source page IDs across the two pages are distinct. Other entries remain excluded by existing checks. Captured the 14 eligible files’ actual licence URLs and canonical equivalents in `app/src/test/resources/commons-wallpaper-licences.tsv`; the JVM regression test failed against the old code and passes after correction. Unsupported licences and lookalike hosts remain rejected, including URLs without a final slash. Earlier PC smoke tests checked metadata/image reachability but failed to exercise licence validation; this fixture closes that gap.
+
+Build and complete unit suite passed: **79 tests, zero failures/errors/skips**. Saved `releases/phase-online-wallpapers/RC-TV-Launcher-1.0.0-rc1.24-debug.apk`, SHA-256 `03f84491713338723ff2e18a466a78a0d9c4830bbf383e3381cf74bb435217c4`. Local record: `verification-rc1.24.json` in the same folder. Build 55 APK is preserved. No installation, ADB checks, reboot or device changes; physical gallery verification remains pending approval.
