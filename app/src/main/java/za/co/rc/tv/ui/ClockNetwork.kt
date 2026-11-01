@@ -26,7 +26,10 @@ import za.co.rc.tv.core.*
 
 @Composable internal fun ClockNetwork(clock: String, monitor: NetworkStatusMonitor, focus: FocusRequester, settings: FocusRequester, open: () -> Unit) {
     val status by monitor.state.collectAsState(); val lifecycle=LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(lifecycle,monitor) {
+    val contentReady = LocalHomeContentReady.current
+    DisposableEffect(lifecycle,monitor,contentReady) {
+        if (!contentReady) return@DisposableEffect onDispose {}
+        android.util.Log.d("RcStartup", "Network indicator enabled after Home content draw")
         val observer=LifecycleEventObserver { _,event -> when(event) { Lifecycle.Event.ON_RESUME -> monitor.start(); Lifecycle.Event.ON_PAUSE -> monitor.stop(); else -> Unit } }
         lifecycle.addObserver(observer); if(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) monitor.start()
         onDispose { lifecycle.removeObserver(observer); monitor.stop() }

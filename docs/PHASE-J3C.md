@@ -75,3 +75,9 @@ Final evidence under releases/review/phase-j3c: apps.png, system.png, provider-a
 Next product work: J4 USB/HDD file management with VLC, with explicit device-granted storage access and existing Android storage controls as recovery. Default-Home firmware acceptance remains separately blocked; do not silently relax the no-system-package-workaround rule.
 
 Settled foreground-idle sample (after wallpaper/icon caches had loaded): total PSS 136617 KiB, RSS 219488 KiB, graphics 48064 KiB; saved as memory-idle.txt. This is a more representative idle sample than the earlier immediate post-open number, still a single debug-build observation rather than a controlled comparison.
+
+## Mandatory primary-Home follow-up — rc1.15 (44), NOT ACCEPTED
+
+The critical startup/Home requirement supersedes any impression that the Settings checkpoints complete J3C. Further physical tests now include a full reboot, the user's real remote Home check, a supported original/RC chooser round trip, standby and physical wake, and Home from Android Settings/YouTube. Google TV still handles boot and Home despite RC TV's persisted role. Wake correctly resumes an already-open RC TV activity, but Home after wake still goes to Google TV. [Full mandatory acceptance report](PRIMARY-HOME-ACCEPTANCE.md) supersedes the earlier point at which reboot testing had stopped.
+
+Optional startup work is now released after Home content draws, without delaying the UI. Power/restart guidance was added after verifying the remote's Restart menu; ordinary-app reboot/shutdown remains unsupported. No workarounds, system-package changes, extra services or boot receiver were added. 50 unit tests, builds and lint pass; startup-order/navigation/data-preservation instrumentation passed. Explicit-open debug timing samples did not show a speed improvement and are reported without a faster-than-stock claim.

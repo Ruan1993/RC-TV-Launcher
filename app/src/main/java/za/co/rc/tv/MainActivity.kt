@@ -45,7 +45,6 @@ class MainActivity : ComponentActivity() {
         za.co.rc.tv.companion.RemoteRuntime.foreground = { key, text ->
             lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && (window.decorView.hasWindowFocus() || screensaverVisible || key == "CLOSE_SETUP") && remoteAction?.invoke(key, text) == true
         }
-        companion.resume()
     }
     private fun traceBackKey(event: android.view.KeyEvent) {
         if (BuildConfig.PROFILE_DIAGNOSTICS && event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
@@ -100,6 +99,7 @@ class MainActivity : ComponentActivity() {
             val prefs by preferences.state.collectAsStateWithLifecycle(LauncherPreferences())
             za.co.rc.tv.ui.LauncherAppearance(prefs) {
                 var discovery by remember { mutableStateOf(AppDiscoveryState()) }
+                val homeContentReady = za.co.rc.tv.ui.rememberHomeContentDrawn(discovery.loaded)
                 var section by rememberSaveable { mutableStateOf("Home") }
                 var query by rememberSaveable { mutableStateOf("") }
                 val setupPrefs = remember { getSharedPreferences("easy-setup", MODE_PRIVATE) }
@@ -189,13 +189,19 @@ class MainActivity : ComponentActivity() {
                 }
                 LaunchedEffect(lifecycle, refresh) {
                     lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                        wallpapers = runCatching { wallpaperStore.list() }.getOrElse { message("Wallpaper library unavailable."); bundledWallpapers }
                         discovery = refreshDiscovery(discovery, { repository.discover() }) {
                             android.util.Log.e("RcDiscovery", "Installed app discovery failed", it)
                         }
                         repository.invalidateIcons()
                         iconGeneration++
                         android.util.Log.d("RcDiscovery", "Refresh complete: ${discovery.apps.size} apps, error=${discovery.error != null}")
+                    }
+                }
+                LaunchedEffect(lifecycle, homeContentReady) {
+                    if (homeContentReady) lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        android.util.Log.i("RcStartup", "Optional resume work started uptime=${android.os.SystemClock.uptimeMillis()}")
+                        companion.resume()
+                        wallpapers = runCatching { wallpaperStore.list() }.getOrElse { message("Wallpaper library unavailable."); bundledWallpapers }
                         val input = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
                         val ownKeyboard = android.content.ComponentName(this@MainActivity, za.co.rc.tv.keyboard.RcInputMethodService::class.java)
                         val enabled = input.enabledInputMethodList.any { android.content.ComponentName(it.packageName, it.serviceName) == ownKeyboard }
@@ -208,6 +214,7 @@ class MainActivity : ComponentActivity() {
                 // Home is the navigation root, not an exit to the previous Android task.
                 // Keep this active at Home as well as in launcher sections.
                 BackHandler { section = "Home" }
+                CompositionLocalProvider(za.co.rc.tv.ui.LocalHomeContentReady provides homeContentReady) {
                 za.co.rc.tv.ui.CinematicLauncher(
                     discovery = discovery, repository = repository, iconGeneration = iconGeneration,
                     prefs = prefs, section = section, onSection = { section = it },
@@ -259,6 +266,7 @@ class MainActivity : ComponentActivity() {
                     onMotion = { value -> scope.launch { runCatching { preferences.setMotion(value) }.onFailure { message("Could not save motion preference.") } } },
                     onReducedMotion = { scope.launch { runCatching { preferences.setReducedMotion(!prefs.reducedMotion) }.onFailure { message("Could not save preference.") } } }
                 )
+                }
                 if (setupOpen) za.co.rc.tv.ui.SetupWizard(companion, { selectHome() }, { openSettings() }) {
                     setupPrefs.edit().putBoolean("seen", true).apply(); setupOpen = false
                 }

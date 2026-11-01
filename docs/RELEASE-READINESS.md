@@ -1,6 +1,6 @@
-# Release readiness â€” 1.0 gates
+# Release readiness — 1.0 gates
 
-Current work is **J3C (TV 1.0.0-rc1.14)**, not a public final 1.0 release. [J3C verification and limitations](PHASE-J3C.md) supersede historical completion notes below. **Xiaomi default-Home acceptance is blocked:** Android shows RC TV selected and grants the Home role, but actual Home-key routing and default resolution still open Google TV. The requested recovery/reboot sequence stopped at step 3. No forceful system-package workaround is permitted or implemented. All eight favourites/order, original Home, pairing and keyboard are preserved; PR #2 remains unmerged.
+Current work is **J3C (TV 1.0.0-rc1.15)**, not a public final 1.0 release. [J3C verification and limitations](PHASE-J3C.md) supersede historical completion notes below. **Xiaomi default-Home acceptance is blocked:** Android shows RC TV selected and grants the Home role, but actual Home-key routing and default resolution still open Google TV. Further physical reboot, remote Home, supported selection round-trip and standby/wake testing confirmed the blocker. Wake resumes RC TV when it was already foreground, but Home after wake still opens Google TV. [Mandatory acceptance evidence](PRIMARY-HOME-ACCEPTANCE.md). No forceful system-package workaround is permitted or implemented. All eight favourites/order, original Home, pairing and keyboard are preserved; PR #2 remains unmerged.
 
 The RC includes themes/fonts/visibility, matching adaptive icons, optional cached weather and an inactive download screen. Media metadata is unavailable to an ordinary Xiaomi install without intrusive/privileged access, so its card stays hidden. Actual casting, physical HONOR review, reboot/long-session/performance acceptance, production signing and public distribution approval remain. The older master-specification items below are historical/future scope and are not silently represented as complete by an RC version number.
 
@@ -23,7 +23,7 @@ The RC includes themes/fonts/visibility, matching adaptive icons, optional cache
 - [x] Background bounds-first decoding, serialized full-image loads, one cached backdrop and precomposited scrims; no live blur.
 - [x] Original Home, navigation and first selector approved. Current high-efficiency sprint supersedes the old feedback pause; see SPRINT-WALLPAPERS.md.
 - [x] System document-picker import; JPEG/PNG/WebP validation, normalized private copies, bounded dimensions/source size/count, corrupt input errors and confirmed removal.
-- [ ] Physical picker/USB provider acceptance: this Xiaomi exposes only Googleâ€™s DocumentsStub; no working picker was installed or substituted. Import pipeline tested separately on device.
+- [ ] Physical picker/USB provider acceptance: this Xiaomi exposes only Google’s DocumentsStub; no working picker was installed or substituted. Import pipeline tested separately on device.
 - [x] Rotation enable/disable, participants and 5/15/30 minute, 1/24 hour intervals persist; Home/RESUMED scheduling, overdue return handled once, no service.
 - [ ] Longer real-time rotation/power/lifecycle sessions across devices.
 - [x] Instant/Crossfade/Gentle Slide implemented; short local transitions, Minimal/reduced motion instant.

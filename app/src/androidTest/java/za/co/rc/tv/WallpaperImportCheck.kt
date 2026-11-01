@@ -33,6 +33,7 @@ class WallpaperImportCheck : Instrumentation() {
     override fun onStart() {
         val result = Bundle()
         try {
+            if(refinementMode=="j3cstartup") { J3CReview.startupOrdering(this); result.putString("verification","Home content draw precedes optional resume/network work; navigation and favourites preserved"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3cvisual") { J3CReview.largeTextAndStorageStats(this); result.putString("verification","Extra Large Settings, provider chooser and reset confirmation checked; own installed storage measured"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3creset") { J3CReview.confirmedReset(this); result.putString("verification","Confirmed appearance reset preserved favourites/order, logical pairing, keyboard and screensaver settings; original appearance restored"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3clauncher") { J3CReview.launcher(this); result.putString("verification","Launcher management, honest Home status, reset Cancel and supported Home selection entry passed"); finish(Activity.RESULT_OK,result); return }

@@ -32,6 +32,7 @@ import za.co.rc.tv.core.*
     minutes: (Int) -> Unit, style: (String) -> Unit, preview: () -> Unit, provider: (String) -> Unit) {
     val context = LocalContext.current
     var choice by remember { mutableStateOf<String?>(null) }
+    var powerHelp by remember { mutableStateOf(false) }
     Text("Screensaver Provider", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
     FocusButton(prefs.screensaverProvider, motion) { choice = "provider" }
     Text(if (prefs.screensaverProvider == ANDROID_SCREENSAVER)
@@ -57,6 +58,15 @@ import za.co.rc.tv.core.*
     Text("Android manages sleep and standby. Choose System → Power and energy in Android Settings. RC TV cannot set a system sleep timer or switch off TV hardware.")
     FocusButton("Open Android power settings", motion) {
         openSaverSystemSettings(context, Settings.ACTION_DISPLAY_SETTINGS)
+    }
+    FocusButton("Power off & restart help", motion) { powerHelp = true }
+    if (powerHelp) {
+        val closeFocus = remember { FocusRequester() }
+        val input = LocalInputModeManager.current
+        LaunchedEffect(Unit) { withFrameNanos { }; input.requestInputMode(InputMode.Keyboard); closeFocus.requestFocus() }
+        AlertDialog(onDismissRequest = { powerHelp = false }, title = { Text("Power off & restart") },
+        text = { Text("To restart this Xiaomi, hold the remote’s Power button and choose Restart in Android’s power menu. Use the physical remote’s power control for standby; standby does not disconnect physical power. Android restricts direct shutdown and reboot to system apps, so RC TV cannot perform those actions itself. Android power settings remain available for sleep options.") },
+        confirmButton = { FocusButton("Close", motion, Modifier.focusRequester(closeFocus)) { powerHelp = false } })
     }
     if (choice != null) {
         val times = choice == "time"

@@ -37,8 +37,9 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
     val state by repository.state.collectAsState()
     if(!state.enabled) return
     val lifecycle=LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(state.place,lifecycle) {
-        if(state.place!=null) lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { repository.refreshIfDue(); kotlinx.coroutines.awaitCancellation() }
+    val contentReady = LocalHomeContentReady.current
+    LaunchedEffect(state.place,lifecycle,contentReady) {
+        if(contentReady && state.place!=null) lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { repository.refreshIfDue(); kotlinx.coroutines.awaitCancellation() }
     }
     val place=state.place ?: return
     val reading=state.reading?.takeIf { WeatherPolicy.usable(now,it.observed) }

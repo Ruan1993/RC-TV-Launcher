@@ -69,6 +69,35 @@ internal class TvReview(val test: Instrumentation) {
 }
 
 object J3CReview {
+    fun startupOrdering(test: Instrumentation) {
+        val before=runBlocking { Preferences(test.targetContext).state.first() }
+        val grants=za.co.rc.tv.link.SecureRecord(test.targetContext,"companion-grants").read()?.optJSONArray("grants")?.toString()
+        val keyboard=android.provider.Settings.Secure.getString(test.targetContext.contentResolver,android.provider.Settings.Secure.DEFAULT_INPUT_METHOD)
+        val driver=TvReview(test)
+        var activity: android.app.Activity?=null
+        try {
+            activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            Thread.sleep(1500)
+            val stream=driver.ui.executeShellCommand("logcat -d --pid=${android.os.Process.myPid()} -v threadtime -s RcStartup")
+            val trace=android.os.ParcelFileDescriptor.AutoCloseInputStream(stream).bufferedReader().use { it.readText() }
+            val draw=trace.indexOf("Home content drawn;")
+            val optional=trace.indexOf("Optional resume work started")
+            val network=trace.indexOf("Network indicator enabled")
+            check(draw>=0 && optional>draw && network>draw) { "Optional work ran before Home content draw: $trace" }
+            driver.select("Settings"); driver.select("Screensaver & Power")
+            driver.control(before.screensaverProvider).recycle()
+            driver.select("Power off & restart help")
+            driver.control("Close").let { check(it.isFocused); it.recycle() }
+            driver.shot("power-help"); driver.key(KeyEvent.KEYCODE_BACK)
+            driver.key(KeyEvent.KEYCODE_BACK); driver.key(KeyEvent.KEYCODE_BACK)
+            val after=runBlocking { Preferences(test.targetContext).state.first() }
+            check(after.favourites==before.favourites && after.favouriteOrder==before.favouriteOrder && after.screensaverProvider==before.screensaverProvider)
+            check(za.co.rc.tv.link.SecureRecord(test.targetContext,"companion-grants").read()?.optJSONArray("grants")?.toString()==grants)
+            check(android.provider.Settings.Secure.getString(test.targetContext.contentResolver,android.provider.Settings.Secure.DEFAULT_INPUT_METHOD)==keyboard)
+            File(test.targetContext.filesDir,"j3c-startup-order.txt").writeText(trace+"\nHome navigation, power help and all ${after.favourites.size} favourites/order/provider, logical pairing grants and keyboard preserved.\n")
+        } catch(failure: Throwable) { driver.shot("startup-failure"); throw failure }
+        finally { test.runOnMainSync { activity?.finish() } }
+    }
     fun largeTextAndStorageStats(test: Instrumentation) {
         val prefs=Preferences(test.targetContext)
         val before=runBlocking { prefs.state.first() }
