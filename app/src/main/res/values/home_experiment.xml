@@ -1,4 +1,4 @@
 <resources>
     <string name="home_experiment_name">RC TV Home experiment</string>
-    <string name="home_experiment_description">Optional temporary Home-button test. Filters Home keys. A separately selected test mode redirects only Google TV HomeActivity windows. Does not read screen contents or change default Home. Turn this service off to undo. Long Home may be intercepted.</string>
+    <string name="home_experiment_description">Optional Home-button and startup test. Short Home opens RC TV; long Home opens RC TV Settings. On service startup, redirects Google TV’s exact Home screen once. Does not read screen contents or change default Home. Turn this service off to undo.</string>
 </resources>
