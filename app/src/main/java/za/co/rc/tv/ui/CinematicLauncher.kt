@@ -176,6 +176,11 @@ private fun NavigationMark(mark: String, tint: Color) {
                 for (x in listOf(.25f,.5f,.75f)) drawCircle(tint, w*.04f, Offset(w*x,h*.4f))
                 drawLine(tint, Offset(w*.3f,h*.63f), Offset(w*.7f,h*.63f), stroke)
             }
+            "I" -> {
+                drawCircle(tint,w*.38f,style=Stroke(stroke))
+                drawCircle(tint,w*.045f,Offset(w*.5f,h*.31f))
+                drawLine(tint,Offset(w*.5f,h*.46f),Offset(w*.5f,h*.72f),stroke)
+            }
             else -> {
                 val cog = Path().apply {
                     for (i in 0 until 48) {
@@ -267,10 +272,8 @@ fun CinematicLauncher(
     SideEffect { RenderDiagnostics.shellComposed() }
     var settingsPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     var lastSettingsCategory by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("appearance") }
-    val launcherEntryFocus = remember { FocusRequester() }
-    val backupEntryFocus = remember { FocusRequester() }
-    var returnToBackupEntry by remember { mutableStateOf(false) }
-    var restoreLauncherEntry by remember { mutableStateOf(false) }
+    val settingsEntryFocus = remember { listOf("backup", "wallpaper", "apps", "speed", "cast", "weather-details").associateWith { FocusRequester() } }
+    var pendingSettingsEntry by remember { mutableStateOf<String?>(null) }
     var utilityReturn by remember { mutableStateOf<String?>(null) }
     var weatherDetails by remember { mutableStateOf(false) }
     var wallpaperSettingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
@@ -297,23 +300,39 @@ fun CinematicLauncher(
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
-    val closeWallpapers = { if (!applyingWallpaper) { previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null } }
+    val closeWallpapers = { if (!applyingWallpaper) {
+        if (wallpaperSettingsOpen) pendingSettingsEntry = "wallpaper"
+        previewWallpaper = null; wallpaperSettingsOpen = false; wallpaperChoice = null
+    } }
     val closeSettingsPage = {
-        if (settingsPage == "launcher" || settingsPage == "backup") { returnToBackupEntry = settingsPage == "backup"; settingsPage = "system"; restoreLauncherEntry = true } else settingsPage = null
+        val target = settingsBackTarget(settingsPage)
+        settingsPage = target.page
+        if (target.page == null) lastSettingsCategory = target.entry ?: "appearance"
+        else pendingSettingsEntry = target.entry
     }
-    LaunchedEffect(settingsPage, restoreLauncherEntry) {
-        if (settingsPage == "system" && restoreLauncherEntry) {
-            withFrameNanos { }; withFrameNanos { }
-            inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
-            (if (returnToBackupEntry) backupEntryFocus else launcherEntryFocus).requestFocus(); restoreLauncherEntry = false
+    LaunchedEffect(Unit) {
+        // Preserve valid UI state and map old category routes after an in-place update.
+        lastSettingsCategory = settingsCategoryKey(lastSettingsCategory) ?: "appearance"
+        if (settingsPage != "backup") settingsPage = settingsCategoryKey(settingsPage)
+    }
+    LaunchedEffect(section, settingsPage, wallpaperSettingsOpen, pendingSettingsEntry) {
+        if (section == "Settings" && settingsPage != null && !wallpaperSettingsOpen && pendingSettingsEntry != null) {
+            val entry = pendingSettingsEntry!!
+            if (settingsEntryPage(entry) == settingsPage) {
+                withFrameNanos { }; withFrameNanos { }
+                inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard)
+                settingsEntryFocus[entry]?.requestFocus()
+            }
+            pendingSettingsEntry = null
         }
     }
     // Root Back always stays in RC TV; later modal/preview/move handlers retain priority.
     BackHandler {
         if (section == "Settings" && wallpaperSettingsOpen) closeWallpapers()
         else if (section == "Settings" && settingsPage != null) closeSettingsPage()
-        else if (utilityReturn != null && section in listOf("Speed Test","Apps")) {
-            settingsPage=utilityReturn; utilityReturn=null; onSection("Settings")
+        else if (utilityReturn != null && settingsUtilityTarget(section) != null) {
+            val target = settingsUtilityTarget(section)!!
+            settingsPage=target.page; pendingSettingsEntry=target.entry; utilityReturn=null; onSection("Settings")
         } else if (section != "Home") {
             closeWallpapers(); onSection("Home")
         } else {
@@ -398,6 +417,7 @@ fun CinematicLauncher(
     if(weatherDetails) WeatherDetails(weather, motion, {
         weatherDetails=false
         weatherReturnFocus = weatherFromHome && section == "Home"
+        if (!weatherFromHome && section == "Settings" && settingsPage == "weather") pendingSettingsEntry="weather-details"
     })
     val vivid = prefs.wallpaperVisibility == "Vivid"
     Box(Modifier.fillMaxSize()) {
@@ -436,17 +456,15 @@ fun CinematicLauncher(
                     } else if(settingsPage == null) SettingsCategories(lastSettingsCategory,motion) { key -> lastSettingsCategory=key; settingsPage=key }
                     else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,closeSettingsPage) {
                         when(settingsPage) {
-                            "power" -> ScreensaverSettings(prefs, motion, onScreensaverMinutes, onScreensaverStyle, onPreviewScreensaver, onScreensaverProvider)
-                            "launcher" -> LauncherManagement(motion, onChooseHome, onRestoreHome, onAndroidSettings, onResetLauncherAppearance)
                             "backup" -> BackupRestore(motion)
                             "appearance" -> {
                                 Text("Wallpaper",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text(wallpapers.firstOrNull { it.id==prefs.wallpaper }?.title ?: "Mountain horizon")
-                                FocusButton("Choose wallpaper",motion) { wallpaperSettingsOpen=true }
+                                FocusButton("Choose wallpaper",motion,Modifier.focusRequester(settingsEntryFocus.getValue("wallpaper"))) { wallpaperSettingsOpen=true }
                                 AppearanceSettings(prefs,motion,onAccent,onFontStyle,onTextSize,onWallpaperVisibility,onResetAppearance)
                                 Text("Layout",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 SettingsOptions { listOf("Cinematic","Minimalist").forEach { value -> FocusButton(value,motion,selected=prefs.theme==value) { onTheme(value) } } }
-                                Text("Animation Intensity",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                Text("Focus animation",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 SettingsOptions { focusAnimations.forEach { value -> FocusButton(value,motion,Modifier.semantics { contentDescription="Focus animation $value" },selected=prefs.focusAnimation==value) { onFocusAnimation(value) } } }
                                 if(prefs.reducedMotion) Text("Reduced Motion is on; focus effects are off.")
                                 Text("Interface motion",style=MaterialTheme.typography.titleMedium,color=Ice)
@@ -460,17 +478,28 @@ fun CinematicLauncher(
                                 if(status.kind in listOf(NetworkKind.WIFI,NetworkKind.ETHERNET,NetworkKind.OTHER)) Text(if(status.internet) "Internet available" else "Internet not confirmed")
                                 FocusButton("Bluetooth Devices",motion,icon="B",quiet=true,onClick=onBluetoothSettings)
                                 Text("Manage networks and pair devices in Android Settings. If a direct page is unavailable, choose Network & Internet or Remotes & Accessories there.",style=MaterialTheme.typography.bodyMedium)
-                                FocusButton("Internet Speed Test",motion) { utilityReturn="connections"; onSection("Speed Test") }
+                                FocusButton("Cast & screen mirroring",motion,Modifier.focusRequester(settingsEntryFocus.getValue("cast")),icon="C",quiet=true) { utilityReturn="connections"; onSection("Cast") }
+                                essentialSystemDestinations.filter { systemDestinationCategory(it.key) == "connections" }.forEach { SystemSettingsLink(it, motion) }
                             }
                             "apps" -> {
+                                LauncherManagement(motion, onChooseHome, onRestoreHome, onAndroidSettings)
+                                HorizontalDivider()
+                                Text("Apps & media",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                Text("Hold OK on an app to manage favourites or change their order.")
                                 FocusButton("Media Browser", motion) { weatherContext.startActivity(android.content.Intent(weatherContext, MediaBrowserActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                                FocusButton("Browse installed apps",motion) { utilityReturn="apps"; onSection("Apps") }
+                                FocusButton("Browse installed apps",motion,Modifier.focusRequester(settingsEntryFocus.getValue("apps"))) { utilityReturn="apps"; onSection("Apps") }
                                 SystemSettingsLink(appSettingsDestination, motion)
                                 Text("Choose an app in Android to manage its permissions, storage and cache.")
                                 StorageSummary()
-                                SystemSettingsLink(storageSettingsDestination, motion)
+                                essentialSystemDestinations.filter { systemDestinationCategory(it.key) == "apps" }.forEach { SystemSettingsLink(it, motion) }
                             }
-                            "weather" -> WeatherSettings(weather,motion,{ weatherFromHome=false; weatherDetails=true })
+                            "weather" -> {
+                                Text("Weather",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                WeatherSettings(weather,motion,{ weatherFromHome=false; weatherDetails=true }, Modifier.focusRequester(settingsEntryFocus.getValue("weather-details")))
+                                HorizontalDivider()
+                                Text("Screensaver",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                ScreensaverSettings(prefs, motion, onScreensaverMinutes, onScreensaverStyle, onPreviewScreensaver, onScreensaverProvider)
+                            }
                             "remote" -> {
                                 Text("Phone remote",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 FocusButton("Phone pairing & download",motion,onClick=onCompanion)
@@ -483,13 +512,22 @@ fun CinematicLauncher(
                                     FocusButton("Enable in Android…",motion,onClick=onKeyboardEnable)
                                     FocusButton("Choose keyboard…",motion,onClick=onKeyboardChoose)
                                 }
+                                essentialSystemDestinations.filter { systemDestinationCategory(it.key) == "remote" }.forEach { SystemSettingsLink(it, motion) }
                             }
                             "system" -> {
-                                Text("RC TV ${za.co.rc.tv.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 FocusButton("Easy setup",motion,onClick=onEasySetup)
-                                FocusButton("Backup & Restore", motion, Modifier.focusRequester(backupEntryFocus)) { settingsPage = "backup" }
-                                essentialSystemDestinations.forEach { SystemSettingsLink(it, motion) }
-                                FocusButton("Launcher Management", motion, Modifier.focusRequester(launcherEntryFocus)) { settingsPage = "launcher" }
+                                FocusButton("Backup & Restore", motion, Modifier.focusRequester(settingsEntryFocus.getValue("backup"))) { settingsPage = "backup" }
+                                essentialSystemDestinations.filter { systemDestinationCategory(it.key) == "system" }.forEach { SystemSettingsLink(it, motion) }
+                                HorizontalDivider()
+                                Text("Performance & diagnostics",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                FocusButton("Internet Speed Test",motion,Modifier.focusRequester(settingsEntryFocus.getValue("speed"))) { utilityReturn="system"; onSection("Speed Test") }
+                                LauncherAppearanceReset(motion, onResetLauncherAppearance)
+                                PowerSettings(motion)
+                            }
+                            "about" -> {
+                                Text("RC TV ${za.co.rc.tv.BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.titleMedium,color=Ice)
+                                Text("Cinematic Glass launcher for Android TV")
+                                essentialSystemDestinations.filter { systemDestinationCategory(it.key) == "about" }.forEach { SystemSettingsLink(it, motion) }
                             }
                         }
                     } }

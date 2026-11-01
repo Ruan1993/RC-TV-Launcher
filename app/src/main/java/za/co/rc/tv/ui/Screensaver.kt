@@ -32,7 +32,6 @@ import za.co.rc.tv.core.*
     minutes: (Int) -> Unit, style: (String) -> Unit, preview: () -> Unit, provider: (String) -> Unit) {
     val context = LocalContext.current
     var choice by remember { mutableStateOf<String?>(null) }
-    var powerHelp by remember { mutableStateOf(false) }
     Text("Screensaver Provider", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
     FocusButton(prefs.screensaverProvider, motion) { choice = "provider" }
     Text(if (prefs.screensaverProvider == ANDROID_SCREENSAVER)
@@ -52,6 +51,21 @@ import za.co.rc.tv.core.*
     }, style = MaterialTheme.typography.bodyMedium)
     FocusButton("Preview Screensaver", motion, onClick = preview)
     Text("Preview shows the RC TV style without changing your provider.", style = MaterialTheme.typography.bodyMedium)
+    if (choice != null) {
+        val times = choice == "time"
+        val providers = choice == "provider"
+        val options = if (providers) screensaverProviders.map { it to it }
+            else if (times) screensaverIntervals.map { it.toString() to screensaverIntervalLabel(it) } else screensaverStyles.map { it to it }
+        val selected = if (providers) prefs.screensaverProvider else if (times) prefs.screensaverMinutes.toString() else prefs.screensaverStyle
+        SaverChoice(if (providers) "Screensaver Provider" else if (times) "Start after" else "Screensaver style", options, selected, motion,
+            { value -> if (providers) provider(value) else if (times) minutes(value.toInt()) else style(value); choice = null }, { choice = null })
+    }
+}
+
+/** Existing power controls, relocated to System & Recovery without changing Android integration. */
+@Composable internal fun PowerSettings(motion: String) {
+    val context = LocalContext.current
+    var powerHelp by remember { mutableStateOf(false) }
     HorizontalDivider()
     Text("Sleep & power", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
     Text("Use Android setting", style = MaterialTheme.typography.titleMedium)
@@ -67,15 +81,6 @@ import za.co.rc.tv.core.*
         AlertDialog(onDismissRequest = { powerHelp = false }, title = { Text("Power off & restart") },
         text = { Text("To restart this Xiaomi, hold the remote’s Power button and choose Restart in Android’s power menu. Use the physical remote’s power control for standby; standby does not disconnect physical power. Android restricts direct shutdown and reboot to system apps, so RC TV cannot perform those actions itself. Android power settings remain available for sleep options.") },
         confirmButton = { FocusButton("Close", motion, Modifier.focusRequester(closeFocus)) { powerHelp = false } })
-    }
-    if (choice != null) {
-        val times = choice == "time"
-        val providers = choice == "provider"
-        val options = if (providers) screensaverProviders.map { it to it }
-            else if (times) screensaverIntervals.map { it.toString() to screensaverIntervalLabel(it) } else screensaverStyles.map { it to it }
-        val selected = if (providers) prefs.screensaverProvider else if (times) prefs.screensaverMinutes.toString() else prefs.screensaverStyle
-        SaverChoice(if (providers) "Screensaver Provider" else if (times) "Start after" else "Screensaver style", options, selected, motion,
-            { value -> if (providers) provider(value) else if (times) minutes(value.toInt()) else style(value); choice = null }, { choice = null })
     }
 }
 

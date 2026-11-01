@@ -124,7 +124,7 @@ object BackupReview {
         driver.select("Settings"); driver.select("System & Recovery"); driver.select("Backup & Restore")
         driver.control("Create backup").recycle(); driver.control("Restore from backup").recycle()
         driver.key(KeyEvent.KEYCODE_BACK)
-        driver.control("Launcher Management").recycle()
+        driver.control("Backup & Restore").let { check(it.isFocused) { "Backup entry focus was not restored" }; it.recycle() }
         driver.select("Backup & Restore")
         driver.shot("backup-page")
         driver.select("Create backup")

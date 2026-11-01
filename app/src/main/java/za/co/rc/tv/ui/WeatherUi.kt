@@ -134,7 +134,7 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
     },confirmButton={ FocusButton("Back",motion,Modifier.focusRequester(backFocus).focusProperties { up=detailsFocus },onClick=close) })
 }
 
-@Composable fun WeatherSettings(repository: WeatherRepository, motion: String, details: () -> Unit = {}) {
+@Composable fun WeatherSettings(repository: WeatherRepository, motion: String, details: () -> Unit = {}, detailsModifier: Modifier = Modifier) {
     val state by repository.state.collectAsState(); val scope=rememberCoroutineScope(); val context=LocalContext.current
     var editing by remember { mutableStateOf(false) }; var about by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }; var places by remember { mutableStateOf(emptyList<WeatherPlace>()) }
@@ -154,7 +154,7 @@ private fun updated(state: WeatherState, reading: WeatherReading?) = when {
         Text(state.place!!.label)
         SettingsOptions {
             FocusButton(if(editing) "Cancel location edit" else "Change location",motion) { editing=!editing; places=emptyList(); feedback="" }
-            FocusButton("Weather details",motion,onClick=details)
+            FocusButton("Weather details",motion,detailsModifier,onClick=details)
         }
     }
     if(editing) {

@@ -62,5 +62,6 @@ fun appearanceTokens(name: String): AppearanceTokens = when (name) {
         wallpaperVisibilities.forEach { FocusButton(it, motion, selected = prefs.wallpaperVisibility == it) { visibility(it) } }
     }
     FocusButton("Reset visibility to Balanced", motion) { visibility("Balanced") }
-    FocusButton("Reset to Original", motion, onClick = reset)
+    FocusButton("Reset colours, fonts & focus", motion, onClick = reset)
+    Text("Restore accent, font, text size, wallpaper visibility and focus animation defaults.", style = MaterialTheme.typography.bodySmall)
 }

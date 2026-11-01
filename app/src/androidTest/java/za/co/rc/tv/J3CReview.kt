@@ -84,7 +84,7 @@ object J3CReview {
             val optional=trace.indexOf("Optional resume work started")
             val network=trace.indexOf("Network indicator enabled")
             check(draw>=0 && optional>draw && network>draw) { "Optional work ran before Home content draw: $trace" }
-            driver.select("Settings"); driver.select("Screensaver & Power")
+            driver.select("Settings"); driver.select("Weather & Screensaver")
             driver.control(before.screensaverProvider).recycle()
             driver.select("Power off & restart help")
             driver.control("Close").let { check(it.isFocused); it.recycle() }
@@ -107,11 +107,11 @@ object J3CReview {
             runBlocking { prefs.setTextSize("Extra Large") }
             activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Thread.sleep(1500)
-            driver.select("Settings"); driver.select("Apps & Media"); driver.control("Storage & USB settings").recycle(); driver.shot("apps-xl")
-            driver.key(KeyEvent.KEYCODE_BACK); driver.select("System & Recovery"); driver.select("Launcher Management"); driver.shot("launcher-xl")
+            driver.select("Settings"); driver.select("Home & Apps"); driver.control("Storage & USB settings").recycle(); driver.shot("apps-xl")
+            driver.key(KeyEvent.KEYCODE_BACK); driver.select("System & Recovery"); driver.shot("launcher-xl")
             driver.select("Reset RC TV Appearance"); driver.shot("reset-confirmation-xl"); driver.select("Cancel")
-            driver.key(KeyEvent.KEYCODE_BACK); driver.key(KeyEvent.KEYCODE_BACK)
-            driver.select("Screensaver & Power"); driver.select(before.screensaverProvider); driver.shot("provider-choice-xl"); driver.key(KeyEvent.KEYCODE_BACK)
+            driver.key(KeyEvent.KEYCODE_BACK)
+            driver.select("Weather & Screensaver"); driver.select(before.screensaverProvider); driver.shot("provider-choice-xl"); driver.key(KeyEvent.KEYCODE_BACK)
             val stats=test.targetContext.getSystemService(android.app.usage.StorageStatsManager::class.java)
                 .queryStatsForPackage(android.os.storage.StorageManager.UUID_DEFAULT,test.targetContext.packageName,android.os.Process.myUserHandle())
             File(test.targetContext.filesDir,"j3c-size-evidence.txt").writeText("StorageStats own package: appBytes=${stats.appBytes}; dataBytes=${stats.dataBytes}; cacheBytes=${stats.cacheBytes}\n")
@@ -136,7 +136,7 @@ object J3CReview {
         try {
             activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Thread.sleep(1500)
-            driver.select("Settings"); driver.select("System & Recovery"); driver.select("Launcher Management")
+            driver.select("Settings"); driver.select("System & Recovery")
             driver.select("Reset RC TV Appearance"); driver.select("Reset appearance")
             val reset=runBlocking { kotlinx.coroutines.withTimeout(5000) { store.data.first { data -> data.asMap().keys.none { it in visualKeys } } }; prefs.state.first() }
             check(reset.theme=="Cinematic" && reset.wallpaper=="mountain" && reset.textSize=="Standard" && reset.accent=="Original (Default)")
@@ -165,24 +165,27 @@ object J3CReview {
         try {
             activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Thread.sleep(1500)
-            driver.select("Settings"); driver.select("System & Recovery"); driver.select("Launcher Management")
+            driver.select("Settings"); driver.select("Home & Apps")
             driver.control("Set RC TV as Default Home").recycle(); driver.shot("launcher-management")
             val home=HomeIntegration.inspect(test.targetContext)
             File(test.targetContext.filesDir,"j3c-home-before.txt").writeText("${home.resolvedPackage}\n${home.description(test.targetContext.packageName)}\nHome settings=${home.homeSettingsAvailable}; role available=${home.roleAvailable}; held=${home.roleHeld}\n")
+            driver.key(KeyEvent.KEYCODE_BACK); driver.select("System & Recovery")
             driver.select("Reset RC TV Appearance")
             driver.control("Cancel").let { check(it.isFocused) { "Reset should focus Cancel" }; it.recycle() }
             driver.shot("reset-confirmation"); driver.key(KeyEvent.KEYCODE_BACK)
             val cancelled=runBlocking { prefs.state.first() }
             check(cancelled.copy(wallpaper=before.wallpaper, rotationAt=before.rotationAt)==before &&
                 (before.rotationEnabled || cancelled.wallpaper==before.wallpaper)) { "Cancelling reset changed preferences" }
-            driver.select("Open Android Settings"); check(driver.foregroundPackage()?.contains("settings")==true); driver.returnWithBack()
+            driver.select("Android settings"); check(driver.foregroundPackage()?.contains("settings")==true); driver.returnWithBack()
             driver.key(KeyEvent.KEYCODE_BACK)
-            driver.control("Launcher Management").let { check(it.isFocused) { "Nested Back did not restore Launcher Management focus" }; it.recycle() }
-            driver.select("Launcher Management")
-            driver.select("Switch to Original Xiaomi Home")
-            check(driver.foregroundPackage()=="com.google.android.permissioncontroller" || driver.foregroundPackage()?.contains("settings")==true)
+            driver.control("System & Recovery").let { check(it.isFocused) { "Category Back did not restore System focus" }; it.recycle() }
+            driver.select("Home & Apps")
+            val recovery=HomeIntegration.originalHomeRecovery(test.targetContext)
+            driver.select(recovery.buttonLabel)
+            if (recovery.useHomeSelection) check(driver.foregroundPackage()=="com.google.android.permissioncontroller" || driver.foregroundPackage()?.contains("settings")==true)
+            else driver.node("Restore original Google TV")?.recycle() ?: error("Recovery guidance did not open")
             driver.shot("home-selection")
-            driver.returnWithBack()
+            if (recovery.useHomeSelection) driver.returnWithBack() else driver.key(KeyEvent.KEYCODE_BACK)
             check(HomeIntegration.inspect(test.targetContext).resolvedPackage==home.resolvedPackage) { "Opening chooser changed Home without selection" }
             check(runBlocking { prefs.state.first() }.let { it.favourites==before.favourites && it.favouriteOrder==before.favouriteOrder })
             File(test.targetContext.filesDir,"j3c-launcher-evidence.txt").writeText("Launcher UI, reset confirmation/Cancel, Android settings, nested Back focus and Home selection entry passed; no default changed\n")
@@ -198,7 +201,7 @@ object J3CReview {
             runBlocking { prefs.setScreensaverMinutes(10) }
             activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             Thread.sleep(1500)
-            driver.select("Settings"); driver.select("Screensaver & Power")
+            driver.select("Settings"); driver.select("Weather & Screensaver")
             driver.select(before.screensaverProvider); driver.select(ANDROID_SCREENSAVER)
             runBlocking { kotlinx.coroutines.withTimeout(5000) { prefs.state.first { it.screensaverProvider==ANDROID_SCREENSAVER } } }
             driver.shot("provider-android")
@@ -215,7 +218,7 @@ object J3CReview {
                 (field.get(activity) as androidx.compose.runtime.MutableLongState).longValue=SystemClock.elapsedRealtime()-599_000L
             } }
             expire(); Thread.sleep(1800); check(driver.node("RC TV screensaver")==null) { "Android provider left RC timer active" }
-            driver.select("Settings"); driver.select("Screensaver & Power")
+            driver.select("Settings"); driver.select("Weather & Screensaver")
             driver.select(ANDROID_SCREENSAVER); driver.select(RC_SCREENSAVER)
             runBlocking { kotlinx.coroutines.withTimeout(5000) { prefs.state.first { it.screensaverProvider==RC_SCREENSAVER } } }
             driver.shot("provider-rc")
@@ -253,7 +256,7 @@ object J3CReview {
             if(large) runBlocking { prefs.setTextSize("Extra Large") }
             activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Thread.sleep(1500)
-            driver.select("Settings"); driver.select("Apps & Media")
+            driver.select("Settings"); driver.select("Home & Apps")
             driver.control("Android app settings").recycle(); driver.shot(if(large) "apps-xl" else "apps")
             val space=readInternalStorage() ?: error("No real storage stats")
             check(space.totalBytes>0 && space.availableBytes in 0..space.totalBytes)
@@ -270,11 +273,13 @@ object J3CReview {
                 driver.returnWithBack()
             }
             destination(appSettingsDestination); destination(storageSettingsDestination)
-            driver.key(KeyEvent.KEYCODE_BACK); driver.select("System & Recovery")
-            driver.shot(if(large) "system-xl" else "system")
-            essentialSystemDestinations.forEach { destination(it) }
             driver.key(KeyEvent.KEYCODE_BACK)
-            driver.control("System & Recovery").let { check(it.isFocused) { "Category focus not restored" }; it.recycle() }
+            essentialSystemDestinations.groupBy { za.co.rc.tv.ui.systemDestinationCategory(it.key) }.forEach { (category, items) ->
+                driver.select(za.co.rc.tv.ui.settingsCategories.single { it.key==category }.title)
+                items.forEach { destination(it) }
+                driver.key(KeyEvent.KEYCODE_BACK)
+                driver.control(za.co.rc.tv.ui.settingsCategories.single { it.key==category }.title).let { check(it.isFocused) { "Category focus not restored: $category" }; it.recycle() }
+            }
             check(runBlocking { prefs.state.first() }.let { it.favourites==before.favourites && it.favouriteOrder==before.favouriteOrder })
             File(test.targetContext.filesDir,"j3c-settings-evidence.txt").writeText(evidence.toString())
         } catch(failure: Throwable) { driver.shot("failure"); throw failure }

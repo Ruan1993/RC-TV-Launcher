@@ -84,7 +84,7 @@ object ScreensaverReview {
             runBlocking { prefs.setTextSize(if(large) "Extra Large" else "Standard"); prefs.setScreensaverMinutes(10); prefs.setScreensaverProvider(RC_SCREENSAVER); if(large) prefs.setReducedMotion(true) }
             activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             Thread.sleep(1500)
-            click("Settings"); click("Screensaver & Power")
+            click("Settings"); click("Weather & Screensaver")
             await("Start after: 10 minutes").recycle(); shot(if(large) "settings-xl" else "settings")
             click("Start after: 10 minutes"); click("20 minutes")
             runBlocking { kotlinx.coroutines.withTimeout(5000) { prefs.state.first { it.screensaverMinutes==20 } } }
@@ -102,13 +102,14 @@ object ScreensaverReview {
                 val focused=control("Preview Screensaver")
                 check(focused.isFocused) { "Preview focus not restored" }; focused.recycle()
             }
-            for(label in listOf("Open Android power settings","Android ambient mode settings")) {
+            for(label in listOf("Android ambient mode settings","Open Android power settings")) {
+                if (label=="Open Android power settings") { key(KeyEvent.KEYCODE_BACK); click("System & Recovery") }
                 click(label); Thread.sleep(700)
                 val root=ui.rootInActiveWindow ?: error("No system window")
                 check(root.packageName.toString().contains("settings")); root.recycle()
                 // System Settings can retain its nested page; explicitly return to the existing task.
                 ui.executeShellCommand("am start -n za.co.rc.tv/.MainActivity").close(); Thread.sleep(700)
-                await("Use Android setting").recycle()
+                await(if(label=="Open Android power settings") "Use Android setting" else "Screensaver Provider").recycle()
             }
             key(KeyEvent.KEYCODE_BACK); key(KeyEvent.KEYCODE_BACK)
             await("Home").recycle()

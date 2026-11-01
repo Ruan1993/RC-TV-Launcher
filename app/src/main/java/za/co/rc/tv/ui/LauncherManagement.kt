@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import za.co.rc.tv.core.*
 
 @Composable internal fun LauncherManagement(motion: String, chooseHome: () -> Unit, restoreHome: () -> Unit,
-    androidSettings: () -> Unit, reset: suspend () -> Boolean) {
+    androidSettings: () -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val home by produceState(HomeIntegration.inspect(context), lifecycle) {
@@ -73,8 +73,9 @@ import za.co.rc.tv.core.*
             confirmButton = { FocusButton("Open Android Settings", motion) { recoveryOpen = false; androidSettings() } },
             dismissButton = { FocusButton("Back", motion, Modifier.focusRequester(closeFocus).focusProperties { up = detailsFocus }) { recoveryOpen = false } })
     }
-    FocusButton("Open Android Settings", motion, onClick = androidSettings)
-    HorizontalDivider()
+}
+
+@Composable internal fun LauncherAppearanceReset(motion: String, reset: suspend () -> Boolean) {
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
