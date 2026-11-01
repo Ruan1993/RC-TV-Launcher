@@ -1,5 +1,11 @@
 package za.co.rc.tv.core
 
+const val ANDROID_SCREENSAVER = "Android / Xiaomi Screensaver"
+const val RC_SCREENSAVER = "RC TV Screensaver"
+val screensaverProviders = listOf(ANDROID_SCREENSAVER, RC_SCREENSAVER)
+fun initialScreensaverProvider(saved: String?, existingInstallation: Boolean): String =
+    saved?.takeIf { it in screensaverProviders } ?: if (saved == null && existingInstallation) RC_SCREENSAVER else ANDROID_SCREENSAVER
+
 val screensaverIntervals = listOf(10, 20, 30, 60, 120, 0)
 val screensaverStyles = listOf("Cinematic Wallpapers", "Clock & Wallpaper", "Black Screen")
 fun validScreensaverMinutes(value: Int?) = value?.takeIf { it in screensaverIntervals } ?: 30

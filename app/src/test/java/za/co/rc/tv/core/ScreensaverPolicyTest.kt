@@ -4,6 +4,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ScreensaverPolicyTest {
+    @Test fun providerMigrationPreservesOldInstallsAndPersistsNewChoice() {
+        assertEquals(ANDROID_SCREENSAVER, initialScreensaverProvider(null, false))
+        assertEquals(RC_SCREENSAVER, initialScreensaverProvider(null, true))
+        assertEquals(ANDROID_SCREENSAVER, initialScreensaverProvider(ANDROID_SCREENSAVER, true))
+        assertEquals(RC_SCREENSAVER, initialScreensaverProvider(RC_SCREENSAVER, false))
+        assertEquals(ANDROID_SCREENSAVER, initialScreensaverProvider("invalid", true))
+    }
     @Test fun defaultsAndNever() {
         assertEquals(30, validScreensaverMinutes(null))
         assertEquals(30, validScreensaverMinutes(-1))

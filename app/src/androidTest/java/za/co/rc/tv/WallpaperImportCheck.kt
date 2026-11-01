@@ -33,6 +33,8 @@ class WallpaperImportCheck : Instrumentation() {
     override fun onStart() {
         val result = Bundle()
         try {
+            if(refinementMode=="j3cprovider") { J3CReview.providers(this); result.putString("verification","Provider switching, RC auto suppression, preview, saved choices and favourites passed"); finish(Activity.RESULT_OK,result); return }
+            if(refinementMode=="j3cproviderpersist") { J3CReview.providerPersistence(this); result.putString("verification","Provider, interval, style and favourites persisted after process restart"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3csettings") { J3CReview.settings(this,weatherLarge); result.putString("verification","Essential settings destinations, real storage, D-pad activation, Back return and preference preservation passed"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3bsaver") { ScreensaverReview.run(this,weatherLarge); result.putString("verification","Screensaver settings persistence, three previews, focus restoration, power shortcuts, accelerated idle/Never and external-app suppression passed"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j1home") { HomeJ1Review.run(this,j1Args!!); result.putString("verification","Clean Home, original card dimensions and fixed Settings checked"); finish(Activity.RESULT_OK,result); return }

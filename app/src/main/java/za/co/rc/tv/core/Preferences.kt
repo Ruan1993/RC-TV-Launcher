@@ -8,19 +8,33 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.emptyPreferences
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.catch
 import java.io.IOException
 
-private val Context.store by preferencesDataStore("launcher", corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() })
+private val providerKey = stringPreferencesKey("screensaver_provider")
+private val Context.store by preferencesDataStore("launcher", corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+    produceMigrations = { context ->
+        // Capture before the first read creates a new datastore file. Persist the decision
+        // once, so a new installation cannot turn into a legacy installation on restart.
+        val existing = context.preferencesDataStoreFile("launcher").exists()
+        listOf(object : androidx.datastore.core.DataMigration<androidx.datastore.preferences.core.Preferences> {
+            override suspend fun shouldMigrate(currentData: androidx.datastore.preferences.core.Preferences) = currentData[providerKey] !in screensaverProviders
+            override suspend fun migrate(currentData: androidx.datastore.preferences.core.Preferences) = currentData.toMutablePreferences().apply {
+                this[providerKey] = initialScreensaverProvider(currentData[providerKey], existing)
+            }
+            override suspend fun cleanUp() = Unit
+        })
+    })
 data class LauncherPreferences(val favourites: Set<String> = emptySet(), val reducedMotion: Boolean = false, val theme: String = "Cinematic", val motion: String = "Minimal", val favouriteOrder: List<String> = emptyList(), val wallpaper: String = BundledWallpaper.MOUNTAIN.id,
     val rotationEnabled: Boolean = false, val rotationMinutes: Int = 15,
     val rotationPool: Set<String> = setOf("mountain", "coast", "desert"),
     val wallpaperTransition: String = "Instant", val rotationAt: Long = 0L,
     val accent: String = "Original (Default)", val fontStyle: String = "Modern", val textSize: String = "Standard", val wallpaperVisibility: String = "Balanced", val focusAnimation: String = "Standard",
-    val screensaverMinutes: Int = 30, val screensaverStyle: String = "Cinematic Wallpapers")
+    val screensaverMinutes: Int = 30, val screensaverStyle: String = "Cinematic Wallpapers", val screensaverProvider: String = ANDROID_SCREENSAVER)
 class Preferences(context: Context) {
     private val store = context.applicationContext.store
     private val favourites = stringSetPreferencesKey("favourites")
@@ -46,7 +60,8 @@ class Preferences(context: Context) {
             it[rotate] ?: false, validRotationInterval(it[interval] ?: 15),
             it[pool]?.filter { id -> validWallpaper(id) == id }?.toSet() ?: setOf("mountain", "coast", "desert"),
             validWallpaperTransition(it[transition]), it[rotatedAt] ?: 0L, validAccent(it[accent]), validFontStyle(it[fontStyle]), validTextSize(it[textSize]), validWallpaperVisibility(it[visibility]), validFocusAnimation(it[focusAnimation] ?: legacyFocusAnimation(it[intensity])),
-            validScreensaverMinutes(it[saverMinutes]), validScreensaverStyle(it[saverStyle])) }
+            validScreensaverMinutes(it[saverMinutes]), validScreensaverStyle(it[saverStyle]), initialScreensaverProvider(it[providerKey], false)) }
+    suspend fun setScreensaverProvider(value: String) { require(value in screensaverProviders); store.edit { it[providerKey] = value } }
     suspend fun setScreensaverMinutes(value: Int) { require(value in screensaverIntervals); store.edit { it[saverMinutes] = value } }
     suspend fun setScreensaverStyle(value: String) { require(value in screensaverStyles); store.edit { it[saverStyle] = value } }
     suspend fun toggleFavourite(packageName: String) { store.edit { p ->

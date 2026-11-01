@@ -244,7 +244,7 @@ fun CinematicLauncher(
     onApplyWallpaper: suspend (String) -> Boolean,
     onSaveOrder: suspend (List<String>) -> Boolean,
     onAccent: (String) -> Unit, onFontStyle: (String) -> Unit, onTextSize: (String) -> Unit, onWallpaperVisibility: (String) -> Unit, onFocusAnimation: (String) -> Unit, onResetAppearance: () -> Unit,
-    onScreensaverMinutes: (Int) -> Unit, onScreensaverStyle: (String) -> Unit, onPreviewScreensaver: () -> Unit,
+    onScreensaverMinutes: (Int) -> Unit, onScreensaverStyle: (String) -> Unit, onPreviewScreensaver: () -> Unit, onScreensaverProvider: (String) -> Unit,
     onTheme: (String) -> Unit, onMotion: (String) -> Unit, onReducedMotion: () -> Unit
 ) {
     val weatherContext = LocalContext.current.applicationContext
@@ -402,7 +402,7 @@ fun CinematicLauncher(
                     } else if(settingsPage == null) SettingsCategories(lastSettingsCategory,motion) { key -> lastSettingsCategory=key; settingsPage=key }
                     else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,{ settingsPage=null }) {
                         when(settingsPage) {
-                            "power" -> ScreensaverSettings(prefs, motion, onScreensaverMinutes, onScreensaverStyle, onPreviewScreensaver)
+                            "power" -> ScreensaverSettings(prefs, motion, onScreensaverMinutes, onScreensaverStyle, onPreviewScreensaver, onScreensaverProvider)
                             "appearance" -> {
                                 Text("Wallpaper",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text(wallpapers.firstOrNull { it.id==prefs.wallpaper }?.title ?: "Mountain horizon")

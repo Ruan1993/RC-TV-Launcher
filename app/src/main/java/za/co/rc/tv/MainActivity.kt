@@ -164,8 +164,11 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(companionState.pending) {
                     if (companionState.pending != null) dismissSaver()
                 }
-                LaunchedEffect(lastInteraction, activityResumed, activityFocused, prefs.screensaverMinutes, saverBlocked, screensaverVisible) {
-                    if (!screensaverVisible && !saverBlocked && activityResumed && activityFocused) {
+                LaunchedEffect(prefs.screensaverProvider) {
+                    if (prefs.screensaverProvider == ANDROID_SCREENSAVER) dismissSaver()
+                }
+                LaunchedEffect(lastInteraction, activityResumed, activityFocused, prefs.screensaverMinutes, prefs.screensaverProvider, saverBlocked, screensaverVisible) {
+                    if (prefs.screensaverProvider == RC_SCREENSAVER && !screensaverVisible && !saverBlocked && activityResumed && activityFocused) {
                         val wait = screensaverDelay(prefs.screensaverMinutes, lastInteraction, android.os.SystemClock.elapsedRealtime())
                         if (wait != null) {
                             kotlinx.coroutines.delay(wait)
@@ -240,6 +243,7 @@ class MainActivity : ComponentActivity() {
                     onWallpaperVisibility = { value -> scope.launch { preferences.setWallpaperVisibility(value) } },
                     onFocusAnimation = { value -> scope.launch { preferences.setFocusAnimation(value) } },
                     onScreensaverMinutes = { value -> scope.launch { preferences.setScreensaverMinutes(value) } },
+                    onScreensaverProvider = { value -> scope.launch { preferences.setScreensaverProvider(value) } },
                     onScreensaverStyle = { value -> scope.launch { preferences.setScreensaverStyle(value) } },
                     onPreviewScreensaver = { screensaverVisible = true },
                     onResetAppearance = { scope.launch { preferences.resetAppearance() } },

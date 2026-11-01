@@ -25,3 +25,13 @@ Build, 47 unit tests and lint pass (0 errors, 27 existing warnings). The automat
 APK: releases/phase-j3c/RC-TV-Launcher-1.0.0-rc1.12-debug.apk. Previous rollback: releases/rollback/RC-TV-Launcher-499ed8b-debug.apk. Physical screenshots/evidence: releases/review/phase-j3c/.
 
 Sources checked before implementation: [Android Settings actions](https://developer.android.com/reference/android/provider/Settings), [StatFs](https://developer.android.com/reference/android/os/StatFs), [Home role and user consent](https://developer.android.com/reference/android/app/role/RoleManager).
+
+## Checkpoint B — TV 1.0.0-rc1.13 (42)
+
+Checkpoint A committed as 7ff2f25 before provider work. Added Android / Xiaomi Screensaver and RC TV Screensaver selection. A persisted one-time DataStore migration detects the pre-existing launcher store before first read: existing installations retain RC TV; new installations default to Android/Xiaomi. Saved choices override this migration on every later startup. Invalid provider data falls back to Android. No original style, interval or favourites are reset.
+
+Android provider cancels/skips the RC idle coroutine; RC preview remains an explicitly labelled preview and does not change providers. The system ambient shortcut resolves genuine system handlers, rejects stubs and falls back to Android Settings → System → Ambient mode. RC provider reuses the verified timer, foreground/audio guards and visuals. Android's own ambient system is never disabled or reconfigured: it retains priority and RC's lifecycle guard removes its screen when another activity takes over. RC TV does not claim to force Android's screensaver to start.
+
+Physical provider-switch test passed: upgrade selected RC TV as expected; Android selection suppressed an accelerated idle deadline; explicit RC preview and Back dismissal worked while Android was selected; RC selection enabled the same deadline; style/interval and all eight favourites/order stayed intact. Original provider and interval were restored after testing. A separate instrumentation process after explicitly stopping only RC TV confirmed provider/interval/style/favourites/order persisted. Screenshots: provider-android.png and provider-rc.png. Evidence: checkpoint-b.txt under releases/review/phase-j3c.
+
+48 unit tests, APK/test APK build and lint passed (0 errors, 27 existing warnings). Fresh-install default/migration choices are unit-tested; the physical user data was not cleared to simulate a fresh install. APK: releases/phase-j3c/RC-TV-Launcher-1.0.0-rc1.13-debug.apk. A rollback: releases/rollback/RC-TV-Launcher-7ff2f25-debug.apk.

@@ -49,7 +49,7 @@ internal class TvReview(val test: Instrumentation) {
         val target=control(label)
         target.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SHOW_ON_SCREEN.id)
         Thread.sleep(150)
-        check(target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) { "Cannot focus $label" }
+        check(target.isFocused || target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)) { "Cannot focus $label" }
         target.recycle(); key(KeyEvent.KEYCODE_DPAD_CENTER); Thread.sleep(500)
     }
     fun shot(name: String) {
@@ -65,6 +65,60 @@ internal class TvReview(val test: Instrumentation) {
 }
 
 object J3CReview {
+    fun providers(test: Instrumentation) {
+        val prefs=Preferences(test.targetContext)
+        val before=runBlocking { prefs.state.first() }
+        val driver=TvReview(test)
+        var activity: MainActivity?=null
+        try {
+            runBlocking { prefs.setScreensaverMinutes(10) }
+            activity=test.startActivitySync(Intent(test.targetContext,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
+            Thread.sleep(1500)
+            driver.select("Settings"); driver.select("Screensaver & Power")
+            driver.select(before.screensaverProvider); driver.select(ANDROID_SCREENSAVER)
+            runBlocking { kotlinx.coroutines.withTimeout(5000) { prefs.state.first { it.screensaverProvider==ANDROID_SCREENSAVER } } }
+            driver.shot("provider-android")
+            driver.select("Android ambient mode settings")
+            check(driver.foregroundPackage()?.contains("settings")==true)
+            driver.returnWithBack()
+            driver.select("Preview Screensaver")
+            check(driver.node("RC TV screensaver")!=null)
+            driver.key(KeyEvent.KEYCODE_BACK)
+            check(runBlocking { prefs.state.first() }.screensaverProvider==ANDROID_SCREENSAVER)
+            driver.key(KeyEvent.KEYCODE_BACK); driver.key(KeyEvent.KEYCODE_BACK)
+            fun expire() { test.runOnMainSync {
+                val field=MainActivity::class.java.getDeclaredField("lastInteraction\$delegate").apply { isAccessible=true }
+                (field.get(activity) as androidx.compose.runtime.MutableLongState).longValue=SystemClock.elapsedRealtime()-599_000L
+            } }
+            expire(); Thread.sleep(1800); check(driver.node("RC TV screensaver")==null) { "Android provider left RC timer active" }
+            driver.select("Settings"); driver.select("Screensaver & Power")
+            driver.select(ANDROID_SCREENSAVER); driver.select(RC_SCREENSAVER)
+            runBlocking { kotlinx.coroutines.withTimeout(5000) { prefs.state.first { it.screensaverProvider==RC_SCREENSAVER } } }
+            driver.shot("provider-rc")
+            driver.key(KeyEvent.KEYCODE_BACK); driver.key(KeyEvent.KEYCODE_BACK)
+            expire(); Thread.sleep(1800); check(driver.node("RC TV screensaver")!=null) { "RC provider failed to activate" }
+            driver.key(KeyEvent.KEYCODE_DPAD_UP)
+            check(runBlocking { prefs.state.first() }.screensaverStyle==before.screensaverStyle)
+        } catch(failure: Throwable) { driver.shot("failure"); throw failure }
+        finally {
+            test.runOnMainSync { activity?.finish() }
+            runBlocking { prefs.setScreensaverProvider(before.screensaverProvider); prefs.setScreensaverMinutes(before.screensaverMinutes) }
+        }
+        val after=runBlocking { prefs.state.first() }
+        check(after.favourites==before.favourites && after.favouriteOrder==before.favouriteOrder)
+        File(test.targetContext.filesDir,"j3c-provider-persist.json").writeText(org.json.JSONObject()
+            .put("provider", after.screensaverProvider).put("minutes",after.screensaverMinutes).put("style",after.screensaverStyle)
+            .put("favourites", org.json.JSONArray(after.favourites.sorted())).put("order",org.json.JSONArray(after.favouriteOrder)).toString())
+        File(test.targetContext.filesDir,"j3c-provider-evidence.txt").writeText("Upgrade provider: ${before.screensaverProvider}\nAndroid auto off; explicit RC preview works\nRC auto on\nStyle/interval and all ${after.favourites.size} favourites/order preserved\n")
+    }
+    fun providerPersistence(test: Instrumentation) {
+        val saved=org.json.JSONObject(File(test.targetContext.filesDir,"j3c-provider-persist.json").readText())
+        val prefs=runBlocking { Preferences(test.targetContext).state.first() }
+        check(prefs.screensaverProvider==saved.getString("provider") && prefs.screensaverMinutes==saved.getInt("minutes") && prefs.screensaverStyle==saved.getString("style"))
+        check(org.json.JSONArray(prefs.favourites.sorted()).toString()==saved.getJSONArray("favourites").toString())
+        check(org.json.JSONArray(prefs.favouriteOrder).toString()==saved.getJSONArray("order").toString())
+        File(test.targetContext.filesDir,"j3c-provider-evidence.txt").appendText("Provider/interval/style/favourites/order persisted across process restart\n")
+    }
     fun settings(test: Instrumentation, large: Boolean) {
         val prefs=Preferences(test.targetContext)
         val before=runBlocking { prefs.state.first() }

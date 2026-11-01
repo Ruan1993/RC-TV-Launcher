@@ -29,9 +29,17 @@ import kotlinx.coroutines.delay
 import za.co.rc.tv.core.*
 
 @Composable internal fun ScreensaverSettings(prefs: LauncherPreferences, motion: String,
-    minutes: (Int) -> Unit, style: (String) -> Unit, preview: () -> Unit) {
+    minutes: (Int) -> Unit, style: (String) -> Unit, preview: () -> Unit, provider: (String) -> Unit) {
     val context = LocalContext.current
     var choice by remember { mutableStateOf<String?>(null) }
+    Text("Screensaver Provider", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
+    FocusButton(prefs.screensaverProvider, motion) { choice = "provider" }
+    Text(if (prefs.screensaverProvider == ANDROID_SCREENSAVER)
+        "Android manages ambient mode using its own settings. RC TV’s automatic timer is off; your RC TV options stay saved."
+        else "RC TV runs only on idle Home. Android ambient mode takes priority if it starts first.")
+    FocusButton("Android ambient mode settings", motion) {
+        openSystemDestination(context, SystemDestination("ambient", "Android ambient mode settings", listOf(Settings.ACTION_DREAM_SETTINGS), "System → Ambient mode"))
+    }
     Text("RC TV screensaver", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
     Text("Runs only while RC TV Home is open and idle. Other apps and Android’s own ambient mode take priority.")
     FocusButton("Start after: ${screensaverIntervalLabel(prefs.screensaverMinutes)}", motion) { choice = "time" }
@@ -42,6 +50,7 @@ import za.co.rc.tv.core.*
         else -> "Cinematic wallpapers change gently every two minutes. Reduced Motion keeps one still image."
     }, style = MaterialTheme.typography.bodyMedium)
     FocusButton("Preview Screensaver", motion, onClick = preview)
+    Text("Preview shows the RC TV style without changing your provider.", style = MaterialTheme.typography.bodyMedium)
     HorizontalDivider()
     Text("Sleep & power", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
     Text("Use Android setting", style = MaterialTheme.typography.titleMedium)
@@ -49,16 +58,14 @@ import za.co.rc.tv.core.*
     FocusButton("Open Android power settings", motion) {
         openSaverSystemSettings(context, Settings.ACTION_DISPLAY_SETTINGS)
     }
-    FocusButton("Android ambient mode settings", motion) {
-        openSaverSystemSettings(context, Settings.ACTION_DREAM_SETTINGS)
-    }
     if (choice != null) {
         val times = choice == "time"
-        val options = if (times) screensaverIntervals.map { it.toString() to screensaverIntervalLabel(it) }
-            else screensaverStyles.map { it to it }
-        val selected = if (times) prefs.screensaverMinutes.toString() else prefs.screensaverStyle
-        SaverChoice(if (times) "Start after" else "Screensaver style", options, selected, motion,
-            { value -> if (times) minutes(value.toInt()) else style(value); choice = null }, { choice = null })
+        val providers = choice == "provider"
+        val options = if (providers) screensaverProviders.map { it to it }
+            else if (times) screensaverIntervals.map { it.toString() to screensaverIntervalLabel(it) } else screensaverStyles.map { it to it }
+        val selected = if (providers) prefs.screensaverProvider else if (times) prefs.screensaverMinutes.toString() else prefs.screensaverStyle
+        SaverChoice(if (providers) "Screensaver Provider" else if (times) "Start after" else "Screensaver style", options, selected, motion,
+            { value -> if (providers) provider(value) else if (times) minutes(value.toInt()) else style(value); choice = null }, { choice = null })
     }
 }
 
