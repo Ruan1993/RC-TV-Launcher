@@ -400,6 +400,11 @@ fun CinematicLauncher(
         }
     }
     val contentSection = if (previewWallpaper != null) "Home" else section
+    val continueRepository = remember(weatherContext) { WatchNextRepository(weatherContext) }
+    val continueFocus = remember { FocusRequester() }
+    val continueItems = rememberContinueWatching(continueRepository,
+        prefs.continueWatching && contentSection == "Home" && previewWallpaper == null && draftOrder == null)
+    val continueScroll = rememberScrollState()
     val visible = remember(discovery.apps, contentSection, query, prefs.favourites, prefs.favouriteOrder, draftOrder) { discovery.apps.filter { (contentSection != "Search" || it.label.contains(query, true)) &&
         (contentSection != "Home" || prefs.favourites.isEmpty() || it.packageName in prefs.favourites) }.let { filtered ->
             if (contentSection == "Home" && (draftOrder != null || prefs.favouriteOrder.isNotEmpty())) {
@@ -425,7 +430,11 @@ fun CinematicLauncher(
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             CinematicNavigation(section, { next -> if (!savingOrder && !applyingWallpaper) { cancelMove(); closeWallpapers(); when (next) { "Remote" -> onCompanion(); "Keyboard" -> onPhoneTyping(); else -> { utilityReturn=null; settingsPage=null; onSection(next) } } } }, motion, settingsFocus,
                 if (contentSection == "Home" && visible.isNotEmpty() && draftOrder == null && previewWallpaper == null) favouriteShelfFocus else clockFocus)
-            Column(Modifier.weight(1f).fillMaxWidth().vividContrast(vivid && contentSection != "Home"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val viewportHeight=maxHeight
+            Column(Modifier.fillMaxWidth().then(if(continueItems.isNotEmpty())
+                Modifier.verticalScroll(continueScroll).heightIn(min=viewportHeight) else Modifier.fillMaxHeight())
+                .vividContrast(vivid && contentSection != "Home"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         BrandWordmark()
@@ -483,6 +492,8 @@ fun CinematicLauncher(
                             }
                             "apps" -> {
                                 LauncherManagement(motion, onChooseHome, onRestoreHome, onAndroidSettings)
+                                HorizontalDivider()
+                                ContinueWatchingSettings(prefs.continueWatching,motion)
                                 HorizontalDivider()
                                 Text("Apps & media",style=MaterialTheme.typography.titleMedium,color=Ice)
                                 Text("Hold OK on an app to manage favourites or change their order.")
@@ -593,7 +604,10 @@ fun CinematicLauncher(
                                                 }, selected, position > 0, position < order.lastIndex)
                                     }
                                 } else AppActionHost(app, repository, prefs, discovery.apps, motion, true, { onLaunch(app) }, { onPin(app) }, beginMove) { modifier ->
-                                    HomeAppCard(app, repository, iconGeneration, "Minimal", { onLaunch(app) }, modifier.focusProperties { up = if (weatherAvailable) weatherFocus else settingsFocus }.cinematicFocus(26.dp).then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
+                                    HomeAppCard(app, repository, iconGeneration, "Minimal", { onLaunch(app) }, modifier.focusProperties {
+                                        up = if (weatherAvailable) weatherFocus else settingsFocus
+                                        if(continueItems.isNotEmpty()) down=continueFocus
+                                    }.cinematicFocus(26.dp).then(if (returnFocusPackage == app.packageName) Modifier.focusRequester(movingFocus) else Modifier))
                                 }
                             }
                         } else LazyVerticalGrid(GridCells.Adaptive(172.dp), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(4.dp)) {
@@ -603,6 +617,7 @@ fun CinematicLauncher(
                                 }
                             }
                         }
+                        if (continueItems.isNotEmpty()) ContinueWatchingRow(continueItems,continueRepository,repository,iconGeneration,motion,continueFocus,if(visible.isNotEmpty()) favouriteShelfFocus else settingsFocus)
                         if (previewWallpaper != null) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("Preview · ${wallpapers.firstOrNull { it.id == previewWallpaper }?.title ?: "Wallpaper"}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -625,6 +640,8 @@ fun CinematicLauncher(
             }
         }
     }
+}
+
 }
 
 /** Scrolls only enough to reveal the focused item; labels are never compressed to fit. */

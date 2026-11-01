@@ -42,7 +42,8 @@ data class LauncherPreferences(val favourites: Set<String> = emptySet(), val red
     val rotationPool: Set<String> = setOf("mountain", "coast", "desert"),
     val wallpaperTransition: String = "Instant", val rotationAt: Long = 0L,
     val accent: String = "Original (Default)", val fontStyle: String = "Modern", val textSize: String = "Standard", val wallpaperVisibility: String = "Balanced", val focusAnimation: String = "Standard",
-    val screensaverMinutes: Int = 30, val screensaverStyle: String = "Cinematic Wallpapers", val screensaverProvider: String = ANDROID_SCREENSAVER)
+    val screensaverMinutes: Int = 30, val screensaverStyle: String = "Cinematic Wallpapers", val screensaverProvider: String = ANDROID_SCREENSAVER,
+    val continueWatching: Boolean = true)
 class Preferences(context: Context) {
     private val store = context.applicationContext.store
     private val favourites = stringSetPreferencesKey("favourites")
@@ -63,6 +64,8 @@ class Preferences(context: Context) {
     private val intensity = stringPreferencesKey("animation_intensity")
     private val saverMinutes = intPreferencesKey("screensaver_minutes")
     private val saverStyle = stringPreferencesKey("screensaver_style")
+    private val continueWatching = booleanPreferencesKey("continue_watching")
+    suspend fun setContinueWatching(enabled: Boolean) { store.edit { it[continueWatching] = enabled } }
     val weatherConfiguration = store.data.map { WeatherConfiguration.decode(it[weatherConfigurationKey] ?: WeatherConfiguration().encode()) }
     suspend fun setWeatherConfiguration(value: WeatherConfiguration) { store.edit { it[weatherConfigurationKey] = value.encode() } }
     internal suspend fun backupValues(): Map<String, Any> = store.data.first().asMap().entries.associate { it.key.name to it.value }
@@ -86,7 +89,7 @@ class Preferences(context: Context) {
             it[rotate] ?: false, validRotationInterval(it[interval] ?: 15),
             it[pool]?.filter { id -> validWallpaper(id) == id }?.toSet() ?: setOf("mountain", "coast", "desert"),
             validWallpaperTransition(it[transition]), it[rotatedAt] ?: 0L, validAccent(it[accent]), validFontStyle(it[fontStyle]), validTextSize(it[textSize]), validWallpaperVisibility(it[visibility]), validFocusAnimation(it[focusAnimation] ?: legacyFocusAnimation(it[intensity])),
-            validScreensaverMinutes(it[saverMinutes]), validScreensaverStyle(it[saverStyle]), initialScreensaverProvider(it[providerKey], false)) }
+            validScreensaverMinutes(it[saverMinutes]), validScreensaverStyle(it[saverStyle]), initialScreensaverProvider(it[providerKey], false), it[continueWatching] ?: true) }
     suspend fun setScreensaverProvider(value: String) { require(value in screensaverProviders); store.edit { it[providerKey] = value } }
     suspend fun setScreensaverMinutes(value: Int) { require(value in screensaverIntervals); store.edit { it[saverMinutes] = value } }
     suspend fun setScreensaverStyle(value: String) { require(value in screensaverStyles); store.edit { it[saverStyle] = value } }
