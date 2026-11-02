@@ -47,6 +47,10 @@ fun appearanceTokens(name: String): AppearanceTokens = when (name) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun AppearanceSettings(prefs: LauncherPreferences, motion: String, accent: (String) -> Unit,
     font: (String) -> Unit, size: (String) -> Unit, visibility: (String) -> Unit, reset: () -> Unit) {
+    var confirmReset by remember { mutableStateOf(false) }
+    if (confirmReset) ConfirmActionDialog("Reset colours, fonts & focus?",
+        "Restore accent, font, text size, wallpaper visibility and focus animation defaults. Wallpaper images, favourites, motion and other settings are preserved.",
+        "Reset these settings", { confirmReset = false; reset() }, { confirmReset = false })
     Text("Accent theme", style = MaterialTheme.typography.titleLarge, color = LocalAppearance.current.accent)
     Text("Changes save automatically.")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -62,6 +66,6 @@ fun appearanceTokens(name: String): AppearanceTokens = when (name) {
         wallpaperVisibilities.forEach { FocusButton(it, motion, selected = prefs.wallpaperVisibility == it) { visibility(it) } }
     }
     FocusButton("Reset visibility to Balanced", motion) { visibility("Balanced") }
-    FocusButton("Reset colours, fonts & focus", motion, onClick = reset)
+    FocusButton("Reset colours, fonts & focus", motion) { confirmReset = true }
     Text("Restore accent, font, text size, wallpaper visibility and focus animation defaults.", style = MaterialTheme.typography.bodySmall)
 }

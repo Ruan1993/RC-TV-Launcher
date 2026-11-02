@@ -34,6 +34,8 @@ import za.co.rc.tv.core.*
         lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { recovery = HomeIntegration.originalHomeRecovery(context) }
     }
     var recoveryOpen by remember { mutableStateOf(false) }
+    var guidedRecovery by remember { mutableStateOf(false) }
+    if (guidedRecovery) RestoreLauncherWizard { guidedRecovery = false }
     Text("Current Home Launcher", style = MaterialTheme.typography.titleMedium, color = LocalAppearance.current.accent)
     Text(home.resolvedPackage?.let { home.resolvedLabel } ?: "Unknown — Android has not exposed a reliable default")
     Text(home.description(context.packageName), style = MaterialTheme.typography.bodyMedium)
@@ -41,8 +43,9 @@ import za.co.rc.tv.core.*
     FocusButton(recovery.buttonLabel, motion) {
         // Recheck at activation as package state may have changed while this page was open.
         recovery = HomeIntegration.originalHomeRecovery(context)
-        if (recovery.useHomeSelection) restoreHome() else recoveryOpen = true
+        guidedRecovery = true
     }
+    FocusButton("Detailed device recovery instructions", motion) { recoveryOpen = true }
     Text(recovery.description)
     if (recoveryOpen) {
         val closeFocus = remember { FocusRequester() }

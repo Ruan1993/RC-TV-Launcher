@@ -106,8 +106,10 @@ internal fun FocusButton(label: String, motion: String, modifier: Modifier = Mod
     selected: Boolean = false, quiet: Boolean = false, icon: String? = null, prominent: Boolean = false, onClick: () -> Unit) {
     val Ice = LocalAppearance.current.accent
     var focused by remember { mutableStateOf(false) }
+    val readable = LocalSettingsControls.current
+    val labelStyle = if (readable) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge
     val tint by animateColorAsState(if (focused) if (quiet) Ice.copy(alpha = .22f) else Ice else if (selected) Color.White.copy(alpha = if (quiet) .12f else .18f) else Color.White.copy(alpha = .045f), animationSpec = if (motion == "Minimal") snap() else spring(stiffness = 600f), label = "buttonTint")
-    Button(onClick, modifier.heightIn(min = 48.dp).onFocusChanged { focused = it.isFocused }
+    Button(onClick, modifier.heightIn(min = if (readable) 64.dp else 48.dp).onFocusChanged { focused = it.isFocused }
         .cinematicFocus()
         .background(if(prominent) Ice.copy(alpha=.12f) else Color.Transparent,RoundedCornerShape(14.dp))
         .drawBehind { drawRoundRect(tint, cornerRadius = CornerRadius(14.dp.toPx())) }
@@ -116,9 +118,9 @@ internal fun FocusButton(label: String, motion: String, modifier: Modifier = Mod
             contentColor = if (focused && !quiet) Ink else Color.White), contentPadding = PaddingValues(12.dp, 10.dp)) {
         if (icon != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             NavigationMark(icon, Ice)
-            if (label.isNotEmpty()) Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            if (label.isNotEmpty()) Text(label, style = labelStyle, maxLines = if (readable) 2 else 1)
         } else if (label in listOf("H", "S", "A", "L", "···")) NavigationMark(label, if (focused && !quiet) Ink else Ice)
-        else Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        else Text(label, style = labelStyle, maxLines = if (readable) 2 else 1)
     }
 }
 
@@ -280,6 +282,15 @@ fun CinematicLauncher(
     var pendingSettingsEntry by remember { mutableStateOf<String?>(null) }
     var utilityReturn by remember { mutableStateOf<String?>(null) }
     var weatherDetails by remember { mutableStateOf(false) }
+    var recoveryWizard by remember { mutableStateOf(false) }
+    if (recoveryWizard) RestoreLauncherWizard { recoveryWizard = false }
+    var favouriteEditor by remember { mutableStateOf(false) }
+    if (favouriteEditor) {
+        val favouritePreferences = remember { Preferences(weatherContext) }
+        GuidedPage("Manage favourites", 0, 1, { favouriteEditor=false }, { favouriteEditor=false }, "Done", { favouriteEditor=false }) {
+            FavouriteSettings(favouritePreferences, prefs)
+        }
+    }
     var wallpaperSettingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     var wallpaperChoice by remember { mutableStateOf<String?>(null) }
     var previewWallpaper by remember { mutableStateOf<String?>(null) }
@@ -466,9 +477,9 @@ fun CinematicLauncher(
                             prefs.theme == "Minimalist", { wallpaperChoice = it },
                             { previewWallpaper = wallpaperChoice ?: prefs.wallpaper },
                             { applyWallpaper(wallpaperChoice ?: prefs.wallpaper) }, closeWallpapers, onOnlineApply, onOnlineSave, onApplyWallpaper, onAddRotation, onlineHistory)
-                    } else if(settingsPage == null) SettingsCategories(lastSettingsCategory,motion) { key -> lastSettingsCategory=key; settingsPage=key }
-                    else key(settingsPage) { SettingsSubpage(settingsPage!!,motion,closeSettingsPage) {
-                        when(settingsPage) {
+                    } else SettingsScaffold(settingsPage,lastSettingsCategory,motion,
+                        { lastSettingsCategory=it; if (settingsPage != "backup") settingsPage=null }, { settingsPage=it; lastSettingsCategory=it }, closeSettingsPage) { activePage ->
+                        when(activePage) {
                             "backup" -> BackupRestore(motion)
                             "appearance" -> {
                                 Text("Wallpaper",style=MaterialTheme.typography.titleMedium,color=Ice)
@@ -496,6 +507,8 @@ fun CinematicLauncher(
                             }
                             "apps" -> {
                                 LauncherManagement(motion, onChooseHome, onRestoreHome, onAndroidSettings)
+                                FocusButton("Home-button controls",motion) { weatherContext.startActivity(android.content.Intent(weatherContext, za.co.rc.tv.HomeKeyExperimentActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                                FocusButton("Manage favourites",motion) { favouriteEditor=true }
                                 HorizontalDivider()
                                 ContinueWatchingSettings(prefs.continueWatching,motion)
                                 HorizontalDivider()
@@ -531,6 +544,7 @@ fun CinematicLauncher(
                             }
                             "system" -> {
                                 FocusButton("Easy setup",motion,onClick=onEasySetup)
+                                FocusButton("Restore Original Launcher",motion) { recoveryWizard=true }
                                 FocusButton("Backup & Restore", motion, Modifier.focusRequester(settingsEntryFocus.getValue("backup"))) { settingsPage = "backup" }
                                 essentialSystemDestinations.filter { systemDestinationCategory(it.key) == "system" }.forEach { SystemSettingsLink(it, motion) }
                                 HorizontalDivider()
@@ -545,7 +559,7 @@ fun CinematicLauncher(
                                 essentialSystemDestinations.filter { systemDestinationCategory(it.key) == "about" }.forEach { SystemSettingsLink(it, motion) }
                             }
                         }
-                    } }
+                    }
                     "Library" -> GlassPanel(Modifier.fillMaxWidth()) {
                         Text("A place for your stories", fontSize = 28.sp, fontWeight = FontWeight.Normal)
                         Text("Browse available folders, play video and audio in VLC, or view images.", modifier = Modifier.padding(vertical = 16.dp))

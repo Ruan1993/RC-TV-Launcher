@@ -7,7 +7,7 @@ import android.content.pm.PackageManager
 import android.provider.Settings
 
 data class HomeIntegrationState(val resolvedPackage: String?, val resolvedLabel: String,
-    val roleAvailable: Boolean, val roleHeld: Boolean, val homeSettingsAvailable: Boolean) {
+    val roleAvailable: Boolean, val roleHeld: Boolean, val homeSettingsAvailable: Boolean, val resolvedComponent: String? = null) {
     fun description(ownPackage: String): String = when {
         resolvedPackage == null -> "Current Home: unknown. Android has not exposed a reliable default. Open Home selection to check."
         resolvedPackage == ownPackage -> "RC TV currently handles Android Home."
@@ -39,7 +39,8 @@ object HomeIntegration {
         val available = runCatching { roles.isRoleAvailable(RoleManager.ROLE_HOME) }.getOrDefault(false)
         val activity = current?.activityInfo?.takeIf { reliableHomeTarget(it.packageName, it.name) }
         return HomeIntegrationState(activity?.packageName, activity?.applicationInfo?.loadLabel(context.packageManager)?.toString() ?: "Unknown / Android chooser",
-            available, available && runCatching { roles.isRoleHeld(RoleManager.ROLE_HOME) }.getOrDefault(false), homeSettings(context) != null)
+            available, available && runCatching { roles.isRoleHeld(RoleManager.ROLE_HOME) }.getOrDefault(false), homeSettings(context) != null,
+            activity?.let { android.content.ComponentName(it.packageName, it.name).flattenToString() })
     }
 }
 
@@ -82,4 +83,5 @@ data class OriginalHomeRecovery(val googleTvDisabled: Boolean?, val verifiedXiao
 
 fun reliableHomeTarget(packageName: String, className: String) = packageName != "android" &&
     packageName != "com.google.android.tv.frameworkpackagestubs" &&
-    !className.endsWith("ResolverActivity") && !className.endsWith("ChooserActivity") && !className.contains("EmptyStubActivity")
+    !className.endsWith("ResolverActivity") && !className.endsWith("ChooserActivity") && !className.contains("EmptyStubActivity") &&
+    !className.endsWith("FallbackHome") && !className.endsWith("RecoveryActivity") && !className.endsWith("SystemUserHomeActivity")

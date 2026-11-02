@@ -33,6 +33,8 @@ class WallpaperImportCheck : Instrumentation() {
     override fun onStart() {
         val result = Bundle()
         try {
+            if(refinementMode=="setupsession") { SetupSessionCheck.run(this); result.putString("verification","Setup checkpoint recreation, feature choices, pause and native-versus-intercepted Home evidence passed in test-only storage"); finish(Activity.RESULT_OK,result); return }
+            if(refinementMode=="sprintui") { SprintUiCheck.run(this); result.putString("verification","Emulator-only Settings/setup smoke interaction and screenshots captured; full physical acceptance remains pending"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j4cleanup") { J4Review.cleanup(this); result.putString("verification","Only J4-owned synthetic media fixtures removed"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j4") { J4Review.run(this,j1Args?.getString("keep")=="true"); result.putString("verification","J4 physical scoped-media, active VLC video session/audio output, image preview, D-pad/Back and preservation passed; visible video needs user confirmation (synthetic shared-storage fixtures)"); finish(Activity.RESULT_OK,result); return }
             if(refinementMode=="j3fsaf") { BackupReview.saf(this); result.putString("verification","Genuine emulator DocumentsUI save/readback/open/preview/confirmed restore passed"); finish(Activity.RESULT_OK,result); return }

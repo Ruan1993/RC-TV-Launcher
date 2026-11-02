@@ -16,6 +16,12 @@ import za.co.rc.tv.core.*
 object SettingsReviewCheck {
     fun run(test: Instrumentation, large: Boolean) {
         val prefs=Preferences(test.targetContext); val before=runBlocking { prefs.state.first() }
+        val setup = test.targetContext.getSharedPreferences("easy-setup", android.content.Context.MODE_PRIVATE)
+        val wasSeen = setup.getBoolean("seen", false)
+        val session = SetupSession(test.targetContext)
+        val wasActive = session.active
+        check(setup.edit().putBoolean("seen", true).commit())
+        session.pause()
         var capture: UiAutomation?=null
         try {
             if(large) runBlocking { prefs.setTextSize("Extra Large"); prefs.setFontStyle("Bold / High Readability") }
@@ -66,10 +72,10 @@ object SettingsReviewCheck {
             Thread.sleep(150); check(runBlocking { prefs.state.first() }.focusAnimation=="Standard")
             visible("Reduced motion: off"); key(KeyEvent.KEYCODE_BACK)
             focused("Appearance")
-            click("Remote & Input")
+            click("Phone & Keyboard")
             for(label in listOf("Phone pairing & download","Phone typing setup","Phone control permissions","Try keyboard","Enable in Android…","Choose keyboard…")) visible(label)
             visible("Accessibility settings")
-            shot("settings-remote.png"); key(KeyEvent.KEYCODE_BACK); focused("Remote & Input")
+            shot("settings-remote.png"); key(KeyEvent.KEYCODE_BACK); focused("Phone & Keyboard")
             click("Connections & Devices")
             visible("Wi-Fi & Internet"); visible("Bluetooth Devices"); shot("settings-connections.png")
             for(destination in listOf("Wi-Fi & Internet","Bluetooth Devices")) {
@@ -102,6 +108,10 @@ object SettingsReviewCheck {
                 walk(root); root.recycle(); File(test.targetContext.getExternalFilesDir(null),"settings-tree.txt").writeText(labels.toString())
             }
             throw failure
-        } finally { runBlocking { prefs.setTextSize(before.textSize); prefs.setFontStyle(before.fontStyle); prefs.setFocusAnimation(before.focusAnimation) } }
+        } finally {
+            runBlocking { prefs.setTextSize(before.textSize); prefs.setFontStyle(before.fontStyle); prefs.setFocusAnimation(before.focusAnimation) }
+            setup.edit().putBoolean("seen", wasSeen).commit()
+            if (wasActive) session.begin()
+        }
     }
 }

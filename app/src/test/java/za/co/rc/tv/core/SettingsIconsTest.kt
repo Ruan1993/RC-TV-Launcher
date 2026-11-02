@@ -9,7 +9,7 @@ class SettingsIconsTest {
         val remote = settingsCategories.single { it.key == "remote" }
         val connections = settingsCategories.single { it.key == "connections" }
         assertNotEquals(remote.icon, connections.icon)
-        assertEquals("Remote & Input", remote.title)
+        assertEquals("Phone & Keyboard", remote.title)
         assertEquals("Connections & Devices", connections.title)
     }
 }

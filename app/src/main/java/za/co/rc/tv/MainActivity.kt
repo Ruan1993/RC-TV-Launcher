@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        runCatching { SetupSession(this).observeHome(intent) }
         if (intent.action == HomeKeyExperimentService.ACTION_HOME || intent.action == HomeKeyExperimentService.ACTION_SETTINGS) {
             homeKeySettings = intent.action == HomeKeyExperimentService.ACTION_SETTINGS
             screensaverVisible = false
@@ -105,11 +106,12 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        runCatching { SetupSession(this).observeHome(intent) }
         if (intent.action == HomeKeyExperimentService.ACTION_HOME || intent.action == HomeKeyExperimentService.ACTION_SETTINGS) {
             homeKeySettings = intent.action == HomeKeyExperimentService.ACTION_SETTINGS
             experimentHomeRequest++
         }
-        val suggestSetup = SetupProgress.offerOnFirstOpen(getSharedPreferences("easy-setup", MODE_PRIVATE).getBoolean("seen", false),
+        val suggestSetup = SetupSession(this).active || SetupProgress.offerOnFirstOpen(getSharedPreferences("easy-setup", MODE_PRIVATE).getBoolean("seen", false),
             java.io.File(filesDir, "datastore/launcher.preferences_pb").exists())
         setContent {
             val prefs by preferences.state.collectAsStateWithLifecycle(LauncherPreferences())
