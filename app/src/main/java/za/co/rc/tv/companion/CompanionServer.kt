@@ -79,7 +79,13 @@ class CompanionServer(context: Context, private val command: (String, String) ->
                     val code = if (newPairing || gate.records().isEmpty()) gate.pairingCode() else ""
                     mutable.value = CompanionState(true, "Ready. System control requires separate TV opt-in and accessibility consent. Phones stay paired until you forget or revoke them.",
                         "${link.address.hostAddress}:${listener.localPort}", code, identity.fingerprint, devices = gate.sessions())
-                    networkWatch = object : ConnectivityManager.NetworkCallback() { override fun onLost(lost: android.net.Network) { if (lost == active) suspendConnection("Network changed. Return to RC TV or retry to reconnect.") } }
+                    networkWatch = object : ConnectivityManager.NetworkCallback() {
+                        override fun onLost(lost: android.net.Network) { if (lost == active) suspendConnection("Network changed. Return to RC TV or retry to reconnect.") }
+                        override fun onLinkPropertiesChanged(changed: android.net.Network, properties: android.net.LinkProperties) {
+                            if (changed == active && properties.linkAddresses.none { it.address == link.address })
+                                suspendConnection("TV address changed. Start pairing again to show the new address; approvals are kept.")
+                        }
+                    }
                     network.registerDefaultNetworkCallback(networkWatch!!)
                     advertise(listener.localPort)
                 }
@@ -97,6 +103,10 @@ class CompanionServer(context: Context, private val command: (String, String) ->
         config.edit().putBoolean("enabled", false).apply()
         suspendConnection(message); gate.clear(); storage.clear(); loaded = true
         mutable.value = CompanionState(message = message)
+    }
+    @Synchronized fun stopServing() {
+        config.edit().putBoolean("enabled", false).apply()
+        suspendConnection("Remote stopped. Approved phones are kept. Start again when you need them.")
     }
     @Synchronized fun suspendConnection(message: String = "Paused. Approved phones reconnect when you return to RC TV.") {
         running = false; generation++; runCatching { socket?.close() }; socket = null

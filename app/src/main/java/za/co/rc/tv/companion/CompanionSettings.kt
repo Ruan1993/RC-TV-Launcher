@@ -19,6 +19,7 @@ import za.co.rc.tv.ui.FocusButton
     if (download) { za.co.rc.tv.ui.RemoteDownload({ download=false; server.preparePairing() }, { download=false }); return }
     var page by remember { mutableIntStateOf(initialPage) }
     var confirmSystem by remember { mutableStateOf(false) }
+    var forgetAll by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
     LaunchedEffect(page) { scroll.scrollTo(0) }
     LaunchedEffect(server, state.running, page) {
@@ -30,6 +31,12 @@ import za.co.rc.tv.ui.FocusButton
     fun openAccessibility() {
         runCatching { context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
             .onFailure { android.widget.Toast.makeText(context, "On TV: Settings > Device Preferences > Accessibility > RC TV Remote system control.", android.widget.Toast.LENGTH_LONG).show() }
+    }
+    if (forgetAll) {
+        za.co.rc.tv.ui.ConfirmActionDialog("Forget all approved phones?",
+            "All remote credentials will be revoked. Each phone will need TV approval again. To pause without losing approval, choose Stop remote instead.",
+            "Forget all phones", { server.stop(); forgetAll = false }, { forgetAll = false })
+        return
     }
     if (confirmSystem) {
         AlertDialog(onDismissRequest = { confirmSystem = false }, title = { Text("Allow control in other apps?") },
@@ -70,9 +77,12 @@ import za.co.rc.tv.ui.FocusButton
                         Text("Security fingerprint\n${LinkWire.displayFingerprint(state.fingerprint)}", style = MaterialTheme.typography.bodySmall)
                         Text("A code lasts two minutes. Once connected, this screen closes automatically. Approved phones reconnect until you remove them.")
                         for (device in state.devices) FocusButton("Remove ${device.name}", "Minimal") { server.revoke(device.id) }
-                        FocusButton("Stop and forget all phones", "Minimal") { server.stop() }
+                        FocusButton("Stop remote · keep approved phones", "Minimal") { server.stopServing() }
+                        FocusButton("Stop and forget all phones…", "Minimal") { forgetAll = true }
                     } else {
                         Text(state.message)
+                        for (device in state.devices) FocusButton("Remove ${device.name}", "Minimal") { server.revoke(device.id) }
+                        if (state.devices.isNotEmpty()) FocusButton("Forget all phones…", "Minimal") { forgetAll = true }
                         FocusButton("Start pairing", "Minimal") { server.start() }
                     }
                 }
