@@ -1,4 +1,10 @@
-# Settings organisation — rc1.21 (53)
+# Settings organisation — rc1.26 sprint update
+
+The current implementation uses the seven-category persistent rail/two-panel shell in `SettingsHub.kt`, with a full-width category/page fallback for narrow viewports or large type. **Phone & Keyboard** replaces the display label Remote & Input; its stable route stays `remote`. Category browsing previews content without writes; OK/Right enters it and Back returns to the rail. Page scroll is retained through saveable page state. Existing utility return routes and preference keys remain intact.
+
+The approved [S01–S39 preservation map](../RC-TV-SETUP-COMPANION-RECOVERY-REPORT.md) is the audit baseline. Added direct entries include Manage favourites, Home-button controls and System & Recovery → Restore Original Launcher. Existing callbacks/screens remain, with shared setup/recovery controls, 64 dp Settings targets, two-line labels, Cancel-focused scoped reset confirmation and no extra runtime UI dependency. See [current results and remaining acceptance](IMPLEMENTATION-SPRINT.md). The earlier results below are historical and do not certify the new shell's physical D-pad behaviour.
+
+## Historical rc1.21 organisation
 
 Baseline: physically verified rc1.20 (52), `577f2e1`. Organisation/navigation only;
 the installed Xiaomi build and takeover configuration are untouched.

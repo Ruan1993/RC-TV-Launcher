@@ -4,7 +4,7 @@ import android.app.Instrumentation
 import android.content.Intent
 import za.co.rc.tv.core.*
 
-/** Test-APK store only: no launchers, system permissions or live pairing state are changed. */
+/** Isolated target-owned test store: no launchers, system permissions or live pairing state are changed. */
 object SetupSessionCheck {
     fun run(test: Instrumentation) {
         val context = test.targetContext

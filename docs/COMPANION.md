@@ -1,3 +1,11 @@
+# Companion — rc1.26 sprint update
+
+Native Remote 0.5.1-rc1 and its pinned TLS protocol are unchanged. TV Phone Companion now separates **Stop remote · keep approved phones** from **Stop and forget all phones…**; forgetting requires a Cancel-focused confirmation. Devices may be revoked while serving is stopped. A TV address change suspends old sockets/leases and directs the user to restart with the new address; approvals remain stored.
+
+The selected distribution is a TV-hosted local page and optional local APK download, not a public website. That HTTPS/browser/QR/download subsystem is **not implemented in this candidate**. Download guidance states this explicitly; there is no HTTP fallback, certificate bypass, invented QR or browser ADB endpoint. Existing native pairing, typing and permission gates remain. See [sprint results](IMPLEMENTATION-SPRINT.md).
+
+## Historical evidence
+
 > Phase I: Remote 0.5.1-rc1 changes branding only; the approved 0.5.0 UI/client remains unchanged. TV 1.0.0-rc1 adds an inactive Download RC TV Remote screen because no public HTTPS destination is approved/verified. Live TV approval and fresh-client reconnect passed; the temporary test grant was explicitly removed, leaving the original phone. See [Phase I acceptance report](PHASE-I.md).
 
 > Phase H supersedes the historical expiry notes below: TV 0.9.2 / Remote 0.5.0 pairs until explicitly revoked/forgotten or app credentials are removed. Still-valid legacy approvals migrate without re-pairing; already expired records are discarded. Encrypted credential hashes remain durable. In-memory leases expire after 30 minutes and renew through the existing authenticated reconnect path; stale leases and sequences remain rejected. System control still requires the separate user-approved Accessibility service, and phone typing requires an editable field with RC TV Keyboard active. The Phase G phone layout is unchanged. See [Phase H verification](PHASE-H.md).
