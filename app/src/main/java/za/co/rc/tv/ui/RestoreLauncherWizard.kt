@@ -38,7 +38,7 @@ import za.co.rc.tv.core.*
     LaunchedEffect(Unit) { runCatching { RecoverySnapshot.capture(context) }.onFailure { message = "Could not save recovery observations. Keep RC TV installed." } }
     fun system(action: String, data: android.net.Uri? = null) {
         confirmed = false
-        val intent = if (data == null) resolvedSystemSettings(context, listOf(action)) else Intent(action, data)
+        val intent = resolvedSystemSettings(context, listOf(action), data)
         if (intent == null || runCatching { context.startActivity(intent) }.isFailure) {
             openSystemDestination(context, androidSettingsDestination)
             message = "Direct screen unavailable. In Android Settings, inspect Apps or Default apps → Home."

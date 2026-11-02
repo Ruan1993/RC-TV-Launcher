@@ -21,6 +21,8 @@
         <intent><action android:name="android.settings.DATE_SETTINGS" /></intent>
         <intent><action android:name="android.settings.SYSTEM_UPDATE_SETTINGS" /></intent>
         <intent><action android:name="android.settings.ACCESSIBILITY_SETTINGS" /></intent>
+        <intent><action android:name="android.settings.INPUT_METHOD_SETTINGS" /></intent>
+        <intent><action android:name="android.settings.APPLICATION_DETAILS_SETTINGS" /><data android:scheme="package" /></intent>
         <intent><action android:name="android.settings.DREAM_SETTINGS" /></intent>
         <intent><action android:name="android.intent.action.OPEN_DOCUMENT" /><category android:name="android.intent.category.OPENABLE" /><data android:mimeType="*/*" /></intent>
         <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LEANBACK_LAUNCHER" /></intent>

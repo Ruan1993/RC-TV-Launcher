@@ -28,17 +28,17 @@ fun usableSystemSettingsTarget(packageName: String, className: String, exported:
         !className.contains("EmptyStubActivity") && !className.endsWith("ResolverActivity")
 
 /** Resolve exported system handlers only; never rely on an OEM private class name. */
-fun resolvedSystemSettings(context: Context, actions: List<String>): Intent? {
+fun resolvedSystemSettings(context: Context, actions: List<String>, data: android.net.Uri? = null): Intent? {
     val pm = context.packageManager
     for (action in actions) {
-        val candidates = pm.queryIntentActivities(Intent(action), PackageManager.MATCH_DEFAULT_ONLY)
+        val candidates = pm.queryIntentActivities(Intent(action, data), PackageManager.MATCH_DEFAULT_ONLY)
             .filter { info -> info.activityInfo?.let { activity ->
                 usableSystemSettingsTarget(activity.packageName, activity.name, activity.exported,
                     activity.applicationInfo.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0) &&
                     (action != "android.settings.SYSTEM_UPDATE_SETTINGS" || info.priority > 0)
             } == true }.sortedByDescending { it.priority }
         candidates.firstOrNull()?.activityInfo?.let {
-            return Intent(action).setClassName(it.packageName, it.name)
+            return Intent(action, data).setClassName(it.packageName, it.name)
         }
     }
     return null
