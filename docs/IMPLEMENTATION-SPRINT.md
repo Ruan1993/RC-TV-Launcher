@@ -2,7 +2,7 @@
 
 Candidate **TV 1.0.0-rc1.26-sprint (58)**; native Remote **0.5.1-rc1 (6)** unchanged. Local branch: `codex/settings-setup-recovery`. This is a development review build, not a physically accepted consumer release.
 
-**The owner's Xiaomi was not modified or connected during implementation.** The authorised ADB inventory initially contained no devices. No physical installation, package command, Home selection, Accessibility/keyboard change, debugging change, reboot, uninstall or data clear was performed. All subsequent install/test commands named isolated emulator serials explicitly.
+**The owner's Xiaomi was not modified.** It was not connected during implementation; the authorised ADB inventory initially contained no devices. At the owner's subsequent explicit request, the previously authorised TCP endpoint was reconnected for a brief read-only identity check (see diagnostic addendum below). No physical installation, package command, Home selection, Accessibility/keyboard change, debugging change, reboot, uninstall or data clear was performed. All install/test commands named isolated emulator serials explicitly.
 
 ## Implemented features and validation limits
 
@@ -101,6 +101,17 @@ No push, merge or deployment performed. Final working-tree status is checked aft
 
 ## Approvals and next implementation tasks
 
-No coding/build permission remains blocked. Fresh owner approval is required before physical TV installation or any routing/permission/debugging/reboot/recovery operation. The preserved Xiaomi remains unchanged.
+No coding/build permission remains blocked. The owner authorised the read-only ADB diagnosis below; that does not authorise installation or system changes. Fresh owner approval is required before physical TV installation or any routing/permission/debugging/reboot/recovery operation. The preserved Xiaomi remains unchanged.
 
 Next work, in order: obtain stable isolated UI execution and complete screenshots/focus/large-text acceptance; refine common option rows and advanced disclosure from that evidence; test actual process-loss/resume and direct system-screen return; measure performance/storage on authorised hardware; implement and test local HTTPS trust/download/browser pairing as a separate security-reviewed increment; then native phone read-only diagnostics. Keep privileged package operations disabled until independent rescue and restoration acceptance pass.
+
+## Requested read-only Xiaomi ADB diagnosis
+
+Performed after the implementation handoff was prepared, at the owner's explicit request, on 2 November 2026. This physical connection is separate from the emulator failures.
+
+- Host ADB: Android Debug Bridge 1.0.41, Platform Tools `36.0.0-13206524`. Local server responded successfully and a listener was visible on `127.0.0.1:5037`. Initial device inventory was empty.
+- Host Ethernet address: `192.168.1.59/24`. Repository evidence in `XIAOMI-774-WORKING-TAKEOVER.md` and `HOME-TAKEOVER-READINESS.md` identifies the previously authorised **legacy TCP endpoint `192.168.1.39:5555`**, not Android-11-phone-style wireless pairing.
+- One explicit `adb connect 192.168.1.39:5555` returned **connected** immediately. The subsequent inventory showed `device`, product/codename `jaws`, model `MiTV_AFKR0`. Read-only `getprop ro.product.model` and `getprop ro.build.version.release` confirmed **MiTV-AFKR0 / Android 11**.
+- Classification: **connection restored and authorised**. The endpoint was reachable; the connection was not refused; it was not `unauthorized` or `offline`; no fresh approval prompt or TV setting change was needed. The earlier restricted-process failures were development-environment access failures and were already resolved by using approved host access. They were not evidence that the physical TV was unreachable.
+- Best-supported explanation: the working local ADB server had no registered TCP connection to the TV. Re-registering the documented endpoint was sufficient. The precise earlier cause of losing that host-side connection is not proven; a host-server restart is plausible, especially because preflight had started a nonrunning server, but no TV/network/debugging change is established.
+- No server reset, key replacement, network scan, `tcpip` transport change, Settings launch, package operation, APK installation, Home/Accessibility/keyboard change, reboot or data modification was performed on the TV. No further physical-device tests or performance measurements were undertaken under this diagnosis request. The authorised TCP connection was left available.
