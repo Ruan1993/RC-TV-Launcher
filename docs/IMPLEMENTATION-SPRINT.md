@@ -2,6 +2,8 @@
 
 Candidate **TV 1.0.0-rc1.26-sprint (58)**; native Remote **0.5.1-rc1 (6)** unchanged. Local branch: `codex/settings-setup-recovery`. This is a development review build, not a physically accepted consumer release.
 
+Subsequent [Xiaomi supervised-update preflight](XIAOMI-RC126-UPDATE-PREFLIGHT.md) verifies the actual installed APK/signer, current storage, Home/input baseline and off-device noncredential backups. It supersedes the earlier “not measured” storage limitation below; UI acceptance and data-preserving rollback remain unverified. No physical installation or configuration change was performed.
+
 **The owner's Xiaomi was not modified.** It was not connected during implementation; the authorised ADB inventory initially contained no devices. At the owner's subsequent explicit request, the previously authorised TCP endpoint was reconnected for a brief read-only identity check (see diagnostic addendum below). No physical installation, package command, Home selection, Accessibility/keyboard change, debugging change, reboot, uninstall or data clear was performed. All install/test commands named isolated emulator serials explicitly.
 
 ## Implemented features and validation limits
